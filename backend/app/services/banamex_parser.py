@@ -22,6 +22,8 @@ SPANISH_MONTHS = {
 DATE_RE = re.compile(r"^\d{2}-[a-z]{3}-\d{4}$", re.IGNORECASE)
 AMOUNT_RE = re.compile(r"^\$?([\d,]+\.\d{2})$")
 TC_RE = re.compile(r"TC1\*\s*([\d.]+)\s*TC2\*\s*([\d.]+)", re.IGNORECASE)
+INSTALLMENT_RE = re.compile(r"\b(\d{1,3})\s+de\s+(\d{1,3})\b", re.IGNORECASE)
+TRAILING_ID_RE = re.compile(r"\b[A-Z]{2,5}\s?\d{6,}[A-Z0-9]*\b$")
 
 
 def _parse_spanish_date(value: str) -> date:
@@ -59,7 +61,58 @@ def _clean_description(lines: list[str]) -> str:
         .replace("BOLT.EUO", "BOLT.EU/O")
         .replace("  ", " ")
     )
-    return description.strip()
+    description = TRAILING_ID_RE.sub("", description).strip()
+    return re.sub(r"\s+", " ", description).strip()
+
+
+def _normalize_installment_note(description: str) -> tuple[str, str | None]:
+    match = INSTALLMENT_RE.search(description)
+    if not match:
+        return description, None
+
+    current = int(match.group(1))
+    total = int(match.group(2))
+    note = f"Installment {current}/{total}"
+    cleaned = INSTALLMENT_RE.sub("", description)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned, note
+
+
+def _rename_banamex_merchant(description: str) -> str:
+    replacements = {
+        "NETFLIX.COM LOS GATOS NL": "Netflix",
+        "PADDLE.NET* ELFSIGHT LONDON GB": "Elfsight",
+        "T1 TELCEL PYRE CPA": "Telcel",
+        "T1 TELCEL PYRE": "Telcel",
+        "TELCEL VPS": "Telcel",
+        "ISHOP MIXUP ALTABRISA": "iShop Mixup Altabrisa",
+        "PANDORCA.ACTIVIDADES": "Pandorca Actividades",
+        "GBMD - MEDICINA DESP": "GBMD - Medicina Desp",
+        "SUMUP *FERTONANI CAF": "Sumup - Fertonani Cafe",
+        "BOLT.EU/O/": "Bolt ",
+        "BOLT.EU/O": "Bolt ",
+        "LIME*RIDE GGIP": "Lime Ride",
+        "LIME*PASS GGIP": "Lime Pass",
+    }
+
+    normalized = description
+    for source, target in replacements.items():
+        if source in normalized:
+            normalized = normalized.replace(source, target)
+
+    cleanup_patterns = {
+        r"^Sumup - Fertonani Cafe\b.*$": "Fertonani Cafe",
+        r"^GBMD - Medicina Desp\b.*$": "GBMD - Medicina Desp",
+        r"^Pandorca Actividades\b.*$": "Pandorca Actividades",
+        r"^Lime Ride\b.*$": "Lime Ride",
+        r"^Lime Pass\b.*$": "Lime Pass",
+        r"^Bolt\b.*$": "Bolt",
+        r"^Elfsight\b.*$": "Elfsight",
+        r"^Netflix\b.*$": "Netflix",
+    }
+    for pattern, target in cleanup_patterns.items():
+        normalized = re.sub(pattern, target, normalized, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", normalized).strip()
 
 
 def _parse_decimal(value: str) -> Decimal:
@@ -139,6 +192,8 @@ def parse_banamex_pdf(pdf_bytes: bytes) -> dict | None:
                     exchange_rate = tc1 if tc2 == 0 else (tc1 * tc2).quantize(Decimal("0.000001"))
 
             description = _clean_description(description_lines)
+            description, installment_note = _normalize_installment_note(description)
+            description = _rename_banamex_merchant(description)
             if sign == "-":
                 description = description or "Unknown debit"
 
@@ -153,7 +208,7 @@ def parse_banamex_pdf(pdf_bytes: bytes) -> dict | None:
                     "local_mxn": float(mxn_amount),
                     "category": "Other",
                     "type": "income" if sign == "-" else "expense",
-                    "notes": "",
+                    "notes": installment_note or "",
                 }
             )
 
