@@ -32,7 +32,12 @@ INCOME_RULES = [
 ]
 
 EXPENSE_RULES = [
-    (r"UBER\s*\*?\s*EATS|PIZZA|PIZZERIA|CAFE|CAFÉ|CAFF[EÈ]|SHIFU RAMEN|JNCQUOI ASIA|STREET CHOW|SUMUP \*", "Food & Drink"),
+    (
+        r"UBER\s*\*?\s*EATS|PIZZA|PIZZERIA|CAFE|CAFÉ|CAFF[EÈ]|KAFFE|SHIFU RAMEN|JNCQUOI ASIA|STREET CHOW|"
+        r"SUMUP \*|RC\.?\s*SANCHES|R\.?C\.?SANCHES|PANDORCA|PANORCA|ENJOY VALUE|FEITO PORTUGAL|"
+        r"ASUR C CONV SHOP|QUESTAO RECHEADA|THANKYOUMAMA|ROTA GOURMET",
+        "Food & Drink",
+    ),
     (r"BOLT|BOLT\.EU|UBR|UBER(?!.*EATS)|UBER \*ONE MEMBERSHI|LIME", "Transport"),
     (r"CONTINENTE|PINGO DOCE|CELEIRO|GLEBA|PAGOS FIJOS|EL CORTE INGLES|LIDL", "Groceries"),
     (r"TENNIS SHOP|DECATHLON|CLUBE INTERNACIONAL|CAMARA LISBOA CLUBE LISBOA|TENNIS POINT|TP\* TENNIS-POINT", "Tennis"),
@@ -110,4 +115,3 @@ def classify_transaction(
     fallback_type = "expense"
     fallback_notes = "Unclassified expense — manual review needed"
     return fallback_type, "Other", fallback_notes
-

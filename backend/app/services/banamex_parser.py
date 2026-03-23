@@ -1,0 +1,148 @@
+import re
+from datetime import date
+from decimal import Decimal
+
+import fitz
+
+SPANISH_MONTHS = {
+    "ene": 1,
+    "feb": 2,
+    "mar": 3,
+    "abr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dic": 12,
+}
+
+DATE_RE = re.compile(r"^\d{2}-[a-z]{3}-\d{4}$", re.IGNORECASE)
+AMOUNT_RE = re.compile(r"^\$?([\d,]+\.\d{2})$")
+TC_RE = re.compile(r"TC1\*\s*([\d.]+)\s*TC2\*\s*([\d.]+)", re.IGNORECASE)
+
+
+def _parse_spanish_date(value: str) -> date:
+    day, month_key, year = value.strip().lower().split("-")
+    return date(int(year), SPANISH_MONTHS[month_key[:3]], int(day))
+
+
+def _parse_period(text: str) -> tuple[str | None, str | None]:
+    match = re.search(r"Periodo:\s*(\d{1,2}-[a-z]{3}-\d{4})\s+al\s+(\d{1,2}-[a-z]{3}-\d{4})", text, re.IGNORECASE)
+    if not match:
+        return None, None
+    return _parse_spanish_date(match.group(1)).isoformat(), _parse_spanish_date(match.group(2)).isoformat()
+
+
+def _clean_line(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _clean_description(lines: list[str]) -> str:
+    description = " ".join(_clean_line(line) for line in lines if _clean_line(line))
+    description = description.replace("UBR*", "UBER ").replace("UBER   *", "UBER *").replace("  ", " ")
+    return description.strip()
+
+
+def _parse_decimal(value: str) -> Decimal:
+    return Decimal(value.replace("$", "").replace(",", ""))
+
+
+def _extract_currency(currency_line: str) -> str:
+    normalized = currency_line.strip().upper()
+    if "EURO" in normalized:
+        return "EUR"
+    if "DOLLAR" in normalized or "USD" in normalized:
+        return "USD"
+    return "MXN"
+
+
+def parse_banamex_pdf(pdf_bytes: bytes) -> dict | None:
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    first_page_text = doc[0].get_text()
+    if "BANAMEX" not in first_page_text.upper():
+        return None
+
+    period_start, period_end = _parse_period(first_page_text)
+    transactions: list[dict] = []
+
+    for page in doc:
+        lines = [_clean_line(line) for line in page.get_text().splitlines()]
+        lines = [line for line in lines if line]
+        idx = 0
+        while idx < len(lines):
+            if not DATE_RE.match(lines[idx]):
+                idx += 1
+                continue
+
+            op_date = lines[idx]
+            if idx + 1 >= len(lines) or not DATE_RE.match(lines[idx + 1]):
+                idx += 1
+                continue
+
+            charge_date = lines[idx + 1]
+            idx += 2
+            description_lines: list[str] = []
+
+            while idx < len(lines) and lines[idx] not in {"+", "-"} and not DATE_RE.match(lines[idx]):
+                if lines[idx].startswith("Total cargos") or lines[idx].startswith("Total abonos") or lines[idx].startswith("ATENCIÓN DE QUEJAS"):
+                    break
+                description_lines.append(lines[idx])
+                idx += 1
+
+            if idx >= len(lines) or lines[idx] not in {"+", "-"}:
+                continue
+
+            sign = lines[idx]
+            idx += 1
+            if idx >= len(lines) or not AMOUNT_RE.match(lines[idx]):
+                continue
+
+            mxn_amount = _parse_decimal(lines[idx])
+            idx += 1
+
+            currency_original = "MXN"
+            amount_original = mxn_amount
+            exchange_rate = Decimal("1.000000")
+
+            if idx < len(lines):
+                tc_match = TC_RE.search(lines[idx])
+                if tc_match:
+                    tc1 = Decimal(tc_match.group(1))
+                    tc2 = Decimal(tc_match.group(2))
+                    idx += 1
+                    currency_line = lines[idx] if idx < len(lines) else "MXN"
+                    currency_original = _extract_currency(currency_line)
+                    idx += 1
+                    if idx < len(lines) and AMOUNT_RE.match(lines[idx]):
+                        amount_original = _parse_decimal(lines[idx])
+                        idx += 1
+                    exchange_rate = tc1 if tc2 == 0 else (tc1 * tc2).quantize(Decimal("0.000001"))
+
+            description = _clean_description(description_lines)
+            if sign == "-":
+                description = description or "Unknown debit"
+
+            transactions.append(
+                {
+                    "date": _parse_spanish_date(op_date).isoformat(),
+                    "description": description,
+                    "amount_original": float(amount_original),
+                    "currency_original": currency_original,
+                    "direction": "in" if sign == "-" else "out",
+                    "exchange_rate": float(exchange_rate),
+                    "local_mxn": float(mxn_amount),
+                    "category": "Other",
+                    "type": "income" if sign == "-" else "expense",
+                    "notes": "",
+                }
+            )
+
+    return {
+        "bank_name": "Banamex",
+        "period_start": period_start,
+        "period_end": period_end,
+        "transactions": transactions,
+    }

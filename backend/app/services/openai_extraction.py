@@ -7,6 +7,8 @@ from io import BytesIO
 from openai import OpenAI
 from pdf2image import convert_from_bytes
 
+from app.services.banamex_parser import parse_banamex_pdf
+
 
 EXTRACTION_PROMPT = """
 Identify the bank name and statement period from the document.
@@ -83,6 +85,10 @@ def pdf_to_base64_images(pdf_bytes: bytes) -> list[str]:
 
 
 def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
+    banamex_result = parse_banamex_pdf(pdf_bytes)
+    if banamex_result and banamex_result.get("transactions"):
+        return banamex_result
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     images = pdf_to_base64_images(pdf_bytes)
     overall: dict = {"bank_name": "", "period_start": None, "period_end": None, "transactions": []}
