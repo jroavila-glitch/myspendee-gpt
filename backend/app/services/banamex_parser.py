@@ -36,13 +36,29 @@ def _parse_period(text: str) -> tuple[str | None, str | None]:
     return _parse_spanish_date(match.group(1)).isoformat(), _parse_spanish_date(match.group(2)).isoformat()
 
 
+def _detect_banamex_product_name(text: str) -> str:
+    upper_text = text.upper()
+    if "COSTCO BANAMEX" in upper_text:
+        return "Costco Banamex"
+    if "ORO BANAMEX" in upper_text:
+        return "Oro Banamex"
+    if "BANAMEX" in upper_text:
+        return "Banamex"
+    return "Banamex"
+
+
 def _clean_line(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
 def _clean_description(lines: list[str]) -> str:
     description = " ".join(_clean_line(line) for line in lines if _clean_line(line))
-    description = description.replace("UBR*", "UBER ").replace("UBER   *", "UBER *").replace("  ", " ")
+    description = (
+        description.replace("UBR*", "UBER ")
+        .replace("UBER   *", "UBER *")
+        .replace("BOLT.EUO", "BOLT.EU/O")
+        .replace("  ", " ")
+    )
     return description.strip()
 
 
@@ -66,6 +82,7 @@ def parse_banamex_pdf(pdf_bytes: bytes) -> dict | None:
         return None
 
     period_start, period_end = _parse_period(first_page_text)
+    product_name = _detect_banamex_product_name(first_page_text)
     transactions: list[dict] = []
 
     for page in doc:
@@ -141,7 +158,7 @@ def parse_banamex_pdf(pdf_bytes: bytes) -> dict | None:
             )
 
     return {
-        "bank_name": "Banamex",
+        "bank_name": product_name,
         "period_start": period_start,
         "period_end": period_end,
         "transactions": transactions,
