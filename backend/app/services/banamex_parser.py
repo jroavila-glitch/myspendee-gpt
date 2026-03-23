@@ -65,6 +65,15 @@ def _clean_description(lines: list[str]) -> str:
     return re.sub(r"\s+", " ", description).strip()
 
 
+def _extract_inline_sign(value: str) -> tuple[str, str | None]:
+    cleaned = _clean_line(value)
+    if cleaned in {"+", "-"}:
+        return "", cleaned
+    if cleaned.endswith(" +") or cleaned.endswith(" -"):
+        return cleaned[:-2].rstrip(), cleaned[-1]
+    return cleaned, None
+
+
 def _normalize_installment_note(description: str) -> tuple[str, str | None]:
     match = INSTALLMENT_RE.search(description)
     if not match:
@@ -163,18 +172,24 @@ def parse_banamex_pdf(pdf_bytes: bytes) -> dict | None:
             charge_date = lines[idx + 1]
             idx += 2
             description_lines: list[str] = []
+            sign: str | None = None
 
-            while idx < len(lines) and lines[idx] not in {"+", "-"} and not DATE_RE.match(lines[idx]):
+            while idx < len(lines) and not DATE_RE.match(lines[idx]):
                 if lines[idx].startswith("Total cargos") or lines[idx].startswith("Total abonos") or lines[idx].startswith("ATENCIÓN DE QUEJAS"):
                     break
-                description_lines.append(lines[idx])
+                cleaned_line, inline_sign = _extract_inline_sign(lines[idx])
+                if cleaned_line:
+                    description_lines.append(cleaned_line)
                 idx += 1
+                if inline_sign:
+                    sign = inline_sign
+                    break
+                if lines[idx - 1] in {"+", "-"}:
+                    sign = lines[idx - 1]
+                    break
 
-            if idx >= len(lines) or lines[idx] not in {"+", "-"}:
+            if sign is None:
                 continue
-
-            sign = lines[idx]
-            idx += 1
             if idx >= len(lines) or not AMOUNT_RE.match(lines[idx]):
                 continue
 
