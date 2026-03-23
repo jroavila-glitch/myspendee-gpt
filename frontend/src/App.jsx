@@ -5,6 +5,7 @@ import { api } from './lib/api'
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MXN' })
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 const PIE_COLORS = ['#0f766e', '#f97316', '#dc2626', '#2563eb', '#ca8a04', '#64748b']
 
 function formatMoney(value) {
@@ -14,6 +15,16 @@ function formatMoney(value) {
 function getCurrentMonthState() {
   const now = new Date()
   return { month: now.getMonth() + 1, year: now.getFullYear() }
+}
+
+function dedupeCategories(categories) {
+  return Array.from(new Set([...categories.expense, ...categories.income]))
+}
+
+function formatStatementPeriod(statement) {
+  if (!statement.period_start && !statement.period_end) return 'Unknown period'
+  if (!statement.period_start || !statement.period_end) return statement.period_start || statement.period_end
+  return `${statement.period_start} - ${statement.period_end}`
 }
 
 function SummaryCard({ label, value }) {
@@ -150,6 +161,7 @@ function App() {
   const [tab, setTab] = useState('dashboard')
   const [period, setPeriod] = useState(getCurrentMonthState)
   const [filters, setFilters] = useState({ bank_name: '', category: '', type: '' })
+  const [searchText, setSearchText] = useState('')
   const [summary, setSummary] = useState({ income: 0, expenses: 0, net: 0 })
   const [breakdown, setBreakdown] = useState({ income: [], expenses: [] })
   const [transactions, setTransactions] = useState([])
@@ -164,6 +176,8 @@ function App() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [notesDrafts, setNotesDrafts] = useState({})
+  const [savingNotesIds, setSavingNotesIds] = useState([])
   const notesTimers = useRef({})
 
   const queryParams = useMemo(() => ({
@@ -173,6 +187,37 @@ function App() {
     ...(filters.category ? { category: filters.category } : {}),
     ...(filters.type ? { type: filters.type } : {}),
   }), [period, filters])
+
+  const categoryOptions = useMemo(() => dedupeCategories(categories), [categories])
+
+  const visibleTransactions = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase()
+    if (!normalizedSearch) return transactions
+    return transactions.filter((transaction) => {
+      const haystack = [
+        transaction.description,
+        transaction.category,
+        transaction.type,
+        transaction.bank_name,
+        transaction.notes,
+        transaction.original_amount_display,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(normalizedSearch)
+    })
+  }, [transactions, searchText])
+
+  const activeFilters = useMemo(() => {
+    const chips = []
+    if (filters.bank_name) chips.push({ key: 'bank_name', label: filters.bank_name })
+    if (filters.category) chips.push({ key: 'category', label: filters.category })
+    if (filters.type) chips.push({ key: 'type', label: filters.type })
+    if (searchText.trim()) chips.push({ key: 'search', label: `Search: ${searchText.trim()}` })
+    return chips
+  }, [filters, searchText])
 
   async function loadAll() {
     try {
@@ -200,13 +245,26 @@ function App() {
     loadAll()
   }, [queryParams])
 
+  useEffect(() => {
+    setNotesDrafts(
+      Object.fromEntries(transactions.map((transaction) => [transaction.id, transaction.notes || ''])),
+    )
+  }, [transactions])
+
   function toggleSelected(id) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
   }
 
   async function saveNotes(transaction, notes) {
-    await api.updateTransaction(transaction.id, { notes })
-    setTransactions((current) => current.map((item) => item.id === transaction.id ? { ...item, notes } : item))
+    const currentNotes = transaction.notes || ''
+    if (notes === currentNotes) return
+    setSavingNotesIds((current) => [...new Set([...current, transaction.id])])
+    try {
+      await api.updateTransaction(transaction.id, { notes })
+      setTransactions((current) => current.map((item) => item.id === transaction.id ? { ...item, notes } : item))
+    } finally {
+      setSavingNotesIds((current) => current.filter((id) => id !== transaction.id))
+    }
   }
 
   async function handleDeleteTransaction(id) {
@@ -235,6 +293,8 @@ function App() {
     try {
       await api.uploadStatements(files)
       await loadAll()
+    } catch (err) {
+      setError(err.message)
     } finally {
       setUploading(false)
       event.target.value = ''
@@ -269,6 +329,10 @@ function App() {
         <aside className="sidebar panel">
           <div className="panel-header">
             <h3>Filters</h3>
+            {activeFilters.length ? <button className="ghost-button compact-button" onClick={() => {
+              setFilters({ bank_name: '', category: '', type: '' })
+              setSearchText('')
+            }}>Clear all</button> : null}
           </div>
           <label>
             <span>Month</span>
@@ -293,7 +357,7 @@ function App() {
             <span>Category</span>
             <select value={filters.category} onChange={(e) => setFilters((current) => ({ ...current, category: e.target.value }))}>
               <option value="">All categories</option>
-              {[...categories.expense, ...categories.income].map((category) => <option key={category}>{category}</option>)}
+              {categoryOptions.map((category) => <option key={category}>{category}</option>)}
             </select>
           </label>
           <label>
@@ -304,6 +368,10 @@ function App() {
               <option value="expense">Expense</option>
               <option value="ignored">Ignored</option>
             </select>
+          </label>
+          <label>
+            <span>Search visible rows</span>
+            <input placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
           </label>
         </aside>
 
@@ -329,8 +397,27 @@ function App() {
             <section className="panel transaction-panel">
               <div className="panel-header">
                 <h3>Transactions</h3>
-                <span className="muted">{transactions.length} rows</span>
+                <span className="muted">{visibleTransactions.length === transactions.length ? `${transactions.length} rows` : `${visibleTransactions.length} of ${transactions.length} rows`}</span>
               </div>
+              {activeFilters.length ? (
+                <div className="active-filters">
+                  {activeFilters.map((filter) => (
+                    <button
+                      key={filter.key}
+                      className="filter-chip"
+                      onClick={() => {
+                        if (filter.key === 'search') {
+                          setSearchText('')
+                          return
+                        }
+                        setFilters((current) => ({ ...current, [filter.key]: '' }))
+                      }}
+                    >
+                      {filter.label} ×
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -347,12 +434,13 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((transaction) => (
+                    {visibleTransactions.map((transaction) => (
                       <tr key={transaction.id}>
                         <td><input type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => toggleSelected(transaction.id)} /></td>
                         <td>{transaction.date}</td>
                         <td>
                           <strong>{transaction.description}</strong>
+                          {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
                         </td>
                         <td>{transaction.category}</td>
                         <td><span className={`pill ${transaction.type}`}>{transaction.type}</span></td>
@@ -364,14 +452,17 @@ function App() {
                         <td>
                           <input
                             className="notes-input"
-                            defaultValue={transaction.notes || ''}
+                            value={notesDrafts[transaction.id] ?? ''}
+                            placeholder="Add a note"
                             onBlur={(event) => saveNotes(transaction, event.target.value)}
                             onChange={(event) => {
                               clearTimeout(notesTimers.current[transaction.id])
                               const value = event.target.value
+                              setNotesDrafts((current) => ({ ...current, [transaction.id]: value }))
                               notesTimers.current[transaction.id] = setTimeout(() => saveNotes(transaction, value), 900)
                             }}
                           />
+                          {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
                         </td>
                         <td>
                           <button
@@ -393,6 +484,11 @@ function App() {
                         </td>
                       </tr>
                     ))}
+                    {visibleTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="empty-cell">No transactions match the current filters.</td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               </div>
@@ -421,13 +517,18 @@ function App() {
                     <tr key={statement.id}>
                       <td>{statement.filename}</td>
                       <td>{statement.bank_name}</td>
-                      <td>{statement.period_start || 'Unknown'} - {statement.period_end || 'Unknown'}</td>
+                      <td>{formatStatementPeriod(statement)}</td>
                       <td>{statement.transaction_count}</td>
                       <td>{statement.ignored_count}</td>
-                      <td>{new Date(statement.uploaded_at).toLocaleString()}</td>
+                      <td>{dateTimeFormatter.format(new Date(statement.uploaded_at))}</td>
                       <td><button className="ghost-button danger" onClick={() => handleStatementDelete(statement.id)}>Delete</button></td>
                     </tr>
                   ))}
+                  {statements.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="empty-cell">No statements uploaded yet.</td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>
@@ -440,7 +541,7 @@ function App() {
           <span>{selectedIds.length} selected</span>
           <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)}>
             <option value="">Change category</option>
-            {[...categories.expense, ...categories.income].map((category) => <option key={category}>{category}</option>)}
+            {categoryOptions.map((category) => <option key={category}>{category}</option>)}
           </select>
           <select value={bulkType} onChange={(e) => setBulkType(e.target.value)}>
             <option value="">Change type</option>

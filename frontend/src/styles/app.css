@@ -125,6 +125,9 @@ h1, h3, .summary-card strong {
   display: block;
   margin-bottom: 1rem;
 }
+.compact-button {
+  padding: 0.5rem 0.8rem;
+}
 .sidebar span, .form-grid span {
   font-size: 0.84rem;
   color: var(--muted);
@@ -186,11 +189,29 @@ h1, h3, .summary-card strong {
 .table-wrap {
   overflow: auto;
 }
+.active-filters {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.filter-chip {
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--teal);
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  padding: 0.5rem 0.75rem;
+}
 .sub-amount {
   display: block;
   color: var(--muted);
   font-size: 0.86rem;
   margin-top: 0.18rem;
+}
+.row-meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
 }
 .muted {
   color: var(--muted);
@@ -208,6 +229,11 @@ h1, h3, .summary-card strong {
 .pill.ignored { background: #e2e8f0; color: #475569; }
 .notes-input {
   min-width: 160px;
+}
+.empty-cell {
+  text-align: center;
+  color: var(--muted);
+  padding: 1.5rem 0.75rem;
 }
 .ghost-button {
   background: transparent;
@@ -294,6 +320,7 @@ h1, h3, .summary-card strong {
 @media (max-width: 720px) {
   .app-shell { padding: 1rem; }
   .hero { flex-direction: column; align-items: start; }
+  th, td { padding: 0.8rem 0.55rem; }
   .bulk-bar {
     width: calc(100% - 2rem);
     border-radius: 22px;

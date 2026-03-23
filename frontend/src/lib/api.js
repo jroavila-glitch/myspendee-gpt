@@ -1,5 +1,20 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+function formatErrorMessage(rawMessage) {
+  try {
+    const parsed = JSON.parse(rawMessage)
+    if (parsed?.detail) {
+      if (typeof parsed.detail === 'string') return parsed.detail
+      if (Array.isArray(parsed.detail)) {
+        return parsed.detail.map((item) => item.msg || item.message || JSON.stringify(item)).join(', ')
+      }
+    }
+  } catch {
+    return rawMessage || 'Request failed'
+  }
+  return rawMessage || 'Request failed'
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
@@ -11,7 +26,7 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const message = await response.text()
-    throw new Error(message || 'Request failed')
+    throw new Error(formatErrorMessage(message))
   }
 
   const contentType = response.headers.get('content-type') || ''
@@ -38,9 +53,8 @@ export const api = {
     files.forEach((file) => formData.append('files', file))
     const response = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData })
     if (!response.ok) {
-      throw new Error(await response.text())
+      throw new Error(formatErrorMessage(await response.text()))
     }
     return response.json()
   },
 }
-
