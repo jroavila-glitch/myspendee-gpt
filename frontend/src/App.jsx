@@ -97,16 +97,18 @@ function Modal({ title, children, onClose }) {
   )
 }
 
-function TransactionMenu({ onEdit, onDelete, anchorRect }) {
+function TransactionMenu({ onEdit, onDelete, anchorRect, onClose }) {
   if (!anchorRect) return null
+  const top = anchorRect.bottom + window.scrollY + 8
+  const left = anchorRect.right + window.scrollX - 176
   return createPortal(
-    <div
-      className="menu-popover"
-      style={{ top: anchorRect.bottom + window.scrollY + 6, left: anchorRect.left + window.scrollX - 96 }}
-    >
-      <button onClick={onEdit}>Edit</button>
-      <button onClick={onDelete}>Delete</button>
-    </div>,
+    <>
+      <button className="menu-backdrop" aria-label="Close actions menu" onClick={onClose} />
+      <div className="menu-popover" style={{ top, left }}>
+        <button onClick={onEdit}>Edit</button>
+        <button className="danger-action" onClick={onDelete}>Delete</button>
+      </div>
+    </>,
     document.body,
   )
 }
@@ -263,6 +265,17 @@ function App() {
       Object.fromEntries(transactions.map((transaction) => [transaction.id, transaction.notes || ''])),
     )
   }, [transactions])
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        setMenuState(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [])
 
   function toggleSelected(id) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
@@ -447,7 +460,7 @@ function App() {
                       <th>Category</th>
                       <th>Amount</th>
                       <th>Notes</th>
-                      <th></th>
+                      <th className="actions-column"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -482,9 +495,9 @@ function App() {
                           />
                           {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
                         </td>
-                        <td>
+                        <td className="actions-cell">
                           <button
-                            className="ghost-button"
+                            className="ghost-button icon-button"
                             onClick={(event) => setMenuState({ id: transaction.id, rect: event.currentTarget.getBoundingClientRect() })}
                           >
                             •••
@@ -492,6 +505,7 @@ function App() {
                           {menuState?.id === transaction.id ? (
                             <TransactionMenu
                               anchorRect={menuState.rect}
+                              onClose={() => setMenuState(null)}
                               onEdit={() => {
                                 setEditingTransaction(transaction)
                                 setMenuState(null)

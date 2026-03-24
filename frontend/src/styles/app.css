@@ -160,7 +160,7 @@ h1, h3, .summary-card strong {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 1rem;
+  padding: 1.15rem;
   box-shadow: var(--shadow);
 }
 .compact-button {
@@ -200,12 +200,12 @@ h1, h3, .summary-card strong {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 1.1rem;
 }
 .summary-card {
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 1rem 1.1rem;
+  padding: 1.1rem 1.2rem;
 }
 .summary-card span {
   color: #6e7288;
@@ -233,17 +233,17 @@ h1, h3, .summary-card strong {
 }
 .main-grid {
   display: grid;
-  gap: 1rem;
+  gap: 1.15rem;
 }
 .breakdown-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 1.15rem;
 }
 .breakdown-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: 1rem;
+  gap: 1.35rem;
   align-items: start;
 }
 .breakdown-table {
@@ -259,7 +259,7 @@ h1, h3, .summary-card strong {
   gap: 0.75rem;
 }
 .breakdown-table-header {
-  padding: 0 0.45rem 0.55rem;
+  padding: 0 0.75rem 0.7rem;
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 800;
@@ -268,12 +268,13 @@ h1, h3, .summary-card strong {
 }
 .category-row {
   width: 100%;
-  background: transparent;
+  background: #fbfcff;
   color: var(--text);
-  border-radius: 14px;
-  padding: 0.72rem 0.45rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0;
+  border: 1px solid rgba(42, 47, 80, 0.08);
+  border-radius: 18px;
+  padding: 0.95rem 0.9rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 8px 20px rgba(25, 28, 52, 0.04);
 }
 .category-name,
 .category-share {
@@ -288,6 +289,9 @@ h1, h3, .summary-card strong {
 .transaction-table-wrap {
   max-height: min(58vh, 720px);
 }
+.transaction-table-wrap table {
+  table-layout: fixed;
+}
 .statements-table-wrap {
   max-height: min(62vh, 760px);
 }
@@ -297,6 +301,21 @@ h1, h3, .summary-card strong {
   top: 0;
   background: var(--surface-strong);
   z-index: 1;
+}
+.transaction-table-wrap thead th {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.transaction-table-wrap tbody td {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.actions-column {
+  width: 82px;
 }
 .active-filters {
   display: flex;
@@ -315,7 +334,7 @@ h1, h3, .summary-card strong {
   display: block;
   color: var(--muted);
   font-size: 0.8rem;
-  margin-top: 0.15rem;
+  margin-top: 0.22rem;
 }
 .row-meta {
   display: block;
@@ -339,8 +358,10 @@ h1, h3, .summary-card strong {
 .pill.expense { background: #fde2e2; color: #ea3d3d; }
 .pill.ignored { background: #e2e8f0; color: #475569; }
 .notes-input {
-  min-width: 150px;
-  padding: 0.58rem 0.75rem;
+  min-width: 180px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 16px;
+  background: #fff;
 }
 .empty-cell {
   text-align: center;
@@ -358,6 +379,15 @@ h1, h3, .summary-card strong {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.description-cell strong {
+  font-size: 0.98rem;
+}
+.bank-cell {
+  color: #50556f;
+}
+.actions-cell {
+  text-align: right;
+}
 .transaction-panel,
 .statements-panel {
   min-height: 0;
@@ -366,6 +396,18 @@ h1, h3, .summary-card strong {
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
+}
+.icon-button {
+  width: 52px;
+  height: 46px;
+  padding: 0;
+  border-radius: 16px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.icon-button:hover {
+  background: rgba(122, 63, 242, 0.08);
+  border-color: rgba(122, 63, 242, 0.18);
 }
 .ghost-button.danger {
   color: var(--red);
@@ -418,19 +460,38 @@ h1, h3, .summary-card strong {
 }
 .menu-popover {
   position: absolute;
-  width: 140px;
+  width: 176px;
   background: var(--surface-strong);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  border-radius: 18px;
-  padding: 0.35rem;
-  z-index: 10;
+  border-radius: 20px;
+  padding: 0.4rem;
+  z-index: 30;
+}
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  z-index: 20;
 }
 .menu-popover button {
   width: 100%;
   background: transparent;
   color: var(--text);
   text-align: left;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+}
+.menu-popover button:hover {
+  background: rgba(122, 63, 242, 0.08);
+}
+.menu-popover .danger-action {
+  color: var(--red);
+}
+.menu-popover .danger-action:hover {
+  background: rgba(226, 64, 64, 0.08);
 }
 .error-banner {
   margin-bottom: 1rem;
@@ -485,6 +546,9 @@ h1, h3, .summary-card strong {
   .period-pickers .year-input,
   .toolbar-actions > * {
     flex: 1 1 160px;
+  }
+  .actions-column {
+    width: 64px;
   }
   th, td { padding: 0.8rem 0.55rem; }
   .bulk-bar {
