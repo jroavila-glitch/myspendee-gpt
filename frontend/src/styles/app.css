@@ -247,6 +247,49 @@ h3 {
   flex-wrap: wrap;
 }
 
+.view-toggle {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--border);
+}
+
+.view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  border-radius: 9px;
+  padding: 0.48rem 0.68rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.view-toggle button span {
+  display: inline-flex;
+  min-width: 1.2rem;
+  justify-content: center;
+  padding: 0.08rem 0.28rem;
+  border-radius: 999px;
+  background: rgba(95, 84, 247, 0.08);
+  color: #5d3de4;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.view-toggle button.active {
+  background: var(--navy);
+  color: white;
+}
+
+.view-toggle button.active span {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+}
+
 .period-pickers {
   display: flex;
   align-items: end;
@@ -402,58 +445,6 @@ h3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
-}
-
-.review-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding-top: 0.72rem;
-  padding-bottom: 0.72rem;
-}
-
-.review-strip-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 160px;
-}
-
-.review-strip-copy span {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.review-strip-copy strong {
-  margin-top: 0.2rem;
-  font-size: 0.92rem;
-  letter-spacing: -0.02em;
-}
-
-.review-strip-pills {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  flex: 1 1 auto;
-}
-
-.review-chip {
-  border-radius: 999px;
-  padding: 0.36rem 0.64rem;
-  background: rgba(95, 84, 247, 0.06);
-  border: 1px solid rgba(95, 84, 247, 0.1);
-  color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.review-chip span {
-  color: var(--muted);
-  margin-left: 0.18rem;
 }
 
 .summary-card {
@@ -735,16 +726,6 @@ h3 {
   font-size: 1rem;
 }
 
-.density-compact .review-strip {
-  padding-top: 0.52rem;
-  padding-bottom: 0.52rem;
-}
-
-.density-compact .review-chip {
-  padding: 0.24rem 0.52rem;
-  font-size: 0.72rem;
-}
-
 .density-compact .transaction-meta,
 .density-compact .row-meta,
 .density-compact .sub-amount,
@@ -755,6 +736,12 @@ h3 {
 .density-compact .pill {
   padding: 0.16rem 0.46rem;
   font-size: 0.63rem;
+}
+
+.density-compact .review-badge {
+  margin-top: 0.18rem;
+  padding: 0.12rem 0.36rem;
+  font-size: 0.6rem;
 }
 
 .density-compact .icon-button {
@@ -819,6 +806,18 @@ h3 {
   height: 4px;
   border-radius: 999px;
   background: rgba(122, 129, 159, 0.5);
+}
+
+.review-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.34rem;
+  padding: 0.18rem 0.46rem;
+  border-radius: 999px;
+  background: rgba(95, 84, 247, 0.08);
+  color: #5d3de4;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .transaction-category,
@@ -1143,15 +1142,6 @@ h3 {
   }
 
   .topbar-actions {
-    justify-content: flex-start;
-  }
-
-  .review-strip {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .review-strip-pills {
     justify-content: flex-start;
   }
 

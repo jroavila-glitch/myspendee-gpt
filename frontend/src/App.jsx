@@ -55,6 +55,12 @@ function summarizeReviewItems(items) {
     .sort((a, b) => b.count - a.count)
 }
 
+function ReviewBadge({ transaction }) {
+  const reason = getReviewReason(transaction)
+  if (!reason) return null
+  return <span className="review-badge">{reason}</span>
+}
+
 function SummaryCard({ label, value, tone }) {
   return (
     <div className={`summary-card ${tone}`}>
@@ -462,6 +468,14 @@ function App() {
               <button className="ghost-button compact-button" onClick={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}>
                 {density === 'compact' ? 'Comfortable view' : 'Compact view'}
               </button>
+              <div className="view-toggle" role="tablist" aria-label="Transaction views">
+                <button className={transactionView === 'all' ? 'active' : ''} onClick={() => setTransactionView('all')}>All</button>
+                <button className={transactionView === 'review' ? 'active' : ''} onClick={() => setTransactionView('review')}>
+                  Review
+                  {reviewItems.length ? <span>{reviewItems.length}</span> : null}
+                </button>
+                <button className={transactionView === 'ignored' ? 'active' : ''} onClick={() => setTransactionView('ignored')}>Ignored</button>
+              </div>
             </div>
           </div>
 
@@ -552,7 +566,7 @@ function App() {
                 <div className="insight-card">
                   <span>Needs Review</span>
                   <strong>{reviewItems.length}</strong>
-                  <p>{reviewItems.length ? 'Use Review view in transactions to work through them' : 'No review queue for this month'}</p>
+                  <p>{reviewItems.length ? `${reviewSummary.slice(0, 2).map((item) => `${item.label} ${item.count}`).join(' · ')}` : 'No review queue for this month'}</p>
                 </div>
                 <div className="insight-card">
                   <span>Ignored</span>
@@ -566,32 +580,6 @@ function App() {
                 <SummaryCard label="Total Expenses" value={summary.expenses} tone="expense" />
                 <SummaryCard label="Net" value={summary.net} tone="net" />
               </section>
-
-              {reviewItems.length ? (
-                <section className="panel review-strip">
-                  <div className="review-strip-copy">
-                    <span>Needs review</span>
-                    <strong>{reviewItems.length} transaction{reviewItems.length === 1 ? '' : 's'}</strong>
-                  </div>
-                  <div className="review-strip-pills">
-                    {reviewSummary.slice(0, 4).map((item) => (
-                      <button
-                        key={item.label}
-                        className="review-chip"
-                        onClick={() => {
-                          setTransactionView('review')
-                          setSearchText(item.label === 'Ignored transaction' ? '' : '')
-                        }}
-                      >
-                        {item.label} <span>{item.count}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button className="ghost-button compact-button" onClick={() => setTransactionView(transactionView === 'review' ? 'all' : 'review')}>
-                    {transactionView === 'review' ? 'Close review view' : 'Open review view'}
-                  </button>
-                </section>
-              ) : null}
 
               <section className="breakdown-grid">
                 <BreakdownSection
@@ -612,7 +600,13 @@ function App() {
                 <div className="panel-header">
                   <div>
                     <h3>Transactions</h3>
-                    <p className="section-meta">{visibleTransactions.length === transactions.length ? `${transactions.length} transactions` : `${visibleTransactions.length} of ${transactions.length} shown`}</p>
+                    <p className="section-meta">
+                      {transactionView === 'review'
+                        ? `${visibleTransactions.length} items in review`
+                        : visibleTransactions.length === transactions.length
+                          ? `${transactions.length} transactions`
+                          : `${visibleTransactions.length} of ${transactions.length} shown`}
+                    </p>
                   </div>
                   {transactionView !== 'all' ? (
                     <button className="ghost-button compact-button" onClick={() => setTransactionView('all')}>
@@ -643,6 +637,7 @@ function App() {
                           <span>{formatShortDate(transaction.date)}</span>
                           <span>{transaction.bank_name}</span>
                         </div>
+                        <ReviewBadge transaction={transaction} />
                         {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
                       </div>
 
