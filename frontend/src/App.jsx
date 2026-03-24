@@ -55,6 +55,49 @@ function summarizeReviewItems(items) {
     .sort((a, b) => b.count - a.count)
 }
 
+function MinimalReviewSidebar({ items, summary, transactionView, onOpenReview, onFocusTransaction }) {
+  return (
+    <aside className="panel minimal-review">
+      <div className="panel-header">
+        <div>
+          <h3>Review</h3>
+          <p className="section-meta">{items.length ? `${items.length} transactions need attention` : 'Nothing to review right now'}</p>
+        </div>
+        {items.length ? (
+          <button className="ghost-button compact-button" onClick={onOpenReview}>
+            {transactionView === 'review' ? 'Reviewing' : 'Open'}
+          </button>
+        ) : null}
+      </div>
+
+      {items.length ? (
+        <>
+          <div className="minimal-review-tags">
+            {summary.slice(0, 3).map((item) => (
+              <span key={item.label} className="review-tag">{item.label} {item.count}</span>
+            ))}
+          </div>
+          <div className="minimal-review-list">
+            {items.slice(0, 5).map((item) => (
+              <button key={item.id} className="minimal-review-item" onClick={() => onFocusTransaction(item)}>
+                <div>
+                  <strong>{item.description}</strong>
+                  <span>{item.reviewReason}</span>
+                </div>
+                <span>{formatMoney(item.amount_mxn)}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="empty-panel compact-empty">
+          <p>Everything in this month looks classified and tidy.</p>
+        </div>
+      )}
+    </aside>
+  )
+}
+
 function SummaryCard({ label, value, tone }) {
   return (
     <div className={`summary-card ${tone}`}>
@@ -567,46 +610,32 @@ function App() {
                 <SummaryCard label="Net" value={summary.net} tone="net" />
               </section>
 
-              {reviewItems.length ? (
-                <section className="panel review-strip">
-                  <div className="review-strip-copy">
-                    <span>Needs review</span>
-                    <strong>{reviewItems.length} transaction{reviewItems.length === 1 ? '' : 's'}</strong>
-                  </div>
-                  <div className="review-strip-pills">
-                    {reviewSummary.slice(0, 4).map((item) => (
-                      <button
-                        key={item.label}
-                        className="review-chip"
-                        onClick={() => {
-                          setTransactionView('review')
-                          setSearchText(item.label === 'Ignored transaction' ? '' : '')
-                        }}
-                      >
-                        {item.label} <span>{item.count}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button className="ghost-button compact-button" onClick={() => setTransactionView(transactionView === 'review' ? 'all' : 'review')}>
-                    {transactionView === 'review' ? 'Close review view' : 'Open review view'}
-                  </button>
+              <div className="analysis-grid">
+                <section className="breakdown-grid">
+                  <BreakdownSection
+                    title="Income Breakdown"
+                    data={breakdown.income}
+                    tone="income"
+                    onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                  />
+                  <BreakdownSection
+                    title="Expense Breakdown"
+                    data={breakdown.expenses}
+                    tone="expense"
+                    onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                  />
                 </section>
-              ) : null}
-
-              <section className="breakdown-grid">
-                <BreakdownSection
-                  title="Income Breakdown"
-                  data={breakdown.income}
-                  tone="income"
-                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                <MinimalReviewSidebar
+                  items={reviewItems}
+                  summary={reviewSummary}
+                  transactionView={transactionView}
+                  onOpenReview={() => setTransactionView(transactionView === 'review' ? 'all' : 'review')}
+                  onFocusTransaction={(item) => {
+                    setTransactionView('review')
+                    setSearchText(item.description)
+                  }}
                 />
-                <BreakdownSection
-                  title="Expense Breakdown"
-                  data={breakdown.expenses}
-                  tone="expense"
-                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-                />
-              </section>
+              </div>
 
               <section className="panel transaction-panel">
                 <div className="panel-header">
