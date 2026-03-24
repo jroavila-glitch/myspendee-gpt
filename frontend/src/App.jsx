@@ -325,8 +325,8 @@ function App() {
 
       {error ? <div className="error-banner">{error}</div> : null}
 
-      <div className="content-grid">
-        <aside className="sidebar panel">
+      <div className="dashboard-stack">
+        <section className="panel control-panel">
           <div className="panel-header">
             <h3>Filters</h3>
             {activeFilters.length ? <button className="ghost-button compact-button" onClick={() => {
@@ -334,46 +334,48 @@ function App() {
               setSearchText('')
             }}>Clear all</button> : null}
           </div>
-          <label>
-            <span>Month</span>
-            <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Year</span>
-            <input type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
-          </label>
-          <label>
-            <span>Bank</span>
-            <select value={filters.bank_name} onChange={(e) => setFilters((current) => ({ ...current, bank_name: e.target.value }))}>
-              <option value="">All banks</option>
-              {banks.map((bank) => <option key={bank}>{bank}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Category</span>
-            <select value={filters.category} onChange={(e) => setFilters((current) => ({ ...current, category: e.target.value }))}>
-              <option value="">All categories</option>
-              {categoryOptions.map((category) => <option key={category}>{category}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Type</span>
-            <select value={filters.type} onChange={(e) => setFilters((current) => ({ ...current, type: e.target.value }))}>
-              <option value="">All types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-              <option value="ignored">Ignored</option>
-            </select>
-          </label>
-          <label>
-            <span>Search visible rows</span>
-            <input placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-          </label>
-        </aside>
+          <div className="control-grid">
+            <label>
+              <span>Month</span>
+              <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
+                {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                  <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Year</span>
+              <input type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
+            </label>
+            <label>
+              <span>Bank</span>
+              <select value={filters.bank_name} onChange={(e) => setFilters((current) => ({ ...current, bank_name: e.target.value }))}>
+                <option value="">All banks</option>
+                {banks.map((bank) => <option key={bank}>{bank}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <select value={filters.category} onChange={(e) => setFilters((current) => ({ ...current, category: e.target.value }))}>
+                <option value="">All categories</option>
+                {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Type</span>
+              <select value={filters.type} onChange={(e) => setFilters((current) => ({ ...current, type: e.target.value }))}>
+                <option value="">All types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+                <option value="ignored">Ignored</option>
+              </select>
+            </label>
+            <label className="control-search">
+              <span>Search visible rows</span>
+              <input placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+            </label>
+          </div>
+        </section>
 
         {tab === 'dashboard' ? (
           <main className="main-grid">
@@ -383,16 +385,18 @@ function App() {
               <SummaryCard label="Net" value={summary.net} />
             </section>
 
-            <BreakdownSection
-              title="Income Breakdown"
-              data={breakdown.income}
-              onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-            />
-            <BreakdownSection
-              title="Expense Breakdown"
-              data={breakdown.expenses}
-              onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-            />
+            <section className="breakdown-grid">
+              <BreakdownSection
+                title="Income Breakdown"
+                data={breakdown.income}
+                onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+              />
+              <BreakdownSection
+                title="Expense Breakdown"
+                data={breakdown.expenses}
+                onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+              />
+            </section>
 
             <section className="panel transaction-panel">
               <div className="panel-header">
@@ -418,7 +422,7 @@ function App() {
                   ))}
                 </div>
               ) : null}
-              <div className="table-wrap">
+              <div className="table-wrap transaction-table-wrap">
                 <table>
                   <thead>
                     <tr>
@@ -499,7 +503,7 @@ function App() {
             <div className="panel-header">
               <h3>Uploaded Statements</h3>
             </div>
-            <div className="table-wrap">
+            <div className="table-wrap statements-table-wrap">
               <table>
                 <thead>
                   <tr>
