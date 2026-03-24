@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { api } from './lib/api'
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MXN' })
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-const PIE_COLORS = ['#0f766e', '#f97316', '#dc2626', '#2563eb', '#ca8a04', '#64748b']
+const BreakdownChart = lazy(() => import('./components/BreakdownChart'))
+const PIE_COLORS = ['#1d7a6f', '#f47d38', '#d85757', '#4c6fff', '#c59a2d', '#74809b']
 
 function formatMoney(value) {
   return currencyFormatter.format(Number(value || 0))
@@ -34,6 +34,18 @@ function formatStatementPeriod(statement) {
   if (!statement.period_start && !statement.period_end) return 'Unknown period'
   if (!statement.period_start || !statement.period_end) return statement.period_start || statement.period_end
   return `${statement.period_start} - ${statement.period_end}`
+}
+
+function getReviewReason(transaction) {
+  const notes = (transaction.notes || '').toLowerCase()
+  if (transaction.category === 'Other' && notes.includes('manual review')) return 'Needs category review'
+  if (transaction.category === 'Other' && transaction.type === 'expense') return 'Unclassified expense'
+  if (transaction.type === 'ignored') return 'Ignored transaction'
+  return null
+}
+
+function getAmountTone(value) {
+  return value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'
 }
 
 function SummaryCard({ label, value, tone }) {
@@ -65,16 +77,9 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
       ) : (
         <div className="analytics-layout">
           <div className="analytics-chart">
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={data} dataKey="total" nameKey="category" innerRadius={58} outerRadius={92}>
-                  {data.map((entry, index) => (
-                    <Cell key={entry.category} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatMoney(value)} />
-              </PieChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<div className="chart-skeleton" />}>
+              <BreakdownChart data={data} />
+            </Suspense>
           </div>
 
           <div className="analytics-list">
@@ -110,6 +115,41 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
               )
             })}
           </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ReviewPanel({ items, onOpenAll, onSelectTransaction }) {
+  return (
+    <section className="panel review-panel">
+      <div className="panel-header">
+        <div>
+          <h3>Review Queue</h3>
+          <p className="section-meta">{items.length ? `${items.length} transactions need attention` : 'No flagged transactions right now'}</p>
+        </div>
+        {items.length ? <button className="ghost-button compact-button" onClick={onOpenAll}>Show all</button> : null}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="empty-panel compact-empty">
+          <p>Everything in this month looks classified and tidy.</p>
+        </div>
+      ) : (
+        <div className="review-list">
+          {items.slice(0, 4).map((item) => (
+            <button key={item.id} className="review-row" onClick={() => onSelectTransaction(item)}>
+              <div className="review-main">
+                <strong>{item.description}</strong>
+                <span>{item.reviewReason} · {item.bank_name}</span>
+              </div>
+              <div className={`review-amount ${getAmountTone(Number(item.amount_mxn))}`}>
+                <strong>{formatMoney(item.amount_mxn)}</strong>
+                <span>{formatShortDate(item.date)}</span>
+              </div>
+            </button>
+          ))}
         </div>
       )}
     </section>
@@ -228,7 +268,10 @@ function App() {
   const [error, setError] = useState('')
   const [notesDrafts, setNotesDrafts] = useState({})
   const [savingNotesIds, setSavingNotesIds] = useState([])
+  const [density, setDensity] = useState('comfortable')
   const notesTimers = useRef({})
+  const searchInputRef = useRef(null)
+  const uploadInputRef = useRef(null)
 
   const queryParams = useMemo(() => ({
     month: String(period.month),
@@ -239,6 +282,15 @@ function App() {
   }), [period, filters])
 
   const categoryOptions = useMemo(() => dedupeCategories(categories), [categories])
+  const reviewItems = useMemo(
+    () => transactions
+      .map((transaction) => {
+        const reviewReason = getReviewReason(transaction)
+        return reviewReason ? { ...transaction, reviewReason } : null
+      })
+      .filter(Boolean),
+    [transactions],
+  )
 
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -310,6 +362,29 @@ function App() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [])
 
+  useEffect(() => {
+    function handleShortcuts(event) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target
+      if (target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+      if (event.key === '/') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+      if (event.key.toLowerCase() === 'n') {
+        event.preventDefault()
+        setShowCreateModal(true)
+      }
+      if (event.key.toLowerCase() === 'u') {
+        event.preventDefault()
+        uploadInputRef.current?.click()
+      }
+    }
+
+    window.addEventListener('keydown', handleShortcuts)
+    return () => window.removeEventListener('keydown', handleShortcuts)
+  }, [])
+
   function toggleSelected(id) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
   }
@@ -361,7 +436,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell density-${density}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">MY</span>
@@ -379,7 +454,7 @@ function App() {
           <button className="accent-button" onClick={() => setShowCreateModal(true)}>New Transaction</button>
           <label className="upload-button">
             {uploading ? 'Uploading...' : 'Upload PDFs'}
-            <input type="file" accept="application/pdf" multiple onChange={handleUpload} />
+            <input ref={uploadInputRef} type="file" accept="application/pdf" multiple onChange={handleUpload} />
           </label>
         </div>
       </header>
@@ -388,19 +463,37 @@ function App() {
 
       <div className="dashboard-stack">
         <section className="toolbar panel">
-          <div className="period-pickers">
-            <label>
-              <span>Month</span>
-              <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
-                {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                  <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Year</span>
-              <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
-            </label>
+          <div className="toolbar-main">
+            <div className="period-pickers">
+              <label>
+                <span>Month</span>
+                <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
+                  {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                    <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Year</span>
+                <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
+              </label>
+            </div>
+            <div className="toolbar-quick-actions">
+              <button className="ghost-button compact-button" onClick={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}>
+                {density === 'compact' ? 'Comfortable view' : 'Compact view'}
+              </button>
+              {reviewItems.length ? (
+                <button
+                  className="ghost-button compact-button"
+                  onClick={() => {
+                    setFilters((current) => ({ ...current, category: 'Other', type: 'expense' }))
+                    setSearchText('')
+                  }}
+                >
+                  Review {reviewItems.length}
+                </button>
+              ) : null}
+            </div>
           </div>
 
           {activeFilters.length ? (
@@ -470,32 +563,62 @@ function App() {
                 </label>
                 <label>
                   <span>Search</span>
-                  <input placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+                  <input ref={searchInputRef} placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
                 </label>
               </div>
             </aside>
 
             <div className="main-grid">
+              <section className="insight-strip">
+                <div className="insight-card">
+                  <span>Transactions</span>
+                  <strong>{transactions.length}</strong>
+                  <p>{visibleTransactions.length === transactions.length ? 'All visible in current view' : `${visibleTransactions.length} shown with current filters`}</p>
+                </div>
+                <div className="insight-card">
+                  <span>Needs Review</span>
+                  <strong>{reviewItems.length}</strong>
+                  <p>{reviewItems.length ? 'Unclassified or ignored items available' : 'No review queue for this month'}</p>
+                </div>
+                <div className="insight-card">
+                  <span>Ignored</span>
+                  <strong>{transactions.filter((item) => item.type === 'ignored').length}</strong>
+                  <p>Hidden from summary metrics, still accessible below</p>
+                </div>
+              </section>
+
               <section className="summary-grid">
                 <SummaryCard label="Total Income" value={summary.income} tone="income" />
                 <SummaryCard label="Total Expenses" value={summary.expenses} tone="expense" />
                 <SummaryCard label="Net" value={summary.net} tone="net" />
               </section>
 
-              <section className="breakdown-grid">
-                <BreakdownSection
-                  title="Income Breakdown"
-                  data={breakdown.income}
-                  tone="income"
-                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+              <div className="analysis-grid">
+                <section className="breakdown-grid">
+                  <BreakdownSection
+                    title="Income Breakdown"
+                    data={breakdown.income}
+                    tone="income"
+                    onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                  />
+                  <BreakdownSection
+                    title="Expense Breakdown"
+                    data={breakdown.expenses}
+                    tone="expense"
+                    onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                  />
+                </section>
+                <ReviewPanel
+                  items={reviewItems}
+                  onOpenAll={() => {
+                    setFilters((current) => ({ ...current, category: 'Other', type: 'expense' }))
+                    setSearchText('')
+                  }}
+                  onSelectTransaction={(transaction) => {
+                    setSearchText(transaction.description)
+                  }}
                 />
-                <BreakdownSection
-                  title="Expense Breakdown"
-                  data={breakdown.expenses}
-                  tone="expense"
-                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-                />
-              </section>
+              </div>
 
               <section className="panel transaction-panel">
                 <div className="panel-header">
