@@ -44,6 +44,17 @@ function getReviewReason(transaction) {
   return null
 }
 
+function summarizeReviewItems(items) {
+  const summary = new Map()
+  for (const item of items) {
+    const reason = item.reviewReason || 'Needs review'
+    summary.set(reason, (summary.get(reason) || 0) + 1)
+  }
+  return Array.from(summary.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
 function SummaryCard({ label, value, tone }) {
   return (
     <div className={`summary-card ${tone}`}>
@@ -256,6 +267,7 @@ function App() {
       .filter(Boolean),
     [transactions],
   )
+  const reviewSummary = useMemo(() => summarizeReviewItems(reviewItems), [reviewItems])
 
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -450,11 +462,6 @@ function App() {
               <button className="ghost-button compact-button" onClick={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}>
                 {density === 'compact' ? 'Comfortable view' : 'Compact view'}
               </button>
-              <div className="view-toggle" role="tablist" aria-label="Transaction views">
-                <button className={transactionView === 'all' ? 'active' : ''} onClick={() => setTransactionView('all')}>All</button>
-                <button className={transactionView === 'review' ? 'active' : ''} onClick={() => setTransactionView('review')}>Review {reviewItems.length}</button>
-                <button className={transactionView === 'ignored' ? 'active' : ''} onClick={() => setTransactionView('ignored')}>Ignored</button>
-              </div>
             </div>
           </div>
 
@@ -559,6 +566,32 @@ function App() {
                 <SummaryCard label="Total Expenses" value={summary.expenses} tone="expense" />
                 <SummaryCard label="Net" value={summary.net} tone="net" />
               </section>
+
+              {reviewItems.length ? (
+                <section className="panel review-strip">
+                  <div className="review-strip-copy">
+                    <span>Needs review</span>
+                    <strong>{reviewItems.length} transaction{reviewItems.length === 1 ? '' : 's'}</strong>
+                  </div>
+                  <div className="review-strip-pills">
+                    {reviewSummary.slice(0, 4).map((item) => (
+                      <button
+                        key={item.label}
+                        className="review-chip"
+                        onClick={() => {
+                          setTransactionView('review')
+                          setSearchText(item.label === 'Ignored transaction' ? '' : '')
+                        }}
+                      >
+                        {item.label} <span>{item.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button className="ghost-button compact-button" onClick={() => setTransactionView(transactionView === 'review' ? 'all' : 'review')}>
+                    {transactionView === 'review' ? 'Close review view' : 'Open review view'}
+                  </button>
+                </section>
+              ) : null}
 
               <section className="breakdown-grid">
                 <BreakdownSection
