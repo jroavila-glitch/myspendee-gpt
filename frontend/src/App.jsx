@@ -44,10 +44,6 @@ function getReviewReason(transaction) {
   return null
 }
 
-function getAmountTone(value) {
-  return value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'
-}
-
 function SummaryCard({ label, value, tone }) {
   return (
     <div className={`summary-card ${tone}`}>
@@ -112,51 +108,6 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
               )
             })}
           </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function ReviewPanel({ items, onOpenAll, onSelectTransaction }) {
-  const [expanded, setExpanded] = useState(false)
-  const visibleItems = expanded ? items : items.slice(0, 4)
-
-  return (
-    <section className="panel review-panel">
-      <div className="panel-header">
-        <div>
-          <h3>Review Queue</h3>
-          <p className="section-meta">{items.length ? `${items.length} transactions need attention` : 'No flagged transactions right now'}</p>
-        </div>
-        {items.length ? (
-          <div className="review-actions">
-            <button className="ghost-button compact-button" onClick={() => setExpanded((current) => !current)}>
-              {expanded ? 'Show less' : 'Show all'}
-            </button>
-            <button className="ghost-button compact-button" onClick={onOpenAll}>Open in table</button>
-          </div>
-        ) : null}
-      </div>
-
-      {items.length === 0 ? (
-        <div className="empty-panel compact-empty">
-          <p>Everything in this month looks classified and tidy.</p>
-        </div>
-      ) : (
-        <div className="review-list">
-          {visibleItems.map((item) => (
-            <button key={item.id} className="review-row" onClick={() => onSelectTransaction(item)}>
-              <div className="review-main">
-                <strong>{item.description}</strong>
-                <span>{item.reviewReason} · {item.bank_name}</span>
-              </div>
-              <div className={`review-amount ${getAmountTone(Number(item.amount_mxn))}`}>
-                <strong>{formatMoney(item.amount_mxn)}</strong>
-                <span>{formatShortDate(item.date)}</span>
-              </div>
-            </button>
-          ))}
         </div>
       )}
     </section>
@@ -282,7 +233,7 @@ function App() {
   const [notesDrafts, setNotesDrafts] = useState({})
   const [savingNotesIds, setSavingNotesIds] = useState([])
   const [density, setDensity] = useState('comfortable')
-  const [showReviewOnly, setShowReviewOnly] = useState(false)
+  const [transactionView, setTransactionView] = useState('all')
   const notesTimers = useRef({})
   const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -309,7 +260,8 @@ function App() {
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
     return transactions.filter((transaction) => {
-      if (showReviewOnly && !getReviewReason(transaction)) return false
+      if (transactionView === 'review' && !getReviewReason(transaction)) return false
+      if (transactionView === 'ignored' && transaction.type !== 'ignored') return false
       const haystack = [
         transaction.description,
         transaction.category,
@@ -324,7 +276,7 @@ function App() {
 
       return normalizedSearch ? haystack.includes(normalizedSearch) : true
     })
-  }, [transactions, searchText, showReviewOnly])
+  }, [transactions, searchText, transactionView])
 
   const activeFilters = useMemo(() => {
     const chips = []
@@ -332,9 +284,10 @@ function App() {
     if (filters.category) chips.push({ key: 'category', label: filters.category })
     if (filters.type) chips.push({ key: 'type', label: filters.type })
     if (searchText.trim()) chips.push({ key: 'search', label: `Search: ${searchText.trim()}` })
-    if (showReviewOnly) chips.push({ key: 'review_only', label: 'Review queue' })
+    if (transactionView === 'review') chips.push({ key: 'transaction_view', label: 'Review mode' })
+    if (transactionView === 'ignored') chips.push({ key: 'transaction_view', label: 'Ignored mode' })
     return chips
-  }, [filters, searchText, showReviewOnly])
+  }, [filters, searchText, transactionView])
 
   async function loadAll() {
     try {
@@ -497,17 +450,11 @@ function App() {
               <button className="ghost-button compact-button" onClick={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}>
                 {density === 'compact' ? 'Comfortable view' : 'Compact view'}
               </button>
-              {reviewItems.length ? (
-                <button
-                  className="ghost-button compact-button"
-                  onClick={() => {
-                    setShowReviewOnly(true)
-                    setSearchText('')
-                  }}
-                >
-                  Review {reviewItems.length}
-                </button>
-              ) : null}
+              <div className="view-toggle" role="tablist" aria-label="Transaction views">
+                <button className={transactionView === 'all' ? 'active' : ''} onClick={() => setTransactionView('all')}>All</button>
+                <button className={transactionView === 'review' ? 'active' : ''} onClick={() => setTransactionView('review')}>Review {reviewItems.length}</button>
+                <button className={transactionView === 'ignored' ? 'active' : ''} onClick={() => setTransactionView('ignored')}>Ignored</button>
+              </div>
             </div>
           </div>
 
@@ -522,8 +469,8 @@ function App() {
                       setSearchText('')
                       return
                     }
-                    if (filter.key === 'review_only') {
-                      setShowReviewOnly(false)
+                    if (filter.key === 'transaction_view') {
+                      setTransactionView('all')
                       return
                     }
                     setFilters((current) => ({ ...current, [filter.key]: '' }))
@@ -549,7 +496,7 @@ function App() {
                     onClick={() => {
                       setFilters({ bank_name: '', category: '', type: '' })
                       setSearchText('')
-                      setShowReviewOnly(false)
+                      setTransactionView('all')
                     }}
                   >
                     Reset
@@ -598,7 +545,7 @@ function App() {
                 <div className="insight-card">
                   <span>Needs Review</span>
                   <strong>{reviewItems.length}</strong>
-                  <p>{reviewItems.length ? 'Unclassified or ignored items available' : 'No review queue for this month'}</p>
+                  <p>{reviewItems.length ? 'Use Review view in transactions to work through them' : 'No review queue for this month'}</p>
                 </div>
                 <div className="insight-card">
                   <span>Ignored</span>
@@ -613,33 +560,20 @@ function App() {
                 <SummaryCard label="Net" value={summary.net} tone="net" />
               </section>
 
-              <div className="analysis-grid">
-                <section className="breakdown-grid">
-                  <BreakdownSection
-                    title="Income Breakdown"
-                    data={breakdown.income}
-                    tone="income"
-                    onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-                  />
-                  <BreakdownSection
-                    title="Expense Breakdown"
-                    data={breakdown.expenses}
-                    tone="expense"
-                    onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-                  />
-                </section>
-                <ReviewPanel
-                  items={reviewItems}
-                  onOpenAll={() => {
-                    setShowReviewOnly(true)
-                    setSearchText('')
-                  }}
-                  onSelectTransaction={(transaction) => {
-                    setShowReviewOnly(true)
-                    setSearchText(transaction.description)
-                  }}
+              <section className="breakdown-grid">
+                <BreakdownSection
+                  title="Income Breakdown"
+                  data={breakdown.income}
+                  tone="income"
+                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
                 />
-              </div>
+                <BreakdownSection
+                  title="Expense Breakdown"
+                  data={breakdown.expenses}
+                  tone="expense"
+                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                />
+              </section>
 
               <section className="panel transaction-panel">
                 <div className="panel-header">
@@ -647,9 +581,9 @@ function App() {
                     <h3>Transactions</h3>
                     <p className="section-meta">{visibleTransactions.length === transactions.length ? `${transactions.length} transactions` : `${visibleTransactions.length} of ${transactions.length} shown`}</p>
                   </div>
-                  {showReviewOnly ? (
-                    <button className="ghost-button compact-button" onClick={() => setShowReviewOnly(false)}>
-                      Exit review
+                  {transactionView !== 'all' ? (
+                    <button className="ghost-button compact-button" onClick={() => setTransactionView('all')}>
+                      Exit {transactionView}
                     </button>
                   ) : null}
                 </div>

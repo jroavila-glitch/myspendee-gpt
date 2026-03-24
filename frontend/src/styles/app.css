@@ -247,6 +247,29 @@ h3 {
   flex-wrap: wrap;
 }
 
+.view-toggle {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.view-toggle button {
+  border-radius: 8px;
+  padding: 0.5rem 0.68rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.view-toggle button.active {
+  background: var(--navy);
+  color: white;
+}
+
 .period-pickers {
   display: flex;
   align-items: end;
@@ -450,13 +473,6 @@ h3 {
   gap: 0.8rem;
 }
 
-.analysis-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 0.8rem;
-  align-items: start;
-}
-
 .analytics-panel {
   overflow: hidden;
 }
@@ -603,78 +619,6 @@ h3 {
   line-height: 1.5;
 }
 
-.compact-empty {
-  min-height: 112px;
-}
-
-.review-panel {
-  min-height: 100%;
-}
-
-.review-list {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.review-actions {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.review-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.8rem;
-  align-items: center;
-  padding: 0.72rem 0.78rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.72);
-  text-align: left;
-}
-
-.review-row:hover {
-  border-color: rgba(95, 84, 247, 0.16);
-  background: rgba(95, 84, 247, 0.03);
-}
-
-.review-main {
-  min-width: 0;
-}
-
-.review-main strong {
-  display: block;
-  font-size: 0.88rem;
-  line-height: 1.35;
-}
-
-.review-main span,
-.review-amount span {
-  display: block;
-  margin-top: 0.18rem;
-  font-size: 0.76rem;
-  color: var(--muted);
-}
-
-.review-amount {
-  text-align: right;
-}
-
-.review-amount strong {
-  display: block;
-  font-size: 0.84rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.review-amount.positive strong {
-  color: var(--green);
-}
-
-.review-amount.negative strong {
-  color: var(--text);
-}
-
 .transaction-panel {
   overflow: hidden;
 }
@@ -745,8 +689,7 @@ h3 {
   padding-bottom: 0.5rem;
 }
 
-.density-compact .analytics-row,
-.density-compact .review-row {
+.density-compact .analytics-row {
   padding-top: 0.42rem;
   padding-bottom: 0.42rem;
 }
@@ -1127,10 +1070,6 @@ h3 {
 }
 
 @media (max-width: 1400px) {
-  .analysis-grid {
-    grid-template-columns: 1fr;
-  }
-
   .breakdown-grid {
     grid-template-columns: 1fr;
   }
@@ -1242,14 +1181,6 @@ h3 {
 
   .actions-cell {
     justify-content: flex-start;
-  }
-
-  .review-row {
-    grid-template-columns: 1fr;
-  }
-
-  .review-amount {
-    text-align: left;
   }
 
   .bulk-bar,
