@@ -173,14 +173,25 @@ h3 {
 }
 
 .accent-button {
-  background: var(--purple);
+  background: rgba(255, 255, 255, 0.12);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .upload-button {
   background: rgba(255, 255, 255, 0.08);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.secondary-action {
+  background: white;
+  color: var(--navy);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.quiet-action {
+  background: transparent;
 }
 
 .upload-button input {
@@ -225,6 +236,8 @@ h3 {
   align-items: end;
   gap: 0.75rem;
   flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .toolbar-quick-actions {
@@ -450,16 +463,16 @@ h3 {
 
 .analytics-layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.85rem;
-  align-items: start;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: center;
 }
 
 .analytics-chart {
-  min-height: 168px;
-  max-width: 200px;
+  min-height: 150px;
+  max-width: 176px;
   margin: 0 auto;
-  opacity: 0.88;
+  opacity: 0.82;
 }
 
 .chart-skeleton {
@@ -475,6 +488,7 @@ h3 {
 .analytics-list {
   display: grid;
   gap: 0.45rem;
+  align-content: start;
 }
 
 .analytics-list-head {
@@ -493,10 +507,11 @@ h3 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content 72px;
   gap: 0.55rem 0.75rem;
-  padding: 0.66rem 0.72rem;
+  padding: 0.58rem 0.66rem;
   background: transparent;
-  border: 1px solid rgba(34, 41, 74, 0.08);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(34, 41, 74, 0.07);
   color: var(--text);
   text-align: left;
 }
@@ -564,8 +579,7 @@ h3 {
 }
 
 .analytics-row:hover {
-  border-color: rgba(111, 72, 255, 0.16);
-  background: rgba(95, 84, 247, 0.025);
+  background: rgba(95, 84, 247, 0.02);
   box-shadow: none;
 }
 
@@ -704,29 +718,65 @@ h3 {
 }
 
 .density-compact .transaction-row {
-  padding-top: 0.58rem;
-  padding-bottom: 0.58rem;
+  padding-top: 0.34rem;
+  padding-bottom: 0.34rem;
 }
 
 .density-compact .transaction-primary strong {
-  font-size: 0.86rem;
+  font-size: 0.8rem;
+  -webkit-line-clamp: 1;
 }
 
 .density-compact .notes-input {
-  min-height: 30px;
-  padding-top: 0.42rem;
-  padding-bottom: 0.42rem;
+  min-height: 26px;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+  font-size: 0.76rem;
 }
 
 .density-compact .summary-card {
-  padding-top: 0.68rem;
-  padding-bottom: 0.68rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .density-compact .analytics-row,
 .density-compact .review-row {
-  padding-top: 0.58rem;
-  padding-bottom: 0.58rem;
+  padding-top: 0.42rem;
+  padding-bottom: 0.42rem;
+}
+
+.density-compact .panel {
+  padding: 0.7rem;
+}
+
+.density-compact .insight-strip {
+  display: none;
+}
+
+.density-compact .summary-card strong {
+  font-size: 1rem;
+}
+
+.density-compact .transaction-meta,
+.density-compact .row-meta,
+.density-compact .sub-amount,
+.density-compact .section-meta {
+  font-size: 0.68rem;
+}
+
+.density-compact .pill {
+  padding: 0.16rem 0.46rem;
+  font-size: 0.63rem;
+}
+
+.density-compact .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.density-compact .transaction-head {
+  font-size: 0.62rem;
+  padding-bottom: 0.32rem;
 }
 
 .transaction-check {
@@ -1012,19 +1062,53 @@ h3 {
   bottom: 1.3rem;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.6rem;
+  gap: 0.85rem;
   align-items: center;
-  padding: 0.62rem 0.78rem;
-  border-radius: 999px;
-  background: rgba(25, 30, 58, 0.95);
-  color: white;
-  box-shadow: var(--shadow-lg);
+  padding: 0.72rem 0.8rem 0.72rem 0.9rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 18px 48px rgba(23, 31, 59, 0.16);
   z-index: 50;
+}
+
+.bulk-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 88px;
+  padding-right: 0.35rem;
+}
+
+.bulk-summary strong {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.bulk-summary span {
+  margin-top: 0.14rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.bulk-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .bulk-bar select {
   min-width: 170px;
   margin: 0;
+  background: #fbfcff;
+}
+
+.bulk-apply {
+  border-radius: 10px;
+  padding: 0.68rem 0.9rem;
+  background: var(--navy);
+  color: white;
+  font-weight: 700;
 }
 
 .error-banner {
@@ -1043,6 +1127,11 @@ h3 {
 
   .breakdown-grid {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-layout {
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 }
 
@@ -1170,6 +1259,22 @@ h3 {
   .review-amount {
     text-align: left;
   }
+
+  .bulk-bar,
+  .bulk-controls {
+    width: min(100%, 760px);
+  }
+
+  .bulk-bar {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 18px;
+  }
+
+  .bulk-summary {
+    min-width: 0;
+    padding-right: 0;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1202,7 +1307,11 @@ h3 {
   .bulk-bar {
     flex-wrap: wrap;
     justify-content: center;
-    border-radius: 24px;
+    border-radius: 18px;
+  }
+
+  .bulk-controls {
+    flex-direction: column;
   }
 
   .statement-card {

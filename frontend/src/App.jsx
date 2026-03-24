@@ -224,7 +224,13 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
       <label><span>Description</span><input value={form.description} onChange={(e) => updateField('description', e.target.value)} /></label>
       <label><span>Amount (MXN)</span><input type="number" step="0.01" value={form.amount_mxn} onChange={(e) => updateField('amount_mxn', e.target.value)} /></label>
       <label><span>Original Amount</span><input type="number" step="0.01" value={form.amount_original} onChange={(e) => updateField('amount_original', e.target.value)} /></label>
-      <label><span>Original Currency</span><input value={form.currency_original} onChange={(e) => updateField('currency_original', e.target.value)} /></label>
+      <label><span>Original Currency</span>
+        <select value={form.currency_original} onChange={(e) => updateField('currency_original', e.target.value)}>
+          <option value="MXN">MXN</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+        </select>
+      </label>
       <label><span>Category</span>
         <select value={form.category} onChange={(e) => updateField('category', e.target.value)}>
           {[...categories.expense, ...categories.income].map((category) => <option key={category}>{category}</option>)}
@@ -269,6 +275,7 @@ function App() {
   const [notesDrafts, setNotesDrafts] = useState({})
   const [savingNotesIds, setSavingNotesIds] = useState([])
   const [density, setDensity] = useState('comfortable')
+  const [showReviewOnly, setShowReviewOnly] = useState(false)
   const notesTimers = useRef({})
   const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -294,8 +301,8 @@ function App() {
 
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
-    if (!normalizedSearch) return transactions
     return transactions.filter((transaction) => {
+      if (showReviewOnly && !getReviewReason(transaction)) return false
       const haystack = [
         transaction.description,
         transaction.category,
@@ -308,9 +315,9 @@ function App() {
         .join(' ')
         .toLowerCase()
 
-      return haystack.includes(normalizedSearch)
+      return normalizedSearch ? haystack.includes(normalizedSearch) : true
     })
-  }, [transactions, searchText])
+  }, [transactions, searchText, showReviewOnly])
 
   const activeFilters = useMemo(() => {
     const chips = []
@@ -318,8 +325,9 @@ function App() {
     if (filters.category) chips.push({ key: 'category', label: filters.category })
     if (filters.type) chips.push({ key: 'type', label: filters.type })
     if (searchText.trim()) chips.push({ key: 'search', label: `Search: ${searchText.trim()}` })
+    if (showReviewOnly) chips.push({ key: 'review_only', label: 'Review queue' })
     return chips
-  }, [filters, searchText])
+  }, [filters, searchText, showReviewOnly])
 
   async function loadAll() {
     try {
@@ -451,8 +459,8 @@ function App() {
             <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
             <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
           </nav>
-          <button className="accent-button" onClick={() => setShowCreateModal(true)}>New Transaction</button>
-          <label className="upload-button">
+          <button className="accent-button secondary-action" onClick={() => setShowCreateModal(true)}>New Transaction</button>
+          <label className="upload-button quiet-action">
             {uploading ? 'Uploading...' : 'Upload PDFs'}
             <input ref={uploadInputRef} type="file" accept="application/pdf" multiple onChange={handleUpload} />
           </label>
@@ -486,7 +494,7 @@ function App() {
                 <button
                   className="ghost-button compact-button"
                   onClick={() => {
-                    setFilters((current) => ({ ...current, category: 'Other', type: 'expense' }))
+                    setShowReviewOnly(true)
                     setSearchText('')
                   }}
                 >
@@ -505,6 +513,10 @@ function App() {
                   onClick={() => {
                     if (filter.key === 'search') {
                       setSearchText('')
+                      return
+                    }
+                    if (filter.key === 'review_only') {
+                      setShowReviewOnly(false)
                       return
                     }
                     setFilters((current) => ({ ...current, [filter.key]: '' }))
@@ -530,6 +542,7 @@ function App() {
                     onClick={() => {
                       setFilters({ bank_name: '', category: '', type: '' })
                       setSearchText('')
+                      setShowReviewOnly(false)
                     }}
                   >
                     Reset
@@ -611,10 +624,11 @@ function App() {
                 <ReviewPanel
                   items={reviewItems}
                   onOpenAll={() => {
-                    setFilters((current) => ({ ...current, category: 'Other', type: 'expense' }))
+                    setShowReviewOnly(true)
                     setSearchText('')
                   }}
                   onSelectTransaction={(transaction) => {
+                    setShowReviewOnly(true)
                     setSearchText(transaction.description)
                   }}
                 />
@@ -626,6 +640,11 @@ function App() {
                     <h3>Transactions</h3>
                     <p className="section-meta">{visibleTransactions.length === transactions.length ? `${transactions.length} transactions` : `${visibleTransactions.length} of ${transactions.length} shown`}</p>
                   </div>
+                  {showReviewOnly ? (
+                    <button className="ghost-button compact-button" onClick={() => setShowReviewOnly(false)}>
+                      Exit review
+                    </button>
+                  ) : null}
                 </div>
 
                 <div className="transaction-head transaction-grid">
@@ -757,17 +776,22 @@ function App() {
 
       {selectedIds.length > 0 ? (
         <div className="bulk-bar">
-          <span>{selectedIds.length} selected</span>
-          <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)}>
-            <option value="">Change category</option>
-            {categoryOptions.map((category) => <option key={category}>{category}</option>)}
-          </select>
-          <select value={bulkType} onChange={(e) => setBulkType(e.target.value)}>
-            <option value="">Change type</option>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
-          <button onClick={handleBulkApply}>Apply</button>
+          <div className="bulk-summary">
+            <strong>{selectedIds.length}</strong>
+            <span>selected</span>
+          </div>
+          <div className="bulk-controls">
+            <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)}>
+              <option value="">Change category</option>
+              {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+            </select>
+            <select value={bulkType} onChange={(e) => setBulkType(e.target.value)}>
+              <option value="">Change type</option>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+            <button className="bulk-apply" onClick={handleBulkApply}>Apply</button>
+          </div>
         </div>
       ) : null}
 
