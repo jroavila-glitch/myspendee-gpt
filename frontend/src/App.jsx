@@ -36,57 +36,82 @@ function formatStatementPeriod(statement) {
   return `${statement.period_start} - ${statement.period_end}`
 }
 
-function SummaryCard({ label, value }) {
+function SummaryCard({ label, value, tone }) {
   return (
-    <div className="summary-card">
+    <div className={`summary-card ${tone}`}>
       <span>{label}</span>
       <strong>{formatMoney(value)}</strong>
     </div>
   )
 }
 
-function BreakdownSection({ title, data, onSelectCategory }) {
+function BreakdownSection({ title, data, onSelectCategory, tone }) {
   const total = data.reduce((sum, item) => sum + Number(item.total || 0), 0)
+
   return (
-    <section className="panel">
+    <section className={`panel analytics-panel ${tone}`}>
       <div className="panel-header">
-        <h3>{title}</h3>
-        {data.length > 0 ? <span className="muted">{formatMoney(total)}</span> : null}
-      </div>
-      {data.length === 0 ? <p className="muted breakdown-empty">No data for this period.</p> : null}
-      {data.length > 0 ? (
-      <div className="breakdown-layout">
-        <div className="chart-wrap">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={data} dataKey="total" nameKey="category" innerRadius={48} outerRadius={82}>
-                {data.map((entry, index) => (
-                  <Cell key={entry.category} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => formatMoney(value)} />
-            </PieChart>
-          </ResponsiveContainer>
+        <div>
+          <h3>{title}</h3>
+          <p className="section-meta">{data.length ? `${data.length} categories` : 'No activity this period'}</p>
         </div>
-        <div className="breakdown-table">
-          {data.length === 0 ? <p className="muted">No data for this period.</p> : null}
-          {data.length > 0 ? (
-            <div className="breakdown-table-header">
+        {data.length ? <strong className="panel-total">{formatMoney(total)}</strong> : null}
+      </div>
+
+      {data.length === 0 ? (
+        <div className="empty-panel">
+          <p>No data for this period.</p>
+        </div>
+      ) : (
+        <div className="analytics-layout">
+          <div className="analytics-chart">
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={data} dataKey="total" nameKey="category" innerRadius={58} outerRadius={92}>
+                  {data.map((entry, index) => (
+                    <Cell key={entry.category} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatMoney(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="analytics-list">
+            <div className="analytics-list-head">
               <span>Category</span>
               <span>Amount</span>
-              <span>%</span>
+              <span>Share</span>
             </div>
-          ) : null}
-          {data.map((item) => (
-            <button key={`${title}-${item.category}`} className="category-row" onClick={() => onSelectCategory(item)}>
-              <span className="category-name">{item.category}</span>
-              <strong className="category-amount">{formatMoney(item.total)}</strong>
-              <span className="category-share">{formatPercent(total ? (Number(item.total) / total) * 100 : 0)}</span>
-            </button>
-          ))}
+            {data.map((item, index) => {
+              const share = total ? (Number(item.total) / total) * 100 : 0
+              return (
+                <button
+                  key={`${title}-${item.category}`}
+                  className="analytics-row"
+                  onClick={() => onSelectCategory(item)}
+                >
+                  <div className="analytics-row-main">
+                    <span className="analytics-dot" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                    <strong>{item.category}</strong>
+                  </div>
+                  <div className="analytics-row-values">
+                    <strong>{formatMoney(item.total)}</strong>
+                  </div>
+                  <div className="analytics-row-share">
+                    <span>{formatPercent(share)}</span>
+                  </div>
+                  <div className="analytics-row-progress">
+                    <div className="analytics-bar">
+                      <span style={{ width: `${Math.min(share, 100)}%`, backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
-      </div>
-      ) : null}
+      )}
     </section>
   )
 }
@@ -109,7 +134,8 @@ function Modal({ title, children, onClose }) {
 function TransactionMenu({ onEdit, onDelete, anchorRect, onClose }) {
   if (!anchorRect) return null
   const top = anchorRect.bottom + window.scrollY + 8
-  const left = anchorRect.right + window.scrollX - 176
+  const left = anchorRect.right + window.scrollX - 184
+
   return createPortal(
     <>
       <button className="menu-backdrop" aria-label="Close actions menu" onClick={onClose} />
@@ -270,9 +296,7 @@ function App() {
   }, [queryParams])
 
   useEffect(() => {
-    setNotesDrafts(
-      Object.fromEntries(transactions.map((transaction) => [transaction.id, transaction.notes || ''])),
-    )
+    setNotesDrafts(Object.fromEntries(transactions.map((transaction) => [transaction.id, transaction.notes || ''])))
   }, [transactions])
 
   useEffect(() => {
@@ -343,34 +367,63 @@ function App() {
           <span className="brand-mark">MY</span>
           <div>
             <h1>myspendee-gpt</h1>
-            <p>Expense tracking dashboard</p>
+            <p>Intelligent money tracking in MXN</p>
           </div>
         </div>
-        <nav className="tabs">
-          <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
-          <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
-        </nav>
+
+        <div className="topbar-actions">
+          <nav className="tabs">
+            <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
+            <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
+          </nav>
+          <button className="accent-button" onClick={() => setShowCreateModal(true)}>Add Transaction</button>
+          <label className="upload-button">
+            {uploading ? 'Uploading...' : 'Upload PDFs'}
+            <input type="file" accept="application/pdf" multiple onChange={handleUpload} />
+          </label>
+        </div>
       </header>
 
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div className="dashboard-stack">
-        <section className="toolbar">
+        <section className="toolbar panel">
           <div className="period-pickers">
-            <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
-              ))}
-            </select>
-            <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
-          </div>
-          <div className="toolbar-actions">
-            <button className="accent-button" onClick={() => setShowCreateModal(true)}>+ Add Transaction</button>
-            <label className="upload-button">
-              {uploading ? 'Uploading...' : 'Upload PDFs'}
-              <input type="file" accept="application/pdf" multiple onChange={handleUpload} />
+            <label>
+              <span>Month</span>
+              <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
+                {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                  <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Year</span>
+              <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
             </label>
           </div>
+
+          {activeFilters.length ? (
+            <div className="active-filters">
+              {activeFilters.map((filter) => (
+                <button
+                  key={filter.key}
+                  className="filter-chip"
+                  onClick={() => {
+                    if (filter.key === 'search') {
+                      setSearchText('')
+                      return
+                    }
+                    setFilters((current) => ({ ...current, [filter.key]: '' }))
+                  }}
+                >
+                  {filter.label} ×
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="toolbar-copy">Filter by bank, category, type, or search merchant names and notes.</p>
+          )}
         </section>
 
         {tab === 'dashboard' ? (
@@ -378,11 +431,19 @@ function App() {
             <aside className="panel sidebar-panel">
               <div className="panel-header">
                 <h3>Filters</h3>
-                {activeFilters.length ? <button className="ghost-button compact-button" onClick={() => {
-                  setFilters({ bank_name: '', category: '', type: '' })
-                  setSearchText('')
-                }}>Clear</button> : null}
+                {activeFilters.length ? (
+                  <button
+                    className="ghost-button compact-button"
+                    onClick={() => {
+                      setFilters({ bank_name: '', category: '', type: '' })
+                      setSearchText('')
+                    }}
+                  >
+                    Reset
+                  </button>
+                ) : null}
               </div>
+
               <div className="sidebar-fields">
                 <label>
                   <span>Bank</span>
@@ -415,169 +476,157 @@ function App() {
             </aside>
 
             <div className="main-grid">
-            <section className="summary-grid">
-              <SummaryCard label="Total Income" value={summary.income} />
-              <SummaryCard label="Total Expenses" value={summary.expenses} />
-              <SummaryCard label="Net" value={summary.net} />
-            </section>
+              <section className="summary-grid">
+                <SummaryCard label="Total Income" value={summary.income} tone="income" />
+                <SummaryCard label="Total Expenses" value={summary.expenses} tone="expense" />
+                <SummaryCard label="Net" value={summary.net} tone="net" />
+              </section>
 
-            <section className="breakdown-grid">
-              <BreakdownSection
-                title="Income Breakdown"
-                data={breakdown.income}
-                onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-              />
-              <BreakdownSection
-                title="Expense Breakdown"
-                data={breakdown.expenses}
-                onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-              />
-            </section>
+              <section className="breakdown-grid">
+                <BreakdownSection
+                  title="Income Breakdown"
+                  data={breakdown.income}
+                  tone="income"
+                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                />
+                <BreakdownSection
+                  title="Expense Breakdown"
+                  data={breakdown.expenses}
+                  tone="expense"
+                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
+                />
+              </section>
 
-            <section className="panel transaction-panel">
-              <div className="panel-header">
-                <h3>Transactions</h3>
-                <span className="muted">{visibleTransactions.length === transactions.length ? `${transactions.length} rows` : `${visibleTransactions.length} of ${transactions.length} rows`}</span>
-              </div>
-              {activeFilters.length ? (
-                <div className="active-filters">
-                  {activeFilters.map((filter) => (
-                    <button
-                      key={filter.key}
-                      className="filter-chip"
-                      onClick={() => {
-                        if (filter.key === 'search') {
-                          setSearchText('')
-                          return
-                        }
-                        setFilters((current) => ({ ...current, [filter.key]: '' }))
-                      }}
-                    >
-                      {filter.label} ×
-                    </button>
-                  ))}
+              <section className="panel transaction-panel">
+                <div className="panel-header">
+                  <div>
+                    <h3>Transactions</h3>
+                    <p className="section-meta">{visibleTransactions.length === transactions.length ? `${transactions.length} visible rows` : `${visibleTransactions.length} of ${transactions.length} visible`}</p>
+                  </div>
                 </div>
-              ) : null}
-              <div className="table-wrap transaction-table-wrap">
-                <table>
-                  <colgroup>
-                    <col />
-                    <col />
-                    <col />
-                    <col />
-                    <col />
-                    <col />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th>Transaction</th>
-                      <th>Category</th>
-                      <th>Amount</th>
-                      <th>Notes</th>
-                      <th className="actions-column"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleTransactions.map((transaction) => (
-                      <tr key={transaction.id}>
-                        <td><input type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => toggleSelected(transaction.id)} /></td>
-                        <td className="description-cell">
-                          <strong>{transaction.description}</strong>
-                          <span className="transaction-meta">{formatShortDate(transaction.date)} · {transaction.bank_name}</span>
-                          {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
-                        </td>
-                        <td>
-                          <span className={`pill ${transaction.type}`}>{transaction.category}</span>
-                        </td>
-                        <td>
-                          <strong className="amount-value">{formatMoney(transaction.amount_mxn)}</strong>
-                          {transaction.original_amount_display ? <span className="sub-amount">{transaction.original_amount_display}</span> : null}
-                        </td>
-                        <td>
-                          <input
-                            className="notes-input"
-                            value={notesDrafts[transaction.id] ?? ''}
-                            placeholder="Add a note"
-                            onBlur={(event) => saveNotes(transaction, event.target.value)}
-                            onChange={(event) => {
-                              clearTimeout(notesTimers.current[transaction.id])
-                              const value = event.target.value
-                              setNotesDrafts((current) => ({ ...current, [transaction.id]: value }))
-                              notesTimers.current[transaction.id] = setTimeout(() => saveNotes(transaction, value), 900)
+
+                <div className="transaction-head transaction-grid">
+                  <span></span>
+                  <span>Transaction</span>
+                  <span>Category</span>
+                  <span>Amount</span>
+                  <span>Notes</span>
+                  <span></span>
+                </div>
+
+                <div className="transaction-list">
+                  {visibleTransactions.map((transaction) => (
+                    <div key={transaction.id} className="transaction-row transaction-grid">
+                    <div className="transaction-check">
+                        <input aria-label={`Select ${transaction.description}`} type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => toggleSelected(transaction.id)} />
+                      </div>
+
+                      <div className="transaction-primary">
+                        <strong>{transaction.description}</strong>
+                        <div className="transaction-meta">
+                          <span>{formatShortDate(transaction.date)}</span>
+                          <span>{transaction.bank_name}</span>
+                        </div>
+                        {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
+                      </div>
+
+                      <div className="transaction-category">
+                        <span className={`pill ${transaction.type}`}>{transaction.category}</span>
+                      </div>
+
+                      <div className={`transaction-amount ${transaction.type}`}>
+                        <strong className="amount-value">{formatMoney(transaction.amount_mxn)}</strong>
+                        {transaction.original_amount_display ? <span className="sub-amount">{transaction.original_amount_display}</span> : null}
+                      </div>
+
+                      <div className="transaction-notes">
+                        <input
+                          className="notes-input"
+                          value={notesDrafts[transaction.id] ?? ''}
+                          placeholder="Add a note"
+                          onBlur={(event) => saveNotes(transaction, event.target.value)}
+                          onChange={(event) => {
+                            clearTimeout(notesTimers.current[transaction.id])
+                            const value = event.target.value
+                            setNotesDrafts((current) => ({ ...current, [transaction.id]: value }))
+                            notesTimers.current[transaction.id] = setTimeout(() => saveNotes(transaction, value), 900)
+                          }}
+                        />
+                        {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
+                      </div>
+
+                      <div className="actions-cell">
+                        <button
+                          aria-label={`Actions for ${transaction.description}`}
+                          className="ghost-button icon-button"
+                          onClick={(event) => setMenuState({ id: transaction.id, rect: event.currentTarget.getBoundingClientRect() })}
+                        >
+                          •••
+                        </button>
+                        {menuState?.id === transaction.id ? (
+                          <TransactionMenu
+                            anchorRect={menuState.rect}
+                            onClose={() => setMenuState(null)}
+                            onEdit={() => {
+                              setEditingTransaction(transaction)
+                              setMenuState(null)
                             }}
+                            onDelete={() => handleDeleteTransaction(transaction.id)}
                           />
-                          {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
-                        </td>
-                        <td className="actions-cell">
-                          <button
-                            className="ghost-button icon-button"
-                            onClick={(event) => setMenuState({ id: transaction.id, rect: event.currentTarget.getBoundingClientRect() })}
-                          >
-                            •••
-                          </button>
-                          {menuState?.id === transaction.id ? (
-                            <TransactionMenu
-                              anchorRect={menuState.rect}
-                              onClose={() => setMenuState(null)}
-                              onEdit={() => {
-                                setEditingTransaction(transaction)
-                                setMenuState(null)
-                              }}
-                              onDelete={() => handleDeleteTransaction(transaction.id)}
-                            />
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
-                    {visibleTransactions.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="empty-cell">No transactions match the current filters.</td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+
+                  {visibleTransactions.length === 0 ? (
+                    <div className="empty-list">
+                      <p>No transactions match the current filters.</p>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
             </div>
           </main>
         ) : (
           <main className="panel statements-panel">
             <div className="panel-header">
-              <h3>Uploaded Statements</h3>
+              <div>
+                <h3>Uploaded Statements</h3>
+                <p className="section-meta">{statements.length} files available</p>
+              </div>
             </div>
-            <div className="table-wrap statements-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Filename</th>
-                    <th>Bank</th>
-                    <th>Period</th>
-                    <th>Transactions</th>
-                    <th>Ignored</th>
-                    <th>Uploaded</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statements.map((statement) => (
-                    <tr key={statement.id}>
-                      <td>{statement.filename}</td>
-                      <td>{statement.bank_name}</td>
-                      <td>{formatStatementPeriod(statement)}</td>
-                      <td>{statement.transaction_count}</td>
-                      <td>{statement.ignored_count}</td>
-                      <td>{dateTimeFormatter.format(new Date(statement.uploaded_at))}</td>
-                      <td><button className="ghost-button danger" onClick={() => handleStatementDelete(statement.id)}>Delete</button></td>
-                    </tr>
-                  ))}
-                  {statements.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="empty-cell">No statements uploaded yet.</td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+
+            <div className="statement-list">
+              {statements.map((statement) => (
+                <article key={statement.id} className="statement-card">
+                  <div className="statement-main">
+                    <strong>{statement.filename}</strong>
+                    <span>{statement.bank_name}</span>
+                    <span>{formatStatementPeriod(statement)}</span>
+                  </div>
+                  <div className="statement-metrics">
+                    <div>
+                      <span>Transactions</span>
+                      <strong>{statement.transaction_count}</strong>
+                    </div>
+                    <div>
+                      <span>Ignored</span>
+                      <strong>{statement.ignored_count}</strong>
+                    </div>
+                    <div>
+                      <span>Uploaded</span>
+                      <strong>{dateTimeFormatter.format(new Date(statement.uploaded_at))}</strong>
+                    </div>
+                  </div>
+                  <button className="ghost-button danger" onClick={() => handleStatementDelete(statement.id)}>Delete</button>
+                </article>
+              ))}
+
+              {statements.length === 0 ? (
+                <div className="empty-panel">
+                  <p>No statements uploaded yet.</p>
+                </div>
+              ) : null}
             </div>
           </main>
         )}
