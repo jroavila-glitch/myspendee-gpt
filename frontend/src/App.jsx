@@ -6,6 +6,7 @@ import { api } from './lib/api'
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MXN' })
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const PIE_COLORS = ['#0f766e', '#f97316', '#dc2626', '#2563eb', '#ca8a04', '#64748b']
 
 function formatMoney(value) {
@@ -14,6 +15,10 @@ function formatMoney(value) {
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(1)}%`
+}
+
+function formatShortDate(value) {
+  return shortDateFormatter.format(new Date(`${value}T00:00:00`))
 }
 
 function getCurrentMonthState() {
@@ -46,7 +51,10 @@ function BreakdownSection({ title, data, onSelectCategory }) {
     <section className="panel">
       <div className="panel-header">
         <h3>{title}</h3>
+        {data.length > 0 ? <span className="muted">{formatMoney(total)}</span> : null}
       </div>
+      {data.length === 0 ? <p className="muted breakdown-empty">No data for this period.</p> : null}
+      {data.length > 0 ? (
       <div className="breakdown-layout">
         <div className="chart-wrap">
           <ResponsiveContainer width="100%" height={220}>
@@ -72,12 +80,13 @@ function BreakdownSection({ title, data, onSelectCategory }) {
           {data.map((item) => (
             <button key={`${title}-${item.category}`} className="category-row" onClick={() => onSelectCategory(item)}>
               <span className="category-name">{item.category}</span>
-              <strong>{formatMoney(item.total)}</strong>
+              <strong className="category-amount">{formatMoney(item.total)}</strong>
               <span className="category-share">{formatPercent(total ? (Number(item.total) / total) * 100 : 0)}</span>
             </button>
           ))}
         </div>
       </div>
+      ) : null}
     </section>
   )
 }
@@ -451,12 +460,18 @@ function App() {
               ) : null}
               <div className="table-wrap transaction-table-wrap">
                 <table>
+                  <colgroup>
+                    <col />
+                    <col />
+                    <col />
+                    <col />
+                    <col />
+                    <col />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th></th>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Bank</th>
+                      <th>Transaction</th>
                       <th>Category</th>
                       <th>Amount</th>
                       <th>Notes</th>
@@ -467,17 +482,16 @@ function App() {
                     {visibleTransactions.map((transaction) => (
                       <tr key={transaction.id}>
                         <td><input type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => toggleSelected(transaction.id)} /></td>
-                        <td>{transaction.date}</td>
                         <td className="description-cell">
                           <strong>{transaction.description}</strong>
+                          <span className="transaction-meta">{formatShortDate(transaction.date)} · {transaction.bank_name}</span>
                           {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
                         </td>
-                        <td className="bank-cell">{transaction.bank_name}</td>
                         <td>
                           <span className={`pill ${transaction.type}`}>{transaction.category}</span>
                         </td>
                         <td>
-                          <strong className={Number(transaction.amount_mxn) >= 0 ? '' : ''}>{formatMoney(transaction.amount_mxn)}</strong>
+                          <strong className="amount-value">{formatMoney(transaction.amount_mxn)}</strong>
                           {transaction.original_amount_display ? <span className="sub-amount">{transaction.original_amount_display}</span> : null}
                         </td>
                         <td>
@@ -518,7 +532,7 @@ function App() {
                     ))}
                     {visibleTransactions.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="empty-cell">No transactions match the current filters.</td>
+                        <td colSpan="6" className="empty-cell">No transactions match the current filters.</td>
                       </tr>
                     ) : null}
                   </tbody>

@@ -242,19 +242,24 @@ h1, h3, .summary-card strong {
 }
 .breakdown-layout {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 1.35rem;
-  align-items: start;
+  align-items: center;
 }
 .breakdown-table {
   max-height: 310px;
   overflow: auto;
   padding-right: 0.2rem;
 }
+.breakdown-empty {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+}
 .breakdown-table-header,
 .category-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 64px;
+  grid-template-columns: minmax(150px, 1.3fr) minmax(120px, 0.9fr) 64px;
   align-items: center;
   gap: 0.75rem;
 }
@@ -279,6 +284,10 @@ h1, h3, .summary-card strong {
 .category-name,
 .category-share {
   text-align: left;
+}
+.category-amount,
+.category-share {
+  text-align: right;
 }
 .chart-wrap {
   min-height: 220px;
@@ -316,6 +325,21 @@ h1, h3, .summary-card strong {
 }
 .actions-column {
   width: 82px;
+}
+.transaction-table-wrap col:first-child {
+  width: 44px;
+}
+.transaction-table-wrap col:nth-child(2) {
+  width: 38%;
+}
+.transaction-table-wrap col:nth-child(3) {
+  width: 16%;
+}
+.transaction-table-wrap col:nth-child(4) {
+  width: 16%;
+}
+.transaction-table-wrap col:nth-child(5) {
+  width: 22%;
 }
 .active-filters {
   display: flex;
@@ -382,11 +406,21 @@ h1, h3, .summary-card strong {
 .description-cell strong {
   font-size: 0.98rem;
 }
+.transaction-meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.22rem;
+}
 .bank-cell {
   color: #50556f;
 }
 .actions-cell {
   text-align: right;
+}
+.amount-value {
+  display: block;
+  font-variant-numeric: tabular-nums;
 }
 .transaction-panel,
 .statements-panel {
@@ -521,6 +555,9 @@ h1, h3, .summary-card strong {
   }
   .sidebar-panel {
     position: static;
+  }
+  .transaction-table-wrap col {
+    width: auto !important;
   }
   .transaction-table-wrap,
   .statements-table-wrap,
