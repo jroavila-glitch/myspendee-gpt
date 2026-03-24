@@ -60,7 +60,7 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
 
       {data.length === 0 ? (
         <div className="empty-panel">
-          <p>No data for this period.</p>
+          <p>No transactions in this period.</p>
         </div>
       ) : (
         <div className="analytics-layout">
@@ -366,8 +366,8 @@ function App() {
         <div className="brand">
           <span className="brand-mark">MY</span>
           <div>
-            <h1>myspendee-gpt</h1>
-            <p>Intelligent money tracking in MXN</p>
+            <h1>MySpendee GPT</h1>
+            <p>Expense dashboard in MXN</p>
           </div>
         </div>
 
@@ -376,7 +376,7 @@ function App() {
             <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
             <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
           </nav>
-          <button className="accent-button" onClick={() => setShowCreateModal(true)}>Add Transaction</button>
+          <button className="accent-button" onClick={() => setShowCreateModal(true)}>New Transaction</button>
           <label className="upload-button">
             {uploading ? 'Uploading...' : 'Upload PDFs'}
             <input type="file" accept="application/pdf" multiple onChange={handleUpload} />
@@ -422,7 +422,7 @@ function App() {
               ))}
             </div>
           ) : (
-            <p className="toolbar-copy">Filter by bank, category, type, or search merchant names and notes.</p>
+            <p className="toolbar-copy">Filter by bank, category, type, or merchant search.</p>
           )}
         </section>
 
@@ -501,7 +501,7 @@ function App() {
                 <div className="panel-header">
                   <div>
                     <h3>Transactions</h3>
-                    <p className="section-meta">{visibleTransactions.length === transactions.length ? `${transactions.length} visible rows` : `${visibleTransactions.length} of ${transactions.length} visible`}</p>
+                    <p className="section-meta">{visibleTransactions.length === transactions.length ? `${transactions.length} transactions` : `${visibleTransactions.length} of ${transactions.length} shown`}</p>
                   </div>
                 </div>
 
@@ -589,12 +589,12 @@ function App() {
           </main>
         ) : (
           <main className="panel statements-panel">
-            <div className="panel-header">
-              <div>
-                <h3>Uploaded Statements</h3>
-                <p className="section-meta">{statements.length} files available</p>
+              <div className="panel-header">
+                <div>
+                  <h3>Uploaded Statements</h3>
+                  <p className="section-meta">{statements.length} statements available</p>
+                </div>
               </div>
-            </div>
 
             <div className="statement-list">
               {statements.map((statement) => (
