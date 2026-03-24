@@ -491,22 +491,10 @@ h3 {
   align-content: start;
 }
 
-.analytics-list-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content 72px;
-  gap: 0.85rem;
-  padding: 0 0.7rem;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .analytics-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content 72px;
-  gap: 0.55rem 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem 0.75rem;
   padding: 0.58rem 0.66rem;
   background: transparent;
   border: 0;
@@ -535,8 +523,16 @@ h3 {
   min-width: 0;
   font-size: 0.88rem;
   line-height: 1.25;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analytics-row-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  justify-content: flex-end;
 }
 
 .analytics-bar {
@@ -620,6 +616,12 @@ h3 {
   gap: 0.5rem;
 }
 
+.review-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 .review-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -694,6 +696,10 @@ h3 {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   margin-bottom: 0.15rem;
+}
+
+.transaction-head span:nth-child(4) {
+  text-align: right;
 }
 
 .transaction-list {
@@ -1166,26 +1172,12 @@ h3 {
     position: static;
   }
 
-  .analytics-list-head {
-    display: none;
-  }
-
   .analytics-row {
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .analytics-row-values {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .analytics-row-share {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .analytics-row-main {
-    grid-row: 1 / span 2;
+  .analytics-row-meta {
+    justify-content: flex-start;
   }
 
   .transaction-head,

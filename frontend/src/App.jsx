@@ -83,11 +83,6 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
           </div>
 
           <div className="analytics-list">
-            <div className="analytics-list-head">
-              <span>Category</span>
-              <span>Amount</span>
-              <span>Share</span>
-            </div>
             {data.map((item, index) => {
               const share = total ? (Number(item.total) / total) * 100 : 0
               return (
@@ -100,11 +95,13 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
                     <span className="analytics-dot" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
                     <strong>{item.category}</strong>
                   </div>
-                  <div className="analytics-row-values">
-                    <strong>{formatMoney(item.total)}</strong>
-                  </div>
-                  <div className="analytics-row-share">
-                    <span>{formatPercent(share)}</span>
+                  <div className="analytics-row-meta">
+                    <div className="analytics-row-values">
+                      <strong>{formatMoney(item.total)}</strong>
+                    </div>
+                    <div className="analytics-row-share">
+                      <span>{formatPercent(share)}</span>
+                    </div>
                   </div>
                   <div className="analytics-row-progress">
                     <div className="analytics-bar">
@@ -122,6 +119,9 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
 }
 
 function ReviewPanel({ items, onOpenAll, onSelectTransaction }) {
+  const [expanded, setExpanded] = useState(false)
+  const visibleItems = expanded ? items : items.slice(0, 4)
+
   return (
     <section className="panel review-panel">
       <div className="panel-header">
@@ -129,7 +129,14 @@ function ReviewPanel({ items, onOpenAll, onSelectTransaction }) {
           <h3>Review Queue</h3>
           <p className="section-meta">{items.length ? `${items.length} transactions need attention` : 'No flagged transactions right now'}</p>
         </div>
-        {items.length ? <button className="ghost-button compact-button" onClick={onOpenAll}>Show all</button> : null}
+        {items.length ? (
+          <div className="review-actions">
+            <button className="ghost-button compact-button" onClick={() => setExpanded((current) => !current)}>
+              {expanded ? 'Show less' : 'Show all'}
+            </button>
+            <button className="ghost-button compact-button" onClick={onOpenAll}>Open in table</button>
+          </div>
+        ) : null}
       </div>
 
       {items.length === 0 ? (
@@ -138,7 +145,7 @@ function ReviewPanel({ items, onOpenAll, onSelectTransaction }) {
         </div>
       ) : (
         <div className="review-list">
-          {items.slice(0, 4).map((item) => (
+          {visibleItems.map((item) => (
             <button key={item.id} className="review-row" onClick={() => onSelectTransaction(item)}>
               <div className="review-main">
                 <strong>{item.description}</strong>
