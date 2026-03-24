@@ -12,6 +12,10 @@ function formatMoney(value) {
   return currencyFormatter.format(Number(value || 0))
 }
 
+function formatPercent(value) {
+  return `${Number(value || 0).toFixed(1)}%`
+}
+
 function getCurrentMonthState() {
   const now = new Date()
   return { month: now.getMonth() + 1, year: now.getFullYear() }
@@ -37,25 +41,17 @@ function SummaryCard({ label, value }) {
 }
 
 function BreakdownSection({ title, data, onSelectCategory }) {
+  const total = data.reduce((sum, item) => sum + Number(item.total || 0), 0)
   return (
     <section className="panel">
       <div className="panel-header">
         <h3>{title}</h3>
       </div>
       <div className="breakdown-layout">
-        <div className="breakdown-table">
-          {data.length === 0 ? <p className="muted">No data for this period.</p> : null}
-          {data.map((item) => (
-            <button key={`${title}-${item.category}`} className="category-row" onClick={() => onSelectCategory(item)}>
-              <span>{item.category}</span>
-              <strong>{formatMoney(item.total)}</strong>
-            </button>
-          ))}
-        </div>
         <div className="chart-wrap">
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie data={data} dataKey="total" nameKey="category" innerRadius={60} outerRadius={95}>
+              <Pie data={data} dataKey="total" nameKey="category" innerRadius={48} outerRadius={82}>
                 {data.map((entry, index) => (
                   <Cell key={entry.category} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                 ))}
@@ -63,6 +59,23 @@ function BreakdownSection({ title, data, onSelectCategory }) {
               <Tooltip formatter={(value) => formatMoney(value)} />
             </PieChart>
           </ResponsiveContainer>
+        </div>
+        <div className="breakdown-table">
+          {data.length === 0 ? <p className="muted">No data for this period.</p> : null}
+          {data.length > 0 ? (
+            <div className="breakdown-table-header">
+              <span>Category</span>
+              <span>Amount</span>
+              <span>%</span>
+            </div>
+          ) : null}
+          {data.map((item) => (
+            <button key={`${title}-${item.category}`} className="category-row" onClick={() => onSelectCategory(item)}>
+              <span className="category-name">{item.category}</span>
+              <strong>{formatMoney(item.total)}</strong>
+              <span className="category-share">{formatPercent(total ? (Number(item.total) / total) * 100 : 0)}</span>
+            </button>
+          ))}
         </div>
       </div>
     </section>
@@ -303,82 +316,83 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Expense Tracking Dashboard</p>
-          <h1>myspendee-gpt</h1>
-          <p className="hero-copy">Upload statements, review AI-classified transactions, and keep everything normalized in MXN.</p>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark">MY</span>
+          <div>
+            <h1>myspendee-gpt</h1>
+            <p>Expense tracking dashboard</p>
+          </div>
         </div>
-        <div className="hero-actions">
-          <button onClick={() => setShowCreateModal(true)}>Add Transaction</button>
-          <label className="upload-button">
-            {uploading ? 'Uploading...' : 'Upload PDFs'}
-            <input type="file" accept="application/pdf" multiple onChange={handleUpload} />
-          </label>
-        </div>
+        <nav className="tabs">
+          <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
+          <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
+        </nav>
       </header>
-
-      <nav className="tabs">
-        <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
-        <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
-      </nav>
 
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div className="dashboard-stack">
-        <section className="panel control-panel">
-          <div className="panel-header">
-            <h3>Filters</h3>
-            {activeFilters.length ? <button className="ghost-button compact-button" onClick={() => {
-              setFilters({ bank_name: '', category: '', type: '' })
-              setSearchText('')
-            }}>Clear all</button> : null}
+        <section className="toolbar">
+          <div className="period-pickers">
+            <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
+              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
+              ))}
+            </select>
+            <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
           </div>
-          <div className="control-grid">
-            <label>
-              <span>Month</span>
-              <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
-                {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                  <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Year</span>
-              <input type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
-            </label>
-            <label>
-              <span>Bank</span>
-              <select value={filters.bank_name} onChange={(e) => setFilters((current) => ({ ...current, bank_name: e.target.value }))}>
-                <option value="">All banks</option>
-                {banks.map((bank) => <option key={bank}>{bank}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>Category</span>
-              <select value={filters.category} onChange={(e) => setFilters((current) => ({ ...current, category: e.target.value }))}>
-                <option value="">All categories</option>
-                {categoryOptions.map((category) => <option key={category}>{category}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>Type</span>
-              <select value={filters.type} onChange={(e) => setFilters((current) => ({ ...current, type: e.target.value }))}>
-                <option value="">All types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-                <option value="ignored">Ignored</option>
-              </select>
-            </label>
-            <label className="control-search">
-              <span>Search visible rows</span>
-              <input placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+          <div className="toolbar-actions">
+            <button className="accent-button" onClick={() => setShowCreateModal(true)}>+ Add Transaction</button>
+            <label className="upload-button">
+              {uploading ? 'Uploading...' : 'Upload PDFs'}
+              <input type="file" accept="application/pdf" multiple onChange={handleUpload} />
             </label>
           </div>
         </section>
 
         {tab === 'dashboard' ? (
-          <main className="main-grid">
+          <main className="dashboard-layout">
+            <aside className="panel sidebar-panel">
+              <div className="panel-header">
+                <h3>Filters</h3>
+                {activeFilters.length ? <button className="ghost-button compact-button" onClick={() => {
+                  setFilters({ bank_name: '', category: '', type: '' })
+                  setSearchText('')
+                }}>Clear</button> : null}
+              </div>
+              <div className="sidebar-fields">
+                <label>
+                  <span>Bank</span>
+                  <select value={filters.bank_name} onChange={(e) => setFilters((current) => ({ ...current, bank_name: e.target.value }))}>
+                    <option value="">All banks</option>
+                    {banks.map((bank) => <option key={bank}>{bank}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Type</span>
+                  <select value={filters.type} onChange={(e) => setFilters((current) => ({ ...current, type: e.target.value }))}>
+                    <option value="">All types</option>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                    <option value="ignored">Ignored</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Category</span>
+                  <select value={filters.category} onChange={(e) => setFilters((current) => ({ ...current, category: e.target.value }))}>
+                    <option value="">All categories</option>
+                    {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Search</span>
+                  <input placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+                </label>
+              </div>
+            </aside>
+
+            <div className="main-grid">
             <section className="summary-grid">
               <SummaryCard label="Total Income" value={summary.income} />
               <SummaryCard label="Total Expenses" value={summary.expenses} />
@@ -429,9 +443,8 @@ function App() {
                       <th></th>
                       <th>Date</th>
                       <th>Description</th>
-                      <th>Category</th>
-                      <th>Type</th>
                       <th>Bank</th>
+                      <th>Category</th>
                       <th>Amount</th>
                       <th>Notes</th>
                       <th></th>
@@ -442,15 +455,16 @@ function App() {
                       <tr key={transaction.id}>
                         <td><input type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => toggleSelected(transaction.id)} /></td>
                         <td>{transaction.date}</td>
-                        <td>
+                        <td className="description-cell">
                           <strong>{transaction.description}</strong>
                           {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
                         </td>
-                        <td>{transaction.category}</td>
-                        <td><span className={`pill ${transaction.type}`}>{transaction.type}</span></td>
-                        <td>{transaction.bank_name}</td>
+                        <td className="bank-cell">{transaction.bank_name}</td>
                         <td>
-                          <strong>{formatMoney(transaction.amount_mxn)}</strong>
+                          <span className={`pill ${transaction.type}`}>{transaction.category}</span>
+                        </td>
+                        <td>
+                          <strong className={Number(transaction.amount_mxn) >= 0 ? '' : ''}>{formatMoney(transaction.amount_mxn)}</strong>
                           {transaction.original_amount_display ? <span className="sub-amount">{transaction.original_amount_display}</span> : null}
                         </td>
                         <td>
@@ -490,13 +504,14 @@ function App() {
                     ))}
                     {visibleTransactions.length === 0 ? (
                       <tr>
-                        <td colSpan="9" className="empty-cell">No transactions match the current filters.</td>
+                        <td colSpan="8" className="empty-cell">No transactions match the current filters.</td>
                       </tr>
                     ) : null}
                   </tbody>
                 </table>
               </div>
             </section>
+            </div>
           </main>
         ) : (
           <main className="panel statements-panel">
