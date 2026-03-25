@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import and_, case, func, select
+from sqlalchemy.sql import Select
 from sqlalchemy.orm import Session
 
 from app.models import Statement, Transaction
@@ -64,6 +65,7 @@ def prepare_transaction_data(data: dict) -> dict:
         amount_original=raw_amount_original,
         amount_mxn=raw_amount_mxn,
         exchange_rate_used=raw_exchange_rate,
+        local_mxn=Decimal(str(data["local_mxn"])) if data.get("local_mxn") is not None else None,
     )
     description, renamed_notes = apply_special_description_rules(data["description"], amount_mxn, data["bank_name"])
     tx_type, category, fallback_notes = classify_transaction(
@@ -92,6 +94,27 @@ def prepare_transaction_data(data: dict) -> dict:
     }
 
 
+def apply_transaction_filters(
+    stmt: Select,
+    *,
+    month: int | None,
+    year: int,
+    bank_name: str | None = None,
+    category: str | None = None,
+    type: str | None = None,
+) -> Select:
+    stmt = stmt.where(Transaction.year == year)
+    if month is not None:
+        stmt = stmt.where(Transaction.month == month)
+    if bank_name:
+        stmt = stmt.where(Transaction.bank_name == bank_name)
+    if category:
+        stmt = stmt.where(Transaction.category == category)
+    if type:
+        stmt = stmt.where(Transaction.type == type)
+    return stmt
+
+
 def create_transaction(db: Session, tx: TransactionCreate) -> Transaction:
     prepared = prepare_transaction_data(tx.model_dump())
     transaction = Transaction(**prepared)
@@ -112,19 +135,34 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
     return transaction
 
 
-def get_summary(db: Session, month: int, year: int) -> SummaryResponse:
+def get_summary(
+    db: Session,
+    month: int | None,
+    year: int,
+    bank_name: str | None = None,
+    category: str | None = None,
+    type: str | None = None,
+) -> SummaryResponse:
     stmt = (
         select(
             func.coalesce(func.sum(case((Transaction.type == "income", Transaction.amount_mxn), else_=0)), 0),
             func.coalesce(func.sum(case((Transaction.type == "expense", Transaction.amount_mxn), else_=0)), 0),
         )
-        .where(Transaction.month == month, Transaction.year == year, Transaction.type != "ignored")
+        .where(Transaction.type != "ignored")
     )
+    stmt = apply_transaction_filters(stmt, month=month, year=year, bank_name=bank_name, category=category, type=type)
     income, expenses = db.execute(stmt).one()
     return SummaryResponse(income=income, expenses=expenses, net=income - expenses)
 
 
-def get_breakdown(db: Session, month: int, year: int) -> BreakdownResponse:
+def get_breakdown(
+    db: Session,
+    month: int | None,
+    year: int,
+    bank_name: str | None = None,
+    category: str | None = None,
+    type: str | None = None,
+) -> BreakdownResponse:
     stmt = (
         select(
             Transaction.category,
@@ -132,10 +170,11 @@ def get_breakdown(db: Session, month: int, year: int) -> BreakdownResponse:
             func.coalesce(func.sum(Transaction.amount_mxn), 0).label("total"),
             func.count(Transaction.id).label("count"),
         )
-        .where(Transaction.month == month, Transaction.year == year, Transaction.type != "ignored")
+        .where(Transaction.type != "ignored")
         .group_by(Transaction.category, Transaction.type)
         .order_by(Transaction.type, func.sum(Transaction.amount_mxn).desc())
     )
+    stmt = apply_transaction_filters(stmt, month=month, year=year, bank_name=bank_name, category=category, type=type)
     rows = db.execute(stmt).all()
     income = [BreakdownItem(category=r.category, type=r.type, total=r.total, count=r.count) for r in rows if r.type == "income"]
     expenses = [BreakdownItem(category=r.category, type=r.type, total=r.total, count=r.count) for r in rows if r.type == "expense"]

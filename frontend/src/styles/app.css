@@ -529,7 +529,7 @@ h3 {
 
 .analytics-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(124px, auto);
   gap: 0.45rem 0.75rem;
   padding: 0.58rem 0.66rem;
   background: transparent;
@@ -550,7 +550,7 @@ h3 {
 .analytics-row-main {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.65rem;
 }
 
@@ -559,9 +559,8 @@ h3 {
   min-width: 0;
   font-size: 0.88rem;
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .analytics-row-meta {
@@ -569,6 +568,7 @@ h3 {
   align-items: baseline;
   gap: 0.7rem;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .analytics-bar {
@@ -664,6 +664,8 @@ h3 {
 
 .transaction-head span:nth-child(4) {
   text-align: right;
+  justify-self: end;
+  width: 100%;
 }
 
 .transaction-list {
@@ -861,6 +863,8 @@ h3 {
 
 .transaction-amount {
   text-align: right;
+  justify-self: end;
+  width: 100%;
 }
 
 .transaction-amount strong {

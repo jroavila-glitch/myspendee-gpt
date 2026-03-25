@@ -23,8 +23,16 @@ function formatShortDate(value) {
 
 function getCurrentMonthState() {
   const now = new Date()
-  return { month: now.getMonth() + 1, year: now.getFullYear() }
+  return { month: String(now.getMonth() + 1), year: now.getFullYear() }
 }
+
+const MONTH_OPTIONS = [
+  { value: 'ytd', label: 'YTD' },
+  ...Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1
+    return { value: String(month), label: monthFormatter.format(new Date(2026, month - 1, 1)) }
+  }),
+]
 
 function dedupeCategories(categories) {
   return Array.from(new Set([...categories.expense, ...categories.income]))
@@ -256,8 +264,8 @@ function App() {
   const uploadInputRef = useRef(null)
 
   const queryParams = useMemo(() => ({
-    month: String(period.month),
     year: String(period.year),
+    ...(period.month !== 'ytd' ? { month: period.month } : {}),
     ...(filters.bank_name ? { bank_name: filters.bank_name } : {}),
     ...(filters.category ? { category: filters.category } : {}),
     ...(filters.type ? { type: filters.type } : {}),
@@ -453,9 +461,9 @@ function App() {
             <div className="period-pickers">
               <label>
                 <span>Month</span>
-                <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: Number(e.target.value) }))}>
-                  {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                    <option key={month} value={month}>{monthFormatter.format(new Date(2026, month - 1, 1))}</option>
+                <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: e.target.value }))}>
+                  {MONTH_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
               </label>

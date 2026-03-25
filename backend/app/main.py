@@ -23,6 +23,7 @@ from app.schemas.common import (
     UploadResult,
 )
 from app.services.transactions import create_transaction, delete_statement, get_breakdown, get_summary, serialize_transaction, update_transaction
+from app.services.transactions import apply_transaction_filters
 from app.services.upload import process_uploaded_statement
 
 settings = get_settings()
@@ -83,33 +84,42 @@ async def upload_statements(files: list[UploadFile] = File(...), db: Session = D
 
 @app.get("/transactions", response_model=list[TransactionRead])
 def list_transactions(
-    month: int = Query(...),
+    month: int | None = Query(default=None),
     year: int = Query(...),
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[TransactionRead]:
-    stmt = select(Transaction).where(Transaction.month == month, Transaction.year == year)
-    if bank_name:
-        stmt = stmt.where(Transaction.bank_name == bank_name)
-    if category:
-        stmt = stmt.where(Transaction.category == category)
-    if type:
-        stmt = stmt.where(Transaction.type == type)
+    stmt = select(Transaction)
+    stmt = apply_transaction_filters(stmt, month=month, year=year, bank_name=bank_name, category=category, type=type)
     stmt = stmt.order_by(Transaction.date.desc(), Transaction.created_at.desc())
     transactions = db.scalars(stmt).all()
     return [TransactionRead.model_validate(serialize_transaction(tx)) for tx in transactions]
 
 
 @app.get("/summary", response_model=SummaryResponse)
-def summary(month: int = Query(...), year: int = Query(...), db: Session = Depends(get_db)) -> SummaryResponse:
-    return get_summary(db, month, year)
+def summary(
+    month: int | None = Query(default=None),
+    year: int = Query(...),
+    bank_name: str | None = None,
+    category: str | None = None,
+    type: str | None = None,
+    db: Session = Depends(get_db),
+) -> SummaryResponse:
+    return get_summary(db, month, year, bank_name=bank_name, category=category, type=type)
 
 
 @app.get("/breakdown", response_model=BreakdownResponse)
-def breakdown(month: int = Query(...), year: int = Query(...), db: Session = Depends(get_db)) -> BreakdownResponse:
-    return get_breakdown(db, month, year)
+def breakdown(
+    month: int | None = Query(default=None),
+    year: int = Query(...),
+    bank_name: str | None = None,
+    category: str | None = None,
+    type: str | None = None,
+    db: Session = Depends(get_db),
+) -> BreakdownResponse:
+    return get_breakdown(db, month, year, bank_name=bank_name, category=category, type=type)
 
 
 @app.post("/transactions", response_model=TransactionRead)

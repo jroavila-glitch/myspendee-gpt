@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from decimal import Decimal
 
 IGNORE_PATTERNS = [
@@ -55,7 +56,9 @@ EXPENSE_RULES = [
 
 
 def normalize_text(value: str) -> str:
-    return re.sub(r"\s+", " ", value.upper()).strip()
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
+    return re.sub(r"\s+", " ", ascii_text.upper()).strip()
 
 
 def apply_special_description_rules(description: str, amount_mxn: Decimal, bank_name: str) -> tuple[str, str | None]:
