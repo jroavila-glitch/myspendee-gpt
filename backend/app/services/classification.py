@@ -67,11 +67,13 @@ def apply_special_description_rules(description: str, amount_mxn: Decimal, bank_
     notes = None
     if "ALMITAS INC INVEST" in normalized:
         return "Rent - Almitas Inc Invest E Consu Lda", notes
-    if "APARECIDA FERNANDA" in normalized:
+    if "APARECIDA FERNANDA" in normalized and not normalized.startswith("CLEANING -"):
         return f"Cleaning - {description}", notes
-    if "TRF. P/O INES GARDETE LEMOS" in normalized or "TRF P/O INES GARDETE LEMOS" in normalized:
+    if (
+        "TRF. P/O INES GARDETE LEMOS" in normalized or "TRF P/O INES GARDETE LEMOS" in normalized
+    ) and not normalized.startswith("BRIAN -"):
         return f"Brian - {description}", notes
-    if "CAMARA LISBOA CLUBE LISBOA" in normalized:
+    if "CAMARA LISBOA CLUBE LISBOA" in normalized and not normalized.startswith("MONSANTO -"):
         return f"Monsanto - {description}", notes
     if "BONIFIC" in normalized and bank_name.lower().startswith("rappi"):
         return "RappiCard - BONIFICACIÓN CON CASHBACK", notes
@@ -104,6 +106,8 @@ def classify_transaction(
         "MILLENNIUM" in normalized_bank and (
             normalized.startswith("TRF P/")
             or normalized.startswith("TRF P/O")
+            or normalized.startswith("TRF. P/")
+            or normalized.startswith("TRF. P/O")
             or normalized.startswith("BRIAN - TRF P/O")
             or normalized.startswith("BRIAN - TRF. P/O")
         )
