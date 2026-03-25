@@ -48,7 +48,7 @@ EXPENSE_RULES = [
     (r"VODAFONE|TELCEL|REPAIR|M\.REPAIR|ISHOP MIXUP|MACSTORE FORUM CUERNAV|MACSTORE CIB III|APPLE\.COM/BILL", "Phone/Tech"),
     (r"PAYU \*GOOGLE CLOUD|ELEVENLABS|GOOGLE WORKSPACE|GOOGLE \*WORKSPACE", "IG Ro Project"),
     (r"HIGHLEVEL AGENCY SUB|CALENDLY|PADDLE\.NET\* ELFSIGHT|ELFSIGHT", "Perenniam Agency"),
-    (r"NETFLIX|CINEMA|UCI CINEMAS|HELP\.HBOMAX\.COM", "Entertainment"),
+    (r"NETFLIX|CINEMA|UCI CINEMAS|H[BE][A-Z]*\.?HBOMAX\.COM|HBOMAX\.COM", "Entertainment"),
     (r"CLUB7|CLUBE VII", "Gym"),
     (r"CONTA PACOTE PROGRAMA PRESTIGE|IVA POR INTERESES|IVA INTERES|INTERES EXENTO|INTERES GRAVABLE|INTERESES|INTERES|IMPOSTO SELO|COMISION", "Bills/Fees"),
     (r"ALGARVEKNOWHOW", "Visa Portugal"),
@@ -65,12 +65,24 @@ def normalize_text(value: str) -> str:
 def apply_special_description_rules(description: str, amount_mxn: Decimal, bank_name: str) -> tuple[str, str | None]:
     normalized = normalize_text(description)
     notes = None
+    cleaned_description = description
+    cleaned_description = re.sub(r"^(Brian - )+", "Brian - ", cleaned_description)
+    cleaned_description = re.sub(r"^(Monsanto - )+", "Monsanto - ", cleaned_description)
+    cleaned_description = re.sub(r"^(Cleaning - )+", "Cleaning - ", cleaned_description)
+    cleaned_description = re.sub(r"hblp\.hbomax\.com", "help.hbomax.com", cleaned_description, flags=re.IGNORECASE)
+    cleaned_description = re.sub(r"INES\s+G[AR]?RADETE\s+LEMOS", "INES GARDETE LEMOS", cleaned_description, flags=re.IGNORECASE)
+    cleaned_description = re.sub(r"ANA\s+LEONCASTRE\s+PENHA\s+COSTA", "JOANA LANCASTRE PENHA COSTA", cleaned_description, flags=re.IGNORECASE)
+    description = cleaned_description
+    normalized = normalize_text(description)
     if "ALMITAS INC INVEST" in normalized:
         return "Rent - Almitas Inc Invest E Consu Lda", notes
     if "APARECIDA FERNANDA" in normalized and not normalized.startswith("CLEANING -"):
         return f"Cleaning - {description}", notes
     if (
-        "TRF. P/O INES GARDETE LEMOS" in normalized or "TRF P/O INES GARDETE LEMOS" in normalized
+        "TRF. P/O INES GARDETE LEMOS" in normalized
+        or "TRF P/O INES GARDETE LEMOS" in normalized
+        or "TRF. P/ INES GARDETE LEMOS" in normalized
+        or "TRF P/ INES GARDETE LEMOS" in normalized
     ) and not normalized.startswith("BRIAN -"):
         return f"Brian - {description}", notes
     if "CAMARA LISBOA CLUBE LISBOA" in normalized and not normalized.startswith("MONSANTO -"):
@@ -108,10 +120,12 @@ def classify_transaction(
             or normalized.startswith("TRF P/O")
             or normalized.startswith("TRF. P/")
             or normalized.startswith("TRF. P/O")
+            or normalized.startswith("TRF DE ")
+            or normalized.startswith("TRF MB WAY DE ")
             or normalized.startswith("BRIAN - TRF P/O")
             or normalized.startswith("BRIAN - TRF. P/O")
         )
-    ) or "TRANSFER FROM" in normalized
+    ) or "TRANSFER FROM" in normalized or normalized.startswith("TRF MB WAY DE ")
 
     if "AMAZON" in normalized and amount_mxn == Decimal("149"):
         return "ignored", "ignored", None
