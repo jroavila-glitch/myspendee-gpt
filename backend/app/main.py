@@ -28,9 +28,17 @@ from app.services.upload import process_uploaded_statement
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
 
+
+def _allowed_origins() -> list[str]:
+    raw = settings.frontend_url or ""
+    origins = [item.strip() for item in raw.split(",") if item.strip()]
+    origins.append("http://localhost:5173")
+    return list(dict.fromkeys(origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:5173"],
+    allow_origins=_allowed_origins(),
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
