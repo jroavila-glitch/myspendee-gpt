@@ -101,7 +101,12 @@ def classify_transaction(
     threshold_amount = amount_original if amount_original is not None else amount_mxn
     is_tennis_bank = "REVOLUT" in normalized_bank or "MILLENNIUM" in normalized_bank
     looks_like_person_transfer_income = (
-        "MILLENNIUM" in normalized_bank and normalized.startswith("TRF P/")
+        "MILLENNIUM" in normalized_bank and (
+            normalized.startswith("TRF P/")
+            or normalized.startswith("TRF P/O")
+            or normalized.startswith("BRIAN - TRF P/O")
+            or normalized.startswith("BRIAN - TRF. P/O")
+        )
     ) or "TRANSFER FROM" in normalized
 
     if "AMAZON" in normalized and amount_mxn == Decimal("149"):
