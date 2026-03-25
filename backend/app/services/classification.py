@@ -18,6 +18,7 @@ IGNORE_PATTERNS = [
     "PAGO POR SPEI",
     "CONVERSION USDC A EURC",
     "TRF P/ BRIDGE BUILDING",
+    "BRIDGE BUILDING",
     "DIFERIMIENTO DE SALDO APP MOBILE",
     "COMPRA EURC COMISION",
     "VENTA EURC COMISION",
@@ -49,7 +50,7 @@ EXPENSE_RULES = [
     (r"HIGHLEVEL AGENCY SUB|CALENDLY|PADDLE\.NET\* ELFSIGHT|ELFSIGHT", "Perenniam Agency"),
     (r"NETFLIX|CINEMA|UCI CINEMAS|HELP\.HBOMAX\.COM", "Entertainment"),
     (r"CLUB7|CLUBE VII", "Gym"),
-    (r"IVA POR INTERESES|IVA INTERES|INTERES EXENTO|INTERES GRAVABLE|INTERESES|INTERES|IMPOSTO SELO|COMISION", "Bills/Fees"),
+    (r"CONTA PACOTE PROGRAMA PRESTIGE|IVA POR INTERESES|IVA INTERES|INTERES EXENTO|INTERES GRAVABLE|INTERESES|INTERES|IMPOSTO SELO|COMISION", "Bills/Fees"),
     (r"ALGARVEKNOWHOW", "Visa Portugal"),
     (r"FUNDEDNEXT", "Other"),
 ]
@@ -88,16 +89,37 @@ def classify_transaction(
     description: str,
     amount_mxn: Decimal,
     bank_name: str,
+    amount_original: Decimal | None = None,
+    currency_original: str | None = None,
     current_type: str | None = None,
     current_category: str | None = None,
 ) -> tuple[str, str, str | None]:
     normalized = normalize_text(description)
+    normalized_bank = normalize_text(bank_name)
+    normalized_currency = normalize_text(currency_original or "MXN")
+
+    threshold_amount = amount_original if amount_original is not None else amount_mxn
+    is_tennis_bank = "REVOLUT" in normalized_bank or "MILLENNIUM" in normalized_bank
+    looks_like_person_transfer_income = (
+        "MILLENNIUM" in normalized_bank and normalized.startswith("TRF P/")
+    ) or "TRANSFER FROM" in normalized
 
     if "AMAZON" in normalized and amount_mxn == Decimal("149"):
         return "ignored", "ignored", None
 
     if any(pattern in normalized for pattern in IGNORE_PATTERNS):
         return "ignored", "ignored", None
+
+    if "TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES" in normalized or "TRF MB WAY P/ FERNANDO ALVES" in normalized:
+        return "expense", "Healthcare", None
+
+    if is_tennis_bank and ("ROMAN JERZY SOBKOWIAK" in normalized):
+        return "income", "Ro IG Tennis", None
+
+    if is_tennis_bank and (current_type == "income" or looks_like_person_transfer_income):
+        if threshold_amount <= Decimal("30"):
+            return "income", "Tennis Smash & Social", None
+        return "income", "Tennis Lessons", None
 
     for pattern, result in INCOME_RULES:
         if re.search(pattern, normalized, re.IGNORECASE):
@@ -113,6 +135,10 @@ def classify_transaction(
             return tx_type, category, None
 
     if current_type in {"income", "expense", "ignored"} and current_category:
+        if current_category == "Bank Fee":
+            return current_type, "Bills/Fees", None
+        if current_category == "Transfer":
+            return current_type, ("Tennis Lessons" if current_type == "income" else "Other"), None
         return current_type, current_category, None
 
     fallback_type = "expense"
