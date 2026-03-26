@@ -20,23 +20,46 @@ SPANISH_MONTHS = {
     "dic": 12,
 }
 
-PERIOD_RE = re.compile(
-    r"Periodo facturado\s+(\d{1,2})\s+([a-z]{3})\.\s+(\d{4})\s*-\s*(\d{1,2})\s+([a-z]{3})\.\s+(\d{4})",
-    re.IGNORECASE,
+PERIOD_RES = (
+    re.compile(
+        r"Periodo facturado\s+(\d{1,2})\s+([a-z]{3})\.\s+(\d{4})\s*-\s*(\d{1,2})\s+([a-z]{3})\.\s+(\d{4})",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"Periodo\s+(\d{1,2})-([a-z]{3})-(\d{4})\s+al\s+(\d{1,2})-([a-z]{3})-(\d{4})",
+        re.IGNORECASE,
+    ),
 )
 INSTALLMENT_ROW_RE = re.compile(
     r"^(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+\$\s*(?P<original>[\d,]+\.\d{2})\s+"
     r"\$\s*(?P<pending>[\d,]+\.\d{2})\s+\$\s*(?P<interest>[\d,]+\.\d{2})\s+"
     r"(?P<current>\d+)\s+de\s+(?P<total>\d+)\s+\$\s*(?P<mensualidad>[\d,]+\.\d{2})$"
 )
+BANORTE_INSTALLMENT_ROW_RE = re.compile(
+    r"^(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+\$\s*(?P<original>[\d,]+\.\d{2})\s+"
+    r"\$\s*(?P<pending>[\d,]+\.\d{2})\s+\$\s*(?P<interest>[\d,]+\.\d{2})\s+\$\s*(?P<vat>[\d,]+\.\d{2})\s+"
+    r"\$\s*(?P<required>[\d,]+\.\d{2})\s+(?P<current>\d+)\s+de\s+(?P<total>\d+)\s+(?P<rate>[\d.]+)%$"
+)
 DATE_PREFIX_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})(?:\s+(?P<rest>.*))?$")
+DOUBLE_DATE_PREFIX_RE = re.compile(
+    r"^(?P<operation_date>\d{4}-\d{2}-\d{2})\s+(?P<posting_date>\d{4}-\d{2}-\d{2})\s+(?P<rest>.*)$"
+)
 FOREIGN_CHARGE_RE = re.compile(
     r"^(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+Compra en el Extranjero\s+Tasa de cambio\s+\$?(?P<rate>[\d.]+)\s+"
     r"(?P<currency>[A-Z]{3})\s+(?P<original>[\d.]+)\s+\$(?P<mxn>[\d,]+\.\d{2})$",
     re.IGNORECASE,
 )
+BANORTE_FOREIGN_CHARGE_RE = re.compile(
+    r"^(?P<operation_date>\d{4}-\d{2}-\d{2})\s+(?P<posting_date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+"
+    r"Compra en el extranjero\s+Tasa de conversión\s+\$(?P<rate>[\d.]+)\s+"
+    r"(?P<currency>[A-Z]{3})\s+\$(?P<original>[\d.]+)\s+(?P<sign>[+-])\$(?P<mxn>[\d,]+\.\d{2})$",
+    re.IGNORECASE,
+)
 LOCAL_CHARGE_RE = re.compile(
     r"^(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+\$(?P<discard>[\d,]+\.\d{2})\s+\$(?P<mxn>[\d,]+\.\d{2})$"
+)
+BANORTE_LOCAL_ENTRY_RE = re.compile(
+    r"^(?P<operation_date>\d{4}-\d{2}-\d{2})\s+(?P<posting_date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+(?P<sign>[+-])\$(?P<mxn>[\d,]+\.\d{2})$"
 )
 PAYMENT_RE = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<detail>.+?)\s+(?P<mxn>[\d,]+\.\d{2})$")
 
@@ -55,18 +78,31 @@ def _extract_text(pdf_bytes: bytes) -> str:
 
 
 def _extract_period(text: str) -> tuple[str | None, str | None]:
-    match = PERIOD_RE.search(text)
-    if not match:
-        return None, None
-    return (
-        _parse_spanish_date(match.group(1), match.group(2), match.group(3)),
-        _parse_spanish_date(match.group(4), match.group(5), match.group(6)),
-    )
+    for period_re in PERIOD_RES:
+        match = period_re.search(text)
+        if match:
+            return (
+                _parse_spanish_date(match.group(1), match.group(2), match.group(3)),
+                _parse_spanish_date(match.group(4), match.group(5), match.group(6)),
+            )
+    return None, None
 
 
 def _extract_installment_section(text: str) -> str:
     start_marker = "Compras a meses\nFecha Más detalle Monto original Pendiente Interés # de Mensualidad Mensualidad"
     end_marker = "\nSubtotal $"
+    start = text.find(start_marker)
+    if start < 0:
+        return ""
+    end = text.find(end_marker, start + len(start_marker))
+    if end < 0:
+        return text[start:]
+    return text[start:end]
+
+
+def _extract_banorte_installment_section(text: str) -> str:
+    start_marker = "DESGLOSE DE MOVIMIENTOS\n COMPRAS Y CARGOS DIFERIDOS A MESES CON INTERESES"
+    end_marker = "\n CARGOS, ABONOS Y COMPRAS REGULARES (NO A MESES)"
     start = text.find(start_marker)
     if start < 0:
         return ""
@@ -96,6 +132,31 @@ def _parse_installment_blocks(section: str) -> list[str]:
         if not stripped or stripped == "Compras a meses" or stripped.startswith("Fecha Más detalle"):
             continue
         if re.match(r"^\d{4}-\d{2}-\d{2}\b", stripped):
+            if current:
+                blocks.append(" ".join(current))
+            current = [stripped]
+        elif current:
+            current.append(stripped)
+
+    if current:
+        blocks.append(" ".join(current))
+    return blocks
+
+
+def _parse_banorte_regular_blocks(section: str) -> list[str]:
+    lines = [line.rstrip() for line in section.splitlines()]
+    blocks: list[str] = []
+    current: list[str] = []
+
+    for line in lines:
+        stripped = re.sub(r"\s+", " ", line).strip()
+        if not stripped:
+            continue
+        if stripped.startswith(("Fecha de la", "operación Fecha cargo", "Descripción del movimiento", "Monto", "Tarjeta digital titular")):
+            continue
+        if stripped.startswith("Número de contrato:") or stripped.startswith("Página ") or stripped.startswith("Ver notas"):
+            continue
+        if DOUBLE_DATE_PREFIX_RE.match(stripped):
             if current:
                 blocks.append(" ".join(current))
             current = [stripped]
@@ -192,6 +253,61 @@ def _parse_regular_transactions(text: str) -> list[dict]:
     return transactions
 
 
+def _parse_banorte_regular_transactions(text: str) -> list[dict]:
+    section = _extract_section(
+        text,
+        "CARGOS, ABONOS Y COMPRAS REGULARES (NO A MESES)",
+        "Total de cargos",
+    )
+    if not section:
+        return []
+
+    transactions: list[dict] = []
+    for block in _parse_banorte_regular_blocks(section):
+        foreign_match = BANORTE_FOREIGN_CHARGE_RE.match(block)
+        if foreign_match:
+            sign = foreign_match.group("sign")
+            mxn = _parse_money(foreign_match.group("mxn"))
+            direction = "out" if sign == "+" else "in"
+            transactions.append(
+                {
+                    "date": foreign_match.group("operation_date"),
+                    "description": foreign_match.group("detail").strip(),
+                    "amount_original": float(Decimal(foreign_match.group("original"))),
+                    "currency_original": foreign_match.group("currency").upper(),
+                    "direction": direction,
+                    "exchange_rate": float(Decimal(foreign_match.group("rate"))),
+                    "local_mxn": float(mxn),
+                    "category": "Other",
+                    "type": "expense" if direction == "out" else "income",
+                    "notes": "",
+                }
+            )
+            continue
+
+        local_match = BANORTE_LOCAL_ENTRY_RE.match(block)
+        if not local_match:
+            continue
+        mxn = _parse_money(local_match.group("mxn"))
+        direction = "out" if local_match.group("sign") == "+" else "in"
+        transactions.append(
+            {
+                "date": local_match.group("operation_date"),
+                "description": local_match.group("detail").strip(),
+                "amount_original": float(mxn),
+                "currency_original": "MXN",
+                "direction": direction,
+                "exchange_rate": 1.0,
+                "local_mxn": float(mxn),
+                "category": "Other",
+                "type": "expense" if direction == "out" else "income",
+                "notes": "",
+            }
+        )
+
+    return transactions
+
+
 def _parse_payment_transactions(text: str) -> list[dict]:
     section = _extract_section(text, "Fecha Detalle Importe pagos", "Total pagos del periodo")
     if not section:
@@ -229,6 +345,7 @@ def parse_rappi_pdf(pdf_bytes: bytes) -> dict | None:
     period_start, period_end = _extract_period(text)
     transactions: list[dict] = []
     transactions.extend(_parse_regular_transactions(text))
+    transactions.extend(_parse_banorte_regular_transactions(text))
     transactions.extend(_parse_payment_transactions(text))
 
     section = _extract_installment_section(text)
@@ -241,6 +358,32 @@ def parse_rappi_pdf(pdf_bytes: bytes) -> dict | None:
         installment_note = f"Installment {match.group('current')}/{match.group('total')}"
         notes = installment_note if not extra_note else f"{installment_note}. {extra_note}"
         mensualidad = _parse_money(match.group("mensualidad"))
+
+        transactions.append(
+            {
+                "date": match.group("date"),
+                "description": detail,
+                "amount_original": float(mensualidad),
+                "currency_original": "MXN",
+                "direction": "out",
+                "exchange_rate": 1.0,
+                "local_mxn": float(mensualidad),
+                "category": "Other",
+                "type": "expense",
+                "notes": notes,
+            }
+        )
+
+    banorte_section = _extract_banorte_installment_section(text)
+    for block in _parse_installment_blocks(banorte_section):
+        match = BANORTE_INSTALLMENT_ROW_RE.match(block)
+        if not match:
+            continue
+
+        detail, extra_note = _clean_detail(match.group("detail"))
+        installment_note = f"Installment {match.group('current')}/{match.group('total')}"
+        notes = installment_note if not extra_note else f"{installment_note}. {extra_note}"
+        mensualidad = _parse_money(match.group("required"))
 
         transactions.append(
             {
