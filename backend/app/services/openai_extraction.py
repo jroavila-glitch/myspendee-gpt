@@ -116,6 +116,8 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
         return banamex_result
 
     rappi_result = parse_rappi_pdf(pdf_bytes)
+    if rappi_result and rappi_result.get("transactions"):
+        return rappi_result
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     images = pdf_to_base64_images(pdf_bytes)
