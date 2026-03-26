@@ -8,6 +8,7 @@ from openai import OpenAI
 from pdf2image import convert_from_bytes
 
 from app.services.banamex_parser import parse_banamex_pdf
+from app.services.rappi_parser import parse_rappi_pdf
 
 
 EXTRACTION_PROMPT = """
@@ -84,10 +85,35 @@ def pdf_to_base64_images(pdf_bytes: bytes) -> list[str]:
     return encoded_pages
 
 
+def _merge_transactions(existing: list[dict], additions: list[dict]) -> list[dict]:
+    merged = list(existing)
+    seen = {
+        (
+            item.get("date"),
+            (item.get("description") or "").strip().upper(),
+            str(item.get("local_mxn") or item.get("amount_original") or ""),
+        )
+        for item in existing
+    }
+    for item in additions:
+        key = (
+            item.get("date"),
+            (item.get("description") or "").strip().upper(),
+            str(item.get("local_mxn") or item.get("amount_original") or ""),
+        )
+        if key in seen:
+            continue
+        merged.append(item)
+        seen.add(key)
+    return merged
+
+
 def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
     banamex_result = parse_banamex_pdf(pdf_bytes)
     if banamex_result and banamex_result.get("transactions"):
         return banamex_result
+
+    rappi_result = parse_rappi_pdf(pdf_bytes)
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     images = pdf_to_base64_images(pdf_bytes)
@@ -128,5 +154,11 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
         if not overall["period_end"]:
             overall["period_end"] = parsed.get("period_end")
         overall["transactions"].extend(parsed.get("transactions", []))
+
+    if rappi_result:
+        overall["bank_name"] = rappi_result.get("bank_name", "") or overall["bank_name"]
+        overall["period_start"] = overall["period_start"] or rappi_result.get("period_start")
+        overall["period_end"] = overall["period_end"] or rappi_result.get("period_end")
+        overall["transactions"] = _merge_transactions(overall["transactions"], rappi_result.get("transactions", []))
 
     return overall
