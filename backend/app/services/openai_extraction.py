@@ -76,7 +76,9 @@ def _chunked(values: list[str], size: int) -> Iterable[list[str]]:
 
 
 def pdf_to_base64_images(pdf_bytes: bytes) -> list[str]:
-    pages = convert_from_bytes(pdf_bytes, fmt="jpeg")
+    # Use a lower DPI to avoid extremely tall statement pages tripping Pillow's
+    # decompression-bomb guard during upload.
+    pages = convert_from_bytes(pdf_bytes, fmt="jpeg", dpi=150)
     encoded_pages: list[str] = []
     for page in pages:
         buffer = BytesIO()
