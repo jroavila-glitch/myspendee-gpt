@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Statement, Transaction
 from app.schemas.common import BreakdownItem, BreakdownResponse, SummaryResponse, TransactionCreate, TransactionUpdate
 from app.services.classification import apply_special_description_rules, classify_transaction
-from app.services.normalization import resolve_amounts
+from app.services.normalization import normalize_bank_name, resolve_amounts
 
 
 def _format_original_amount(amount_original: Decimal | None, currency: str, amount_mxn: Decimal, rate: Decimal | None) -> str | None:
@@ -54,12 +54,13 @@ def serialize_transaction(transaction: Transaction) -> dict:
 
 def prepare_transaction_data(data: dict) -> dict:
     tx_date: date = data["date"]
+    bank_name = normalize_bank_name(data["bank_name"])
     raw_amount_mxn = Decimal(str(data["amount_mxn"])) if data.get("amount_mxn") is not None else None
     raw_amount_original = Decimal(str(data["amount_original"])) if data.get("amount_original") is not None else None
     raw_exchange_rate = Decimal(str(data["exchange_rate_used"])) if data.get("exchange_rate_used") is not None else None
     currency_original = data.get("currency_original") or "MXN"
     amount_original, amount_mxn, exchange_rate_used, normalization_notes = resolve_amounts(
-        bank_name=data["bank_name"],
+        bank_name=bank_name,
         description=data["description"],
         currency_original=currency_original,
         amount_original=raw_amount_original,
@@ -67,11 +68,11 @@ def prepare_transaction_data(data: dict) -> dict:
         exchange_rate_used=raw_exchange_rate,
         local_mxn=Decimal(str(data["local_mxn"])) if data.get("local_mxn") is not None else None,
     )
-    description, renamed_notes = apply_special_description_rules(data["description"], amount_mxn, data["bank_name"])
+    description, renamed_notes = apply_special_description_rules(data["description"], amount_mxn, bank_name)
     tx_type, category, fallback_notes = classify_transaction(
         description=description,
         amount_mxn=amount_mxn,
-        bank_name=data["bank_name"],
+        bank_name=bank_name,
         amount_original=amount_original,
         currency_original=currency_original,
         current_type=data.get("type"),
@@ -87,7 +88,7 @@ def prepare_transaction_data(data: dict) -> dict:
         "exchange_rate_used": exchange_rate_used,
         "category": category,
         "type": tx_type,
-        "bank_name": data["bank_name"],
+        "bank_name": bank_name,
         "month": tx_date.month,
         "year": tx_date.year,
         "manually_added": bool(data.get("manually_added", False)),

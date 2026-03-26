@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Statement, Transaction
 from app.services.openai_extraction import extract_transactions_from_pdf
+from app.services.normalization import normalize_bank_name
 from app.services.transactions import duplicate_exists, prepare_transaction_data
 
 
@@ -14,9 +15,10 @@ def process_uploaded_statement(db: Session, filename: str, pdf_bytes: bytes) -> 
         raise ValueError("Uploaded file is empty")
 
     extracted = extract_transactions_from_pdf(pdf_bytes)
+    normalized_bank_name = normalize_bank_name(extracted.get("bank_name") or "Unknown")
     statement = Statement(
         filename=filename,
-        bank_name=extracted.get("bank_name") or "Unknown",
+        bank_name=normalized_bank_name,
         period_start=date.fromisoformat(extracted["period_start"]) if extracted.get("period_start") else None,
         period_end=date.fromisoformat(extracted["period_end"]) if extracted.get("period_end") else None,
         transaction_count=0,
@@ -43,7 +45,7 @@ def process_uploaded_statement(db: Session, filename: str, pdf_bytes: bytes) -> 
                 "exchange_rate_used": row.get("exchange_rate"),
                 "category": row.get("category") or "Other",
                 "type": row.get("type") or ("income" if row.get("direction") == "in" else "expense"),
-                "bank_name": extracted.get("bank_name") or "Unknown",
+                "bank_name": normalized_bank_name,
                 "notes": row.get("notes") or None,
                 "statement_id": statement.id,
                 "manually_added": False,

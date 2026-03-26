@@ -19,6 +19,19 @@ CURRENCY_ALIASES = {
 }
 
 
+def normalize_bank_name(bank_name: str) -> str:
+    normalized = normalize_text(bank_name)
+    if normalized == "NU" or normalized.startswith("NU ") or "NU MEXICO" in normalized:
+        return "Nu"
+    if "HSBC" in normalized:
+        return "HSBC"
+    if "MILLENIUM" in normalized or "MILLENNIUM" in normalized:
+        return "Millennium BCP"
+    if "REVOLUT" in normalized:
+        return "Revolut"
+    return bank_name
+
+
 def quantize_money(value: Decimal | int | float | str) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 

@@ -133,6 +133,9 @@ def classify_transaction(
     if any(pattern in normalized for pattern in IGNORE_PATTERNS):
         return "ignored", "ignored", None
 
+    if "HSBC" in normalized_bank and "SPEI A CTA" in normalized:
+        return "ignored", "ignored", None
+
     if "TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES" in normalized or "TRF MB WAY P/ FERNANDO ALVES" in normalized:
         return "expense", "Healthcare", None
 
