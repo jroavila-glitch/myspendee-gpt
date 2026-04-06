@@ -40,6 +40,7 @@ export const api = {
   listTransactions: (params) => request(`/transactions?${new URLSearchParams(params).toString()}`),
   summary: (params) => request(`/summary?${new URLSearchParams(params).toString()}`),
   breakdown: (params) => request(`/breakdown?${new URLSearchParams(params).toString()}`),
+  fxRates: (params = {}) => request(`/fx-rates?${new URLSearchParams(params).toString()}`),
   banks: () => request('/banks'),
   categories: () => request('/categories'),
   statements: () => request('/statements'),

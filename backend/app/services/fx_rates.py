@@ -12,6 +12,10 @@ USD_URL = "https://www.banxico.org.mx/tipcamb/tipCamIHAction.do"
 EURO_URL = "https://www.banxico.org.mx/tipcamb/otrasDivHistAction.do"
 DATE_RE = r"(?P<date>\d{2}/\d{2}/\d{4})"
 VALUE_RE = r"(?P<value>\d+\.\d+|N/E)"
+DISPLAY_RATE_FALLBACKS = {
+    "EUR": Decimal("21.5"),
+    "USD": Decimal("17.9"),
+}
 
 
 def _format_banxico_date(value: date) -> str:
@@ -97,3 +101,11 @@ def get_banxico_rate(currency: str, target_date: date, lookback_days: int = 7) -
         if rate is not None:
             return rate
     return None
+
+
+def get_display_rates(target_date: date | None = None) -> dict[str, Decimal]:
+    effective_date = target_date or date.today()
+    rates: dict[str, Decimal] = {"MXN": Decimal("1")}
+    for currency in ("EUR", "USD"):
+        rates[currency] = get_banxico_rate(currency, effective_date) or DISPLAY_RATE_FALLBACKS[currency]
+    return rates

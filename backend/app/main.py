@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
@@ -24,6 +24,7 @@ from app.schemas.common import (
 )
 from app.services.transactions import create_transaction, delete_statement, get_breakdown, get_summary, serialize_transaction, update_transaction
 from app.services.transactions import apply_transaction_filters
+from app.services.fx_rates import get_display_rates
 from app.services.upload import process_uploaded_statement
 
 settings = get_settings()
@@ -193,3 +194,9 @@ def banks(db: Session = Depends(get_db)) -> list[str]:
 @app.get("/categories", response_model=dict[str, list[str]])
 def categories() -> dict[str, list[str]]:
     return {"income": INCOME_CATEGORIES, "expense": EXPENSE_CATEGORIES}
+
+
+@app.get("/fx-rates")
+def fx_rates(target_date: date | None = Query(default=None)) -> dict[str, str]:
+    rates = get_display_rates(target_date)
+    return {currency: f"{rate:.6f}" for currency, rate in rates.items()}

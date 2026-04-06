@@ -247,6 +247,27 @@ h3 {
   flex-wrap: wrap;
 }
 
+.display-currency-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
+  min-width: 96px;
+}
+
+.display-currency-picker span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.display-currency-picker select {
+  min-width: 96px;
+  padding: 0.62rem 0.8rem;
+  border-radius: 10px;
+}
+
 .view-toggle {
   display: inline-flex;
   gap: 0.2rem;

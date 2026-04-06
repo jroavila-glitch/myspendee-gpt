@@ -3,14 +3,22 @@ import { createPortal } from 'react-dom'
 import { api } from './lib/api'
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
-const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'MXN' })
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const BreakdownChart = lazy(() => import('./components/BreakdownChart'))
 const PIE_COLORS = ['#1d7a6f', '#f47d38', '#d85757', '#4c6fff', '#c59a2d', '#74809b']
+const DISPLAY_CURRENCIES = ['MXN', 'EUR', 'USD']
+const moneyFormatters = new Map()
 
-function formatMoney(value) {
-  return currencyFormatter.format(Number(value || 0))
+function getMoneyFormatter(currency) {
+  if (!moneyFormatters.has(currency)) {
+    moneyFormatters.set(currency, new Intl.NumberFormat('en-US', { style: 'currency', currency }))
+  }
+  return moneyFormatters.get(currency)
+}
+
+function formatMoney(value, currency = 'MXN') {
+  return getMoneyFormatter(currency).format(Number(value || 0))
 }
 
 function formatPercent(value) {
@@ -42,6 +50,39 @@ function formatStatementPeriod(statement) {
   if (!statement.period_start && !statement.period_end) return 'Unknown period'
   if (!statement.period_start || !statement.period_end) return statement.period_start || statement.period_end
   return `${statement.period_start} - ${statement.period_end}`
+}
+
+function toNumber(value) {
+  return Number(value || 0)
+}
+
+function getDisplayAmount(transaction, displayCurrency, displayRates) {
+  const amountMxn = toNumber(transaction.amount_mxn)
+  if (displayCurrency === 'MXN') return amountMxn
+
+  const originalCurrency = (transaction.currency_original || 'MXN').toUpperCase()
+  const amountOriginal = transaction.amount_original != null ? toNumber(transaction.amount_original) : null
+  const exchangeRate = transaction.exchange_rate_used != null ? toNumber(transaction.exchange_rate_used) : null
+
+  if (originalCurrency === displayCurrency) {
+    if (amountOriginal != null) return amountOriginal
+    if (exchangeRate) return amountMxn / exchangeRate
+  }
+
+  const fallbackRate = toNumber(displayRates[displayCurrency])
+  if (!fallbackRate) return amountMxn
+  return amountMxn / fallbackRate
+}
+
+function getSecondaryAmountLabel(transaction, displayCurrency) {
+  const originalCurrency = (transaction.currency_original || 'MXN').toUpperCase()
+  if (displayCurrency === 'MXN') {
+    return transaction.original_amount_display || null
+  }
+  if (originalCurrency !== displayCurrency && transaction.original_amount_display) {
+    return transaction.original_amount_display
+  }
+  return `MXN ${toNumber(transaction.amount_mxn).toFixed(2)}`
 }
 
 function getReviewReason(transaction) {
@@ -77,11 +118,18 @@ function getRoommateLabel(transaction) {
   return null
 }
 
-function buildRoommateSnapshot(transactions) {
+function buildRoommateSnapshot(transactions, displayCurrency, displayRates) {
   const entries = transactions
     .map((transaction) => {
       const label = getRoommateLabel(transaction)
-      return label ? { ...transaction, roommateLabel: label } : null
+      return label
+        ? {
+            ...transaction,
+            roommateLabel: label,
+            displayAmount: getDisplayAmount(transaction, displayCurrency, displayRates),
+            secondaryAmountLabel: getSecondaryAmountLabel(transaction, displayCurrency),
+          }
+        : null
     })
     .filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -93,7 +141,7 @@ function buildRoommateSnapshot(transactions) {
   }
 
   for (const item of entries) {
-    totals[item.roommateLabel] += Number(item.amount_mxn || 0)
+    totals[item.roommateLabel] += item.displayAmount
   }
 
   return {
@@ -108,12 +156,12 @@ function SummaryCard({ label, value, tone }) {
   return (
     <div className={`summary-card ${tone}`}>
       <span>{label}</span>
-      <strong>{formatMoney(value)}</strong>
+      <strong>{formatMoney(value.value, value.currency)}</strong>
     </div>
   )
 }
 
-function BreakdownSection({ title, data, onSelectCategory, tone }) {
+function BreakdownSection({ title, data, onSelectCategory, tone, displayCurrency }) {
   const total = data.reduce((sum, item) => sum + Number(item.total || 0), 0)
 
   return (
@@ -123,7 +171,7 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
           <h3>{title}</h3>
           <p className="section-meta">{data.length ? `${data.length} categories` : 'No activity this period'}</p>
         </div>
-        {data.length ? <strong className="panel-total">{formatMoney(total)}</strong> : null}
+        {data.length ? <strong className="panel-total">{formatMoney(total, displayCurrency)}</strong> : null}
       </div>
 
       {data.length === 0 ? (
@@ -153,7 +201,7 @@ function BreakdownSection({ title, data, onSelectCategory, tone }) {
                   </div>
                   <div className="analytics-row-meta">
                     <div className="analytics-row-values">
-                      <strong>{formatMoney(item.total)}</strong>
+                      <strong>{formatMoney(item.total, displayCurrency)}</strong>
                     </div>
                     <div className="analytics-row-share">
                       <span>{formatPercent(share)}</span>
@@ -275,9 +323,9 @@ function App() {
   const [tab, setTab] = useState('dashboard')
   const [period, setPeriod] = useState(getCurrentMonthState)
   const [filters, setFilters] = useState({ bank_name: '', category: '', type: '' })
+  const [displayCurrency, setDisplayCurrency] = useState('MXN')
+  const [displayRates, setDisplayRates] = useState({ MXN: 1, EUR: 21.5, USD: 17.9 })
   const [searchText, setSearchText] = useState('')
-  const [summary, setSummary] = useState({ income: 0, expenses: 0, net: 0 })
-  const [breakdown, setBreakdown] = useState({ income: [], expenses: [] })
   const [transactions, setTransactions] = useState([])
   const [statements, setStatements] = useState([])
   const [banks, setBanks] = useState([])
@@ -317,11 +365,47 @@ function App() {
     [transactions],
   )
   const reviewSummary = useMemo(() => summarizeReviewItems(reviewItems), [reviewItems])
-  const roommateSnapshot = useMemo(() => buildRoommateSnapshot(transactions), [transactions])
+  const roommateSnapshot = useMemo(
+    () => buildRoommateSnapshot(transactions, displayCurrency, displayRates),
+    [transactions, displayCurrency, displayRates],
+  )
+
+  const analytics = useMemo(() => {
+    const base = {
+      summary: { income: 0, expenses: 0, net: 0 },
+      breakdown: { income: [], expenses: [] },
+    }
+    const grouped = new Map()
+
+    for (const transaction of transactions) {
+      if (transaction.type === 'ignored') continue
+      const amount = getDisplayAmount(transaction, displayCurrency, displayRates)
+      if (transaction.type === 'income') base.summary.income += amount
+      if (transaction.type === 'expense') base.summary.expenses += amount
+      const key = `${transaction.type}::${transaction.category}`
+      const current = grouped.get(key) || {
+        category: transaction.category,
+        type: transaction.type,
+        total: 0,
+        count: 0,
+      }
+      current.total += amount
+      current.count += 1
+      grouped.set(key, current)
+    }
+
+    base.summary.net = base.summary.income - base.summary.expenses
+    const items = Array.from(grouped.values())
+      .map((item) => ({ ...item, total: Number(item.total.toFixed(2)) }))
+      .sort((a, b) => b.total - a.total)
+    base.breakdown.income = items.filter((item) => item.type === 'income')
+    base.breakdown.expenses = items.filter((item) => item.type === 'expense')
+    return base
+  }, [transactions, displayCurrency, displayRates])
 
   const visibleTransactions = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase()
-    return transactions.filter((transaction) => {
+      const normalizedSearch = searchText.trim().toLowerCase()
+      return transactions.filter((transaction) => {
       if (transactionView === 'review' && !getReviewReason(transaction)) return false
       if (transactionView === 'ignored' && transaction.type !== 'ignored') return false
       const haystack = [
@@ -354,20 +438,22 @@ function App() {
   async function loadAll() {
     try {
       setError('')
-      const [summaryRes, breakdownRes, transactionsRes, statementsRes, banksRes, categoriesRes] = await Promise.all([
-        api.summary(queryParams),
-        api.breakdown(queryParams),
+      const [transactionsRes, statementsRes, banksRes, categoriesRes, fxRatesRes] = await Promise.all([
         api.listTransactions(queryParams),
         api.statements(),
         api.banks(),
         api.categories(),
+        api.fxRates(),
       ])
-      setSummary(summaryRes)
-      setBreakdown(breakdownRes)
       setTransactions(transactionsRes)
       setStatements(statementsRes)
       setBanks(banksRes)
       setCategories(categoriesRes)
+      setDisplayRates({
+        MXN: 1,
+        EUR: Number(fxRatesRes.EUR || 21.5),
+        USD: Number(fxRatesRes.USD || 17.9),
+      })
     } catch (err) {
       setError(err.message)
     }
@@ -472,7 +558,7 @@ function App() {
           <span className="brand-mark">MY</span>
           <div>
             <h1>MySpendee GPT</h1>
-            <p>Expense dashboard in MXN</p>
+            <p>Expense dashboard with flexible display currency</p>
           </div>
         </div>
 
@@ -509,6 +595,14 @@ function App() {
               </label>
             </div>
             <div className="toolbar-quick-actions">
+              <label className="display-currency-picker">
+                <span>Display</span>
+                <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)}>
+                  {DISPLAY_CURRENCIES.map((currency) => (
+                    <option key={currency} value={currency}>{currency}</option>
+                  ))}
+                </select>
+              </label>
               <button className="ghost-button compact-button" onClick={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}>
                 {density === 'compact' ? 'Comfortable view' : 'Compact view'}
               </button>
@@ -620,9 +714,9 @@ function App() {
               </section>
 
               <section className="summary-grid">
-                <SummaryCard label="Total Income" value={summary.income} tone="income" />
-                <SummaryCard label="Total Expenses" value={summary.expenses} tone="expense" />
-                <SummaryCard label="Net" value={summary.net} tone="net" />
+                <SummaryCard label="Total Income" value={{ value: analytics.summary.income, currency: displayCurrency }} tone="income" />
+                <SummaryCard label="Total Expenses" value={{ value: analytics.summary.expenses, currency: displayCurrency }} tone="expense" />
+                <SummaryCard label="Net" value={{ value: analytics.summary.net, currency: displayCurrency }} tone="net" />
               </section>
 
               {roommateSnapshot.entries.length ? (
@@ -637,19 +731,19 @@ function App() {
                   <div className="roommate-summary">
                     <div className="roommate-metric">
                       <span>Sebastian</span>
-                      <strong>{formatMoney(roommateSnapshot.totals.Sebastian)}</strong>
+                      <strong>{formatMoney(roommateSnapshot.totals.Sebastian, displayCurrency)}</strong>
                     </div>
                     <div className="roommate-metric">
                       <span>Paul</span>
-                      <strong>{formatMoney(roommateSnapshot.totals.Paul)}</strong>
+                      <strong>{formatMoney(roommateSnapshot.totals.Paul, displayCurrency)}</strong>
                     </div>
                     <div className="roommate-metric">
                       <span>Rent Paid</span>
-                      <strong>{formatMoney(roommateSnapshot.totals.Rent)}</strong>
+                      <strong>{formatMoney(roommateSnapshot.totals.Rent, displayCurrency)}</strong>
                     </div>
                     <div className="roommate-metric emphasis">
                       <span>Net After Roommates</span>
-                      <strong>{formatMoney(roommateSnapshot.netRent)}</strong>
+                      <strong>{formatMoney(roommateSnapshot.netRent, displayCurrency)}</strong>
                     </div>
                   </div>
 
@@ -665,10 +759,10 @@ function App() {
                         <span>{formatShortDate(item.date)}</span>
                         <div className="roommate-line">
                           <strong>{item.description}</strong>
-                          {item.original_amount_display ? <small>{item.original_amount_display}</small> : null}
+                          {item.secondaryAmountLabel ? <small>{item.secondaryAmountLabel}</small> : null}
                         </div>
                         <span className={`roommate-tag ${item.roommateLabel.toLowerCase()}`}>{item.roommateLabel}</span>
-                        <strong>{formatMoney(item.amount_mxn)}</strong>
+                        <strong>{formatMoney(item.displayAmount, displayCurrency)}</strong>
                       </div>
                     ))}
                   </div>
@@ -678,14 +772,16 @@ function App() {
               <section className="breakdown-grid">
                 <BreakdownSection
                   title="Income Breakdown"
-                  data={breakdown.income}
+                  data={analytics.breakdown.income}
                   tone="income"
+                  displayCurrency={displayCurrency}
                   onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
                 />
                 <BreakdownSection
                   title="Expense Breakdown"
-                  data={breakdown.expenses}
+                  data={analytics.breakdown.expenses}
                   tone="expense"
+                  displayCurrency={displayCurrency}
                   onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
                 />
               </section>
@@ -740,8 +836,8 @@ function App() {
                       </div>
 
                       <div className={`transaction-amount ${transaction.type}`}>
-                        <strong className="amount-value">{formatMoney(transaction.amount_mxn)}</strong>
-                        {transaction.original_amount_display ? <span className="sub-amount">{transaction.original_amount_display}</span> : null}
+                        <strong className="amount-value">{formatMoney(getDisplayAmount(transaction, displayCurrency, displayRates), displayCurrency)}</strong>
+                        {getSecondaryAmountLabel(transaction, displayCurrency) ? <span className="sub-amount">{getSecondaryAmountLabel(transaction, displayCurrency)}</span> : null}
                       </div>
 
                       <div className="transaction-notes">
