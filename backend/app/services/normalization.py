@@ -23,6 +23,8 @@ def normalize_bank_name(bank_name: str) -> str:
     normalized = normalize_text(bank_name)
     if normalized == "NU" or normalized.startswith("NU ") or "NU MEXICO" in normalized:
         return "Nu"
+    if "ARQ" in normalized or "DOLARAPP" in normalized:
+        return "ARQ"
     if "HSBC" in normalized:
         return "HSBC"
     if "MILLENIUM" in normalized or "MILLENNIUM" in normalized:
@@ -71,6 +73,15 @@ def resolve_amounts(
     rate = resolve_exchange_rate(bank_name, normalized_currency, exchange_rate_used)
     mxn_amount = quantize_money(local_mxn if local_mxn is not None else amount_mxn) if (local_mxn is not None or amount_mxn is not None) else None
     original = quantize_money(amount_original) if amount_original is not None else None
+
+    if (
+        "ARQ" in normalize_text(bank_name)
+        and normalized_currency != "MXN"
+        and original is not None
+        and mxn_amount is not None
+        and mxn_amount == original
+    ):
+        mxn_amount = None
 
     if "ALMITAS INC INVEST" in normalized_description:
         original = Decimal("600.00")

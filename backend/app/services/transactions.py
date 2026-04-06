@@ -75,6 +75,7 @@ def prepare_transaction_data(data: dict) -> dict:
         bank_name=bank_name,
         amount_original=amount_original,
         currency_original=currency_original,
+        notes=data.get("notes"),
         current_type=data.get("type"),
         current_category=data.get("category"),
     )

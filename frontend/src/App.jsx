@@ -69,6 +69,41 @@ function ReviewBadge({ transaction }) {
   return <span className="review-badge">{reason}</span>
 }
 
+function getRoommateLabel(transaction) {
+  const haystack = `${transaction.description || ''} ${transaction.notes || ''}`.toLowerCase()
+  if (haystack.includes('sebastian wohler')) return 'Sebastian'
+  if (haystack.includes('paul pitterlein')) return 'Paul'
+  if (haystack.includes('almitas inc invest')) return 'Rent'
+  return null
+}
+
+function buildRoommateSnapshot(transactions) {
+  const entries = transactions
+    .map((transaction) => {
+      const label = getRoommateLabel(transaction)
+      return label ? { ...transaction, roommateLabel: label } : null
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  const totals = {
+    Sebastian: 0,
+    Paul: 0,
+    Rent: 0,
+  }
+
+  for (const item of entries) {
+    totals[item.roommateLabel] += Number(item.amount_mxn || 0)
+  }
+
+  return {
+    entries,
+    totals,
+    inflows: totals.Sebastian + totals.Paul,
+    netRent: totals.Rent - (totals.Sebastian + totals.Paul),
+  }
+}
+
 function SummaryCard({ label, value, tone }) {
   return (
     <div className={`summary-card ${tone}`}>
@@ -282,6 +317,7 @@ function App() {
     [transactions],
   )
   const reviewSummary = useMemo(() => summarizeReviewItems(reviewItems), [reviewItems])
+  const roommateSnapshot = useMemo(() => buildRoommateSnapshot(transactions), [transactions])
 
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -588,6 +624,56 @@ function App() {
                 <SummaryCard label="Total Expenses" value={summary.expenses} tone="expense" />
                 <SummaryCard label="Net" value={summary.net} tone="net" />
               </section>
+
+              {roommateSnapshot.entries.length ? (
+                <section className="panel roommate-panel">
+                  <div className="panel-header">
+                    <div>
+                      <h3>Rent & Roommates</h3>
+                      <p className="section-meta">Ignored roommate transfers, plus rent payments, tracked separately from P&amp;L.</p>
+                    </div>
+                  </div>
+
+                  <div className="roommate-summary">
+                    <div className="roommate-metric">
+                      <span>Sebastian</span>
+                      <strong>{formatMoney(roommateSnapshot.totals.Sebastian)}</strong>
+                    </div>
+                    <div className="roommate-metric">
+                      <span>Paul</span>
+                      <strong>{formatMoney(roommateSnapshot.totals.Paul)}</strong>
+                    </div>
+                    <div className="roommate-metric">
+                      <span>Rent Paid</span>
+                      <strong>{formatMoney(roommateSnapshot.totals.Rent)}</strong>
+                    </div>
+                    <div className="roommate-metric emphasis">
+                      <span>Net After Roommates</span>
+                      <strong>{formatMoney(roommateSnapshot.netRent)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="roommate-table">
+                    <div className="roommate-head">
+                      <span>Date</span>
+                      <span>Line Item</span>
+                      <span>Group</span>
+                      <span>Amount</span>
+                    </div>
+                    {roommateSnapshot.entries.map((item) => (
+                      <div key={item.id} className="roommate-row">
+                        <span>{formatShortDate(item.date)}</span>
+                        <div className="roommate-line">
+                          <strong>{item.description}</strong>
+                          {item.original_amount_display ? <small>{item.original_amount_display}</small> : null}
+                        </div>
+                        <span className={`roommate-tag ${item.roommateLabel.toLowerCase()}`}>{item.roommateLabel}</span>
+                        <strong>{formatMoney(item.amount_mxn)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <section className="breakdown-grid">
                 <BreakdownSection

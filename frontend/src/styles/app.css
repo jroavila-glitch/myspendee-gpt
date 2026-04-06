@@ -447,6 +447,118 @@ h3 {
   gap: 0.7rem;
 }
 
+.roommate-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.roommate-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.roommate-metric {
+  padding: 0.7rem 0.78rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-strong);
+}
+
+.roommate-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.roommate-metric strong {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.roommate-metric.emphasis {
+  border-color: rgba(95, 84, 247, 0.18);
+  box-shadow: inset 2px 0 0 rgba(95, 84, 247, 0.56);
+}
+
+.roommate-table {
+  display: grid;
+  border-top: 1px solid rgba(34, 41, 74, 0.07);
+}
+
+.roommate-head,
+.roommate-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 108px 132px;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.roommate-head {
+  padding: 0.45rem 0.1rem;
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.roommate-row {
+  padding: 0.72rem 0.1rem;
+  border-top: 1px solid rgba(34, 41, 74, 0.07);
+}
+
+.roommate-row strong:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.roommate-line {
+  min-width: 0;
+}
+
+.roommate-line strong,
+.roommate-line small {
+  display: block;
+}
+
+.roommate-line strong {
+  font-size: 0.88rem;
+}
+
+.roommate-line small {
+  margin-top: 0.18rem;
+  color: var(--muted);
+}
+
+.roommate-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.22rem 0.56rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.roommate-tag.sebastian,
+.roommate-tag.paul {
+  background: rgba(95, 84, 247, 0.08);
+  color: #5146ea;
+}
+
+.roommate-tag.rent {
+  background: rgba(27, 139, 103, 0.1);
+  color: var(--green);
+}
+
 .summary-card {
   border-radius: 14px;
   border: 1px solid var(--border);
@@ -709,6 +821,20 @@ h3 {
 .density-compact .summary-card {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+}
+
+.density-compact .roommate-metric {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.density-compact .roommate-row {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.density-compact .roommate-line strong {
+  font-size: 0.8rem;
 }
 
 .density-compact .analytics-row {
@@ -1127,6 +1253,7 @@ h3 {
   .toolbar,
   .dashboard-layout,
   .summary-grid,
+  .roommate-summary,
   .insight-strip,
   .analytics-layout,
   .statement-card,
@@ -1159,6 +1286,23 @@ h3 {
 
   .analytics-row-meta {
     justify-content: flex-start;
+  }
+
+  .roommate-head,
+  .roommate-row {
+    grid-template-columns: 1fr;
+  }
+
+  .roommate-head {
+    display: none;
+  }
+
+  .roommate-row {
+    gap: 0.28rem;
+  }
+
+  .roommate-row strong:last-child {
+    text-align: left;
   }
 
   .transaction-head,

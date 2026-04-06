@@ -105,10 +105,11 @@ def classify_transaction(
     bank_name: str,
     amount_original: Decimal | None = None,
     currency_original: str | None = None,
+    notes: str | None = None,
     current_type: str | None = None,
     current_category: str | None = None,
 ) -> tuple[str, str, str | None]:
-    normalized = normalize_text(description)
+    normalized = normalize_text(" ".join(part for part in [description, notes or ""] if part))
     normalized_bank = normalize_text(bank_name)
     normalized_currency = normalize_text(currency_original or "MXN")
 
