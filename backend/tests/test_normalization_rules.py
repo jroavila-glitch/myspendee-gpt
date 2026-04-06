@@ -1,5 +1,6 @@
 from decimal import Decimal
 from unittest import TestCase
+from unittest.mock import patch
 
 from app.services.normalization import normalize_bank_name, resolve_amounts
 
@@ -14,15 +15,33 @@ class NormalizationRulesTest(TestCase):
         self.assertEqual("ARQ", normalize_bank_name("ARQ"))
 
     def test_arq_guard_avoids_one_to_one_foreign_to_mxn_copy(self) -> None:
-        original, mxn_amount, rate, _ = resolve_amounts(
-            bank_name="ARQ",
-            description="Compra EURc - Sebastian Wohler",
-            currency_original="EUR",
-            amount_original=Decimal("1333"),
-            amount_mxn=Decimal("1333"),
-            exchange_rate_used=None,
-            local_mxn=None,
-        )
+        with patch("app.services.normalization.get_banxico_rate", return_value=None):
+            original, mxn_amount, rate, _ = resolve_amounts(
+                tx_date=__import__("datetime").date(2026, 1, 28),
+                bank_name="ARQ",
+                description="Compra EURc - Sebastian Wohler",
+                currency_original="EUR",
+                amount_original=Decimal("1333"),
+                amount_mxn=Decimal("1333"),
+                exchange_rate_used=None,
+                local_mxn=None,
+            )
         self.assertEqual(Decimal("1333.00"), original)
         self.assertEqual(Decimal("28659.50"), mxn_amount)
         self.assertEqual(Decimal("21.500000"), rate)
+
+    def test_arq_prefers_banxico_rate_when_available(self) -> None:
+        with patch("app.services.normalization.get_banxico_rate", return_value=Decimal("20.6252")):
+            original, mxn_amount, rate, _ = resolve_amounts(
+                tx_date=__import__("datetime").date(2026, 1, 28),
+                bank_name="ARQ",
+                description="Compra EURc - Sebastian Wohler",
+                currency_original="EUR",
+                amount_original=Decimal("1333"),
+                amount_mxn=None,
+                exchange_rate_used=None,
+                local_mxn=None,
+            )
+        self.assertEqual(Decimal("1333.00"), original)
+        self.assertEqual(Decimal("27493.39"), mxn_amount)
+        self.assertEqual(Decimal("20.625200"), rate)

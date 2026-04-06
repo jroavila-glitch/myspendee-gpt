@@ -1,6 +1,8 @@
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.services.classification import normalize_text
+from app.services.fx_rates import get_banxico_rate
 
 FALLBACK_RATES = {
     ("EUR", "REVOLUT"): Decimal("21.5"),
@@ -58,6 +60,7 @@ def resolve_exchange_rate(bank_name: str, currency_original: str, exchange_rate:
 
 def resolve_amounts(
     *,
+    tx_date: date,
     bank_name: str,
     description: str,
     currency_original: str,
@@ -82,6 +85,11 @@ def resolve_amounts(
         and mxn_amount == original
     ):
         mxn_amount = None
+
+    if "ARQ" in normalize_text(bank_name) and normalized_currency in {"EUR", "USD"} and original is not None and mxn_amount is None:
+        banxico_rate = get_banxico_rate(normalized_currency, tx_date)
+        if banxico_rate is not None:
+            rate = quantize_rate(banxico_rate)
 
     if "ALMITAS INC INVEST" in normalized_description:
         original = Decimal("600.00")

@@ -60,6 +60,7 @@ def prepare_transaction_data(data: dict) -> dict:
     raw_exchange_rate = Decimal(str(data["exchange_rate_used"])) if data.get("exchange_rate_used") is not None else None
     currency_original = data.get("currency_original") or "MXN"
     amount_original, amount_mxn, exchange_rate_used, normalization_notes = resolve_amounts(
+        tx_date=tx_date,
         bank_name=bank_name,
         description=data["description"],
         currency_original=currency_original,

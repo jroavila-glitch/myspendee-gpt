@@ -39,7 +39,7 @@ When a new rule is added or changed, we should update:
 - `Implemented`: DolarApp/ARQ rows must not silently copy foreign-currency amounts into `amount_mxn`.
 - `Implemented`: `EURc` is treated as `EUR`; `USDc` is treated as `USD`.
 - `Implemented`: Fallback rates exist for unsupported or missing FX details.
-- `Pending`: When ARQ has no MXN-equivalent amount, we should derive MXN from a true date-based FX source, preferably Banxico.
+- `Implemented`: When ARQ has no MXN-equivalent amount, we derive MXN from a true date-based FX source, preferably Banxico, with fallback rates only if lookup fails.
 
 ## Ignore Rules
 
