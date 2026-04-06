@@ -30,7 +30,7 @@ INCOME_RULES = [
     (r"CONTINI SOLUTIONS", ("income", "Perenniam Agency")),
     (r"FILIP MAREK", ("income", "Tennis Lessons")),
     (r"BONIFICACI[ÓO]N CON CASHBACK", ("income", "Credit Cards Cashback")),
-    (r"C COMBINATOR MEXICO|HONOS", ("income", "Other")),
+    (r"C COMBINATOR MEXICO|HONOS", ("income", "Azulik")),
 ]
 
 EXPENSE_RULES = [
@@ -43,8 +43,9 @@ EXPENSE_RULES = [
     (r"BOLT|BOLT\.EU|UBR|UBER(?!.*EATS)|UBER \*ONE MEMBERSHI|LIME", "Transport"),
     (r"CONTINENTE|PINGO DOCE|CELEIRO|GLEBA|PAGOS FIJOS|EL CORTE INGLES|LIDL", "Groceries"),
     (r"TENNIS SHOP|DECATHLON|CLUBE INTERNACIONAL|CAMARA LISBOA CLUBE LISBOA|TENNIS POINT|TP\* TENNIS-POINT", "Tennis"),
-    (r"AMAZON|AMZN|ALMITAS INC INVEST|APARECIDA FERNANDA|GONCALO DE CAMPOS MELO", "Home"),
-    (r"RITUALS|GBMD.+MEDICINA|TRF MB WAY P/ FERNANDO ALVES", "Healthcare"),
+    (r"APARECIDA FERNANDA|AMAZON|AMZN", "Home"),
+    (r"ALMITAS INC INVEST|GONCALO DE CAMPOS MELO", "Rent"),
+    (r"RITUALS|GBMD.+MEDICINA|TRF MB WAY P/ FERNANDO ALVES|TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES|TRANSFER TO FERNANDO MOTA", "Healthcare"),
     (r"VODAFONE|TELCEL|REPAIR|M\.REPAIR|ISHOP MIXUP|MACSTORE FORUM CUERNAV|MACSTORE CIB III|APPLE\.COM/BILL", "Phone/Tech"),
     (r"PAYU \*GOOGLE CLOUD|ELEVENLABS|GOOGLE WORKSPACE|GOOGLE \*WORKSPACE", "IG Ro Project"),
     (r"HIGHLEVEL AGENCY SUB|CALENDLY|PADDLE\.NET\* ELFSIGHT|ELFSIGHT", "Perenniam Agency"),
@@ -96,6 +97,8 @@ def apply_special_description_rules(description: str, amount_mxn: Decimal, bank_
             return "iCloud - Servicio Apple.Com/Bill", notes
         if amount_mxn == Decimal("229"):
             return "TextMe - Servicio Apple.Com/Bill", notes
+        if amount_mxn == Decimal("399"):
+            return "GPT - Servicio Apple.Com/Bill", notes
     return description, notes
 
 
@@ -137,11 +140,18 @@ def classify_transaction(
     if "HSBC" in normalized_bank and "SPEI A CTA" in normalized:
         return "ignored", "ignored", None
 
-    if "TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES" in normalized or "TRF MB WAY P/ FERNANDO ALVES" in normalized:
+    if (
+        "TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES" in normalized
+        or "TRF MB WAY P/ FERNANDO ALVES" in normalized
+        or "TRANSFER TO FERNANDO MOTA" in normalized
+    ):
         return "expense", "Healthcare", None
 
     if is_tennis_bank and ("ROMAN JERZY SOBKOWIAK" in normalized):
         return "income", "Ro IG Tennis", None
+
+    if "TRF MB WAY DE KIRAH HITCHCOCK" in normalized:
+        return "income", "Tennis Smash & Social", None
 
     if is_tennis_bank and (current_type == "income" or looks_like_person_transfer_income):
         if threshold_amount <= Decimal("30"):

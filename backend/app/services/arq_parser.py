@@ -68,10 +68,17 @@ def _extract_transaction_section(text: str) -> tuple[str, str | None, str | None
     period_end = None
     tx_lines: list[str] = []
 
+    pending_period_fragment: str | None = None
     for line in trailing:
         stripped = line.strip()
         if not stripped:
             continue
+        if pending_period_fragment:
+            parsed_date = _parse_period_date(f"{pending_period_fragment} {stripped}")
+            pending_period_fragment = None
+            if parsed_date and period_start is not None and period_end is None:
+                period_end = parsed_date
+                break
         parsed_date = _parse_period_date(stripped)
         if parsed_date and period_start is None:
             period_start = parsed_date
@@ -79,6 +86,9 @@ def _extract_transaction_section(text: str) -> tuple[str, str | None, str | None
         if parsed_date and period_start is not None and period_end is None:
             period_end = parsed_date
             break
+        if re.match(r"^\d{1,2}\s+[A-Za-z]+$", stripped):
+            pending_period_fragment = stripped
+            continue
         tx_lines.append(stripped)
 
     return "\n".join(tx_lines), period_start, period_end

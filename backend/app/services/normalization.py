@@ -28,7 +28,7 @@ def normalize_bank_name(bank_name: str) -> str:
     if "HSBC" in normalized:
         return "HSBC"
     if "MILLENIUM" in normalized or "MILLENNIUM" in normalized:
-        return "Millennium BCP"
+        return "Millennium"
     if "REVOLUT" in normalized:
         return "Revolut"
     return bank_name

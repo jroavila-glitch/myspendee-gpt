@@ -22,6 +22,7 @@ INCOME_CATEGORIES = [
 ]
 
 EXPENSE_CATEGORIES = [
+    "Rent",
     "Home",
     "Groceries",
     "Food & Drink",
