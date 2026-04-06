@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from './lib/api'
+import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from './lib/currency'
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
@@ -8,18 +9,6 @@ const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', mo
 const BreakdownChart = lazy(() => import('./components/BreakdownChart'))
 const PIE_COLORS = ['#1d7a6f', '#f47d38', '#d85757', '#4c6fff', '#c59a2d', '#74809b']
 const DISPLAY_CURRENCIES = ['MXN', 'EUR', 'USD']
-const moneyFormatters = new Map()
-
-function getMoneyFormatter(currency) {
-  if (!moneyFormatters.has(currency)) {
-    moneyFormatters.set(currency, new Intl.NumberFormat('en-US', { style: 'currency', currency }))
-  }
-  return moneyFormatters.get(currency)
-}
-
-function formatMoney(value, currency = 'MXN') {
-  return getMoneyFormatter(currency).format(Number(value || 0))
-}
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(1)}%`
@@ -50,39 +39,6 @@ function formatStatementPeriod(statement) {
   if (!statement.period_start && !statement.period_end) return 'Unknown period'
   if (!statement.period_start || !statement.period_end) return statement.period_start || statement.period_end
   return `${statement.period_start} - ${statement.period_end}`
-}
-
-function toNumber(value) {
-  return Number(value || 0)
-}
-
-function getDisplayAmount(transaction, displayCurrency, displayRates) {
-  const amountMxn = toNumber(transaction.amount_mxn)
-  if (displayCurrency === 'MXN') return amountMxn
-
-  const originalCurrency = (transaction.currency_original || 'MXN').toUpperCase()
-  const amountOriginal = transaction.amount_original != null ? toNumber(transaction.amount_original) : null
-  const exchangeRate = transaction.exchange_rate_used != null ? toNumber(transaction.exchange_rate_used) : null
-
-  if (originalCurrency === displayCurrency) {
-    if (amountOriginal != null) return amountOriginal
-    if (exchangeRate) return amountMxn / exchangeRate
-  }
-
-  const fallbackRate = toNumber(displayRates[displayCurrency])
-  if (!fallbackRate) return amountMxn
-  return amountMxn / fallbackRate
-}
-
-function getSecondaryAmountLabel(transaction, displayCurrency) {
-  const originalCurrency = (transaction.currency_original || 'MXN').toUpperCase()
-  if (displayCurrency === 'MXN') {
-    return transaction.original_amount_display || null
-  }
-  if (originalCurrency !== displayCurrency && transaction.original_amount_display) {
-    return transaction.original_amount_display
-  }
-  return `MXN ${toNumber(transaction.amount_mxn).toFixed(2)}`
 }
 
 function getReviewReason(transaction) {
