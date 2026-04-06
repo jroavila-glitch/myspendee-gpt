@@ -438,13 +438,18 @@ function App() {
   async function loadAll() {
     try {
       setError('')
-      const [transactionsRes, statementsRes, banksRes, categoriesRes, fxRatesRes] = await Promise.all([
+      const [transactionsRes, statementsRes, banksRes, categoriesRes] = await Promise.all([
         api.listTransactions(queryParams),
         api.statements(),
         api.banks(),
         api.categories(),
-        api.fxRates(),
       ])
+      let fxRatesRes = {}
+      try {
+        fxRatesRes = await api.fxRates()
+      } catch {
+        fxRatesRes = {}
+      }
       setTransactions(transactionsRes)
       setStatements(statementsRes)
       setBanks(banksRes)
