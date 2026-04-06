@@ -16,7 +16,7 @@ When a new rule is added or changed, we should update:
 ## Global Behavior
 
 - `Implemented`: Transactions are stored canonically in `MXN`.
-- `Pending`: The UI should allow switching display currency between `MXN`, `EUR`, and `USD` for dashboard totals and transaction views.
+- `Implemented`: The UI allows switching display currency between `MXN`, `EUR`, and `USD` for dashboard totals and transaction views.
 - `Implemented`: Non-MXN transactions keep their original currency amount for display.
 - `Implemented`: Ignored transactions are stored but excluded from dashboard metrics.
 - `Implemented`: Duplicate detection uses `bank_name + date + amount_mxn + description`.
@@ -63,7 +63,6 @@ Ignore any transaction matching normalized text patterns like:
 - `TRF P/ BRIDGE BUILDING`
 - `BRIDGE BUILDING`
 - `DIFERIMIENTO DE SALDO APP MOBILE`
-- `COMPRA USDC COMISION`
 - `EXCHANGED TO EUR`
 
 Additional ignore behavior:
@@ -106,6 +105,7 @@ Additional ignore behavior:
 - `Implemented`: `CLUB7`, `CLUBE VII` -> `Gym`
 - `Implemented`: `IVA POR INTERESES`, `IVA INTERES`, `INTERES EXENTO`, `INTERES GRAVABLE`, `INTERESES`, `INTERES`, `IMPOSTO SELO`, `COMISION`, `CONTA PACOTE PROGRAMA PRESTIGE` -> `Bills/Fees`
 - `Implemented`: `Compra EURc comisión` on ARQ is an expense in `Bills/Fees`
+- `Implemented`: `Compra USDc comisión` on ARQ is an expense in `Bills/Fees`
 - `Implemented`: `ALGARVEKNOWHOW` -> `Visa Portugal`
 - `Implemented`: Unmatched expenses fall back to `Other` with note `Unclassified expense — manual review needed`
 
@@ -158,7 +158,7 @@ Additional ignore behavior:
 
 - `Implemented`: Review stays in transaction table mode instead of a separate review card/sidebar
 - `Implemented`: Add transaction form uses a currency dropdown with `MXN`, `USD`, `EUR`
-- `Pending`: Dashboard should include a global display-currency dropdown for `MXN`, `EUR`, `USD`
+- `Implemented`: Dashboard includes a global display-currency dropdown for `MXN`, `EUR`, `USD`
 - `Implemented`: Notes autosave on blur/debounce
 - `Implemented`: Bulk actions can change category and type
 - `Implemented`: Statement delete cascades to linked transactions

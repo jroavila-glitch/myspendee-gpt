@@ -66,6 +66,16 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("expense", "Bills/Fees"), (tx_type, category))
 
+    def test_arq_compra_usdc_comision_is_bills_and_fees(self) -> None:
+        tx_type, category, _ = classify_transaction(
+            description="Compra USDc comisión",
+            amount_mxn=Decimal("53.70"),
+            bank_name="ARQ",
+            amount_original=Decimal("3"),
+            currency_original="USD",
+        )
+        self.assertEqual(("expense", "Bills/Fees"), (tx_type, category))
+
     def test_apple_399_gets_gpt_rename(self) -> None:
         description, _ = apply_special_description_rules(
             "Apple.Com/Bill",
