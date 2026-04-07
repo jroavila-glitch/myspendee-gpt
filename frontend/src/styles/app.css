@@ -1124,6 +1124,13 @@ h3 {
   border-bottom: 1px solid rgba(34, 41, 74, 0.07);
 }
 
+.statement-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
 .statement-main strong,
 .statement-main span,
 .statement-metrics span,

@@ -523,6 +523,17 @@ function App() {
     await loadAll()
   }
 
+  function handleViewStatement(statement) {
+    setPeriod((current) => ({
+      ...current,
+      month: 'custom',
+      dateFrom: statement.period_start || current.dateFrom || `${current.year}-01-01`,
+      dateTo: statement.period_end || current.dateTo || `${current.year}-12-31`,
+    }))
+    setFilters((current) => ({ ...current, bank_name: statement.bank_name }))
+    setTab('dashboard')
+  }
+
   async function handleUpload(event) {
     const files = Array.from(event.target.files || [])
     if (!files.length) return
@@ -933,7 +944,10 @@ function App() {
                       <strong>{dateTimeFormatter.format(new Date(statement.uploaded_at))}</strong>
                     </div>
                   </div>
-                  <button className="ghost-button danger" onClick={() => handleStatementDelete(statement.id)}>Delete</button>
+                  <div className="statement-actions">
+                    <button className="ghost-button compact-button" onClick={() => handleViewStatement(statement)}>View period</button>
+                    <button className="ghost-button danger" onClick={() => handleStatementDelete(statement.id)}>Delete</button>
+                  </div>
                 </article>
               ))}
 

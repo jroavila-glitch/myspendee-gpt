@@ -86,6 +86,18 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("ignored", "ignored"), (tx_type, category))
 
+    def test_claude_anthropic_is_ig_ro_project(self) -> None:
+        for description in ["CLAUDE.AI SUBSCRIPTION ANTHROPIC.COMCA", "ANTHROPIC ANTHROPIC.COMCA"]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("355.61"),
+                    bank_name="Costco Banamex",
+                    amount_original=Decimal("20"),
+                    currency_original="USD",
+                )
+                self.assertEqual(("expense", "IG Ro Project"), (tx_type, category))
+
     def test_apple_399_gets_gpt_rename(self) -> None:
         description, _ = apply_special_description_rules(
             "Apple.Com/Bill",

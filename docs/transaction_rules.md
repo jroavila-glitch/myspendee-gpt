@@ -101,7 +101,7 @@ Additional ignore behavior:
 - `Implemented`: `APARECIDA FERNANDA` -> `Home`
 - `Implemented`: `RITUALS`, `GBMD ... MEDICINA`, `TRF MB WAY P/ FERNANDO ALVES`, `Transfer to FERNANDO CARLOS TEIXEIRA ALVES`, `Transfer to FERNANDO MOTA` and close variants -> `Healthcare`
 - `Implemented`: `VODAFONE`, `TELCEL`, `REPAIR`, `M.REPAIR`, `ISHOP MIXUP`, `MACSTORE ...`, matching Apple service rows -> `Phone/Tech`
-- `Implemented`: `PAYU *GOOGLE CLOUD`, `ELEVENLABS`, `GOOGLE WORKSPACE` -> `IG Ro Project`
+- `Implemented`: `PAYU *GOOGLE CLOUD`, `ELEVENLABS`, `GOOGLE WORKSPACE`, `CLAUDE.AI`, `ANTHROPIC` -> `IG Ro Project`
 - `Implemented`: `HIGHLEVEL AGENCY SUB`, `CALENDLY`, `PADDLE.NET* ELFSIGHT`, `ELFSIGHT` -> `Perenniam Agency`
 - `Implemented`: `NETFLIX`, `CINEMA`, `UCI CINEMAS`, `HBOMAX.COM` and variants -> `Entertainment`
 - `Implemented`: `CLUB7`, `CLUBE VII` -> `Gym`
