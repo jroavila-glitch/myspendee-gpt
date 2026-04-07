@@ -20,11 +20,12 @@ function formatShortDate(value) {
 
 function getCurrentMonthState() {
   const now = new Date()
-  return { month: String(now.getMonth() + 1), year: now.getFullYear() }
+  return { month: String(now.getMonth() + 1), year: now.getFullYear(), dateFrom: '', dateTo: '' }
 }
 
 const MONTH_OPTIONS = [
   { value: 'ytd', label: 'YTD' },
+  { value: 'custom', label: 'Custom range' },
   ...Array.from({ length: 12 }, (_, index) => {
     const month = index + 1
     return { value: String(month), label: monthFormatter.format(new Date(2026, month - 1, 1)) }
@@ -302,13 +303,23 @@ function App() {
   const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
 
-  const queryParams = useMemo(() => ({
-    year: String(period.year),
-    ...(period.month !== 'ytd' ? { month: period.month } : {}),
-    ...(filters.bank_name ? { bank_name: filters.bank_name } : {}),
-    ...(filters.category ? { category: filters.category } : {}),
-    ...(filters.type ? { type: filters.type } : {}),
-  }), [period, filters])
+  const queryParams = useMemo(() => {
+    const params = {
+      year: String(period.year),
+      ...(filters.bank_name ? { bank_name: filters.bank_name } : {}),
+      ...(filters.category ? { category: filters.category } : {}),
+      ...(filters.type ? { type: filters.type } : {}),
+    }
+
+    if (period.month === 'custom') {
+      if (period.dateFrom) params.date_from = period.dateFrom
+      if (period.dateTo) params.date_to = period.dateTo
+    } else if (period.month !== 'ytd') {
+      params.month = period.month
+    }
+
+    return params
+  }, [period, filters])
 
   const categoryOptions = useMemo(() => dedupeCategories(categories), [categories])
   const reviewItems = useMemo(
@@ -388,8 +399,11 @@ function App() {
     if (searchText.trim()) chips.push({ key: 'search', label: `Search: ${searchText.trim()}` })
     if (transactionView === 'review') chips.push({ key: 'transaction_view', label: 'Review mode' })
     if (transactionView === 'ignored') chips.push({ key: 'transaction_view', label: 'Ignored mode' })
+    if (period.month === 'custom') {
+      chips.push({ key: 'custom_range', label: `${period.dateFrom || 'Start'} to ${period.dateTo || 'End'}` })
+    }
     return chips
-  }, [filters, searchText, transactionView])
+  }, [filters, searchText, transactionView, period])
 
   async function loadAll() {
     try {
@@ -464,6 +478,18 @@ function App() {
 
   function toggleSelected(id) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  }
+
+  function handlePeriodChange(value) {
+    setPeriod((current) => {
+      if (value !== 'custom') return { ...current, month: value }
+      return {
+        ...current,
+        month: value,
+        dateFrom: current.dateFrom || `${current.year}-01-01`,
+        dateTo: current.dateTo || `${current.year}-12-31`,
+      }
+    })
   }
 
   async function saveNotes(transaction, notes) {
@@ -543,8 +569,8 @@ function App() {
           <div className="toolbar-main">
             <div className="period-pickers">
               <label>
-                <span>Month</span>
-                <select value={period.month} onChange={(e) => setPeriod((current) => ({ ...current, month: e.target.value }))}>
+                <span>Period</span>
+                <select value={period.month} onChange={(e) => handlePeriodChange(e.target.value)}>
                   {MONTH_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
@@ -554,6 +580,28 @@ function App() {
                 <span>Year</span>
                 <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
               </label>
+              {period.month === 'custom' ? (
+                <>
+                  <label>
+                    <span>From</span>
+                    <input
+                      className="date-input"
+                      type="date"
+                      value={period.dateFrom}
+                      onChange={(e) => setPeriod((current) => ({ ...current, dateFrom: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    <span>To</span>
+                    <input
+                      className="date-input"
+                      type="date"
+                      value={period.dateTo}
+                      onChange={(e) => setPeriod((current) => ({ ...current, dateTo: e.target.value }))}
+                    />
+                  </label>
+                </>
+              ) : null}
             </div>
             <div className="toolbar-quick-actions">
               <label className="display-currency-picker">
@@ -593,6 +641,10 @@ function App() {
                       setTransactionView('all')
                       return
                     }
+                    if (filter.key === 'custom_range') {
+                      setPeriod((current) => ({ ...current, month: 'ytd', dateFrom: '', dateTo: '' }))
+                      return
+                    }
                     setFilters((current) => ({ ...current, [filter.key]: '' }))
                   }}
                 >
@@ -617,6 +669,7 @@ function App() {
                       setFilters({ bank_name: '', category: '', type: '' })
                       setSearchText('')
                       setTransactionView('all')
+                      setPeriod((current) => current.month === 'custom' ? { ...current, month: 'ytd', dateFrom: '', dateTo: '' } : current)
                     }}
                   >
                     Reset
@@ -909,6 +962,7 @@ function App() {
               <option value="">Change type</option>
               <option value="expense">Expense</option>
               <option value="income">Income</option>
+              <option value="ignored">Ignored</option>
             </select>
             <button className="bulk-apply" onClick={handleBulkApply}>Apply</button>
           </div>

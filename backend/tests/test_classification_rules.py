@@ -76,6 +76,16 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("expense", "Bills/Fees"), (tx_type, category))
 
+    def test_dolarapp_sent_from_arq_is_ignored(self) -> None:
+        tx_type, category, _ = classify_transaction(
+            description="Dolarapp Mexico, S.A. de C.V. Sent from ARQ",
+            amount_mxn=Decimal("1200"),
+            bank_name="ARQ",
+            amount_original=Decimal("60"),
+            currency_original="EUR",
+        )
+        self.assertEqual(("ignored", "ignored"), (tx_type, category))
+
     def test_apple_399_gets_gpt_rename(self) -> None:
         description, _ = apply_special_description_rules(
             "Apple.Com/Bill",

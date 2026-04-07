@@ -132,6 +132,9 @@ def classify_transaction(
     if "AMAZON" in normalized and amount_mxn == Decimal("149"):
         return "ignored", "ignored", None
 
+    if "DOLARAPP MEXICO" in normalized and "SENT FROM ARQ" in normalized:
+        return "ignored", "ignored", None
+
     if any(pattern in normalized for pattern in IGNORE_PATTERNS):
         return "ignored", "ignored", None
 

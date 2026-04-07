@@ -334,8 +334,13 @@ h3 {
   text-transform: uppercase;
 }
 
-.year-input {
+.year-input,
+.date-input {
   min-width: 108px;
+}
+
+.date-input {
+  min-width: 142px;
 }
 
 .toolbar-copy {

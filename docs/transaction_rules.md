@@ -20,7 +20,7 @@ When a new rule is added or changed, we should update:
 - `Implemented`: Non-MXN transactions keep their original currency amount for display.
 - `Implemented`: Ignored transactions are stored but excluded from dashboard metrics.
 - `Implemented`: Duplicate detection uses `bank_name + date + amount_mxn + description`.
-- `Implemented`: Time filtering supports both a specific month and `YTD`.
+- `Implemented`: Time filtering supports a specific month, `YTD`, and custom date ranges.
 - `Implemented`: Summary and breakdown queries must respect active filters.
 
 ## Bank Name Normalization
@@ -55,6 +55,7 @@ Ignore any transaction matching normalized text patterns like:
 - `JOSE RODRIGO AVILA NEIRA`
 - `PAGO A TU TARJETA DE CREDITO`
 - `SENT FROM DOLARAPP`
+- `DOLARAPP MEXICO ... SENT FROM ARQ`
 - `PATRICIA NEIRA`
 - `ARTURO PASTRANA`
 - `INTERNATIONAL TRANSFER TO JOSE RODRIGO AVILA NEIRA`
@@ -70,6 +71,7 @@ Additional ignore behavior:
 - `Implemented`: HSBC `SPEI A CTA` is ignored as an own-account transfer.
 - `Implemented`: Credit-card payment rows are ignored.
 - `Implemented`: ARQ roommate transfers from Sebastian Wohler and Paul Pitterlein are ignored from P&L but still useful for roommate/rent tracking.
+- `Implemented`: `Dolarapp Mexico, S.A. de C.V. Sent from ARQ` is ignored as an own-account transfer.
 
 ## Income Rules
 
@@ -161,6 +163,7 @@ Additional ignore behavior:
 - `Implemented`: Dashboard includes a global display-currency dropdown for `MXN`, `EUR`, `USD`
 - `Implemented`: Notes autosave on blur/debounce
 - `Implemented`: Bulk actions can change category and type
+- `Implemented`: Bulk type changes can set `income`, `expense`, or `ignored`
 - `Implemented`: Statement delete cascades to linked transactions
 
 ## Governance

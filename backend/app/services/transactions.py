@@ -104,13 +104,21 @@ def apply_transaction_filters(
     *,
     month: int | None,
     year: int,
+    date_from: date | None = None,
+    date_to: date | None = None,
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
 ) -> Select:
-    stmt = stmt.where(Transaction.year == year)
-    if month is not None:
-        stmt = stmt.where(Transaction.month == month)
+    if date_from or date_to:
+        if date_from:
+            stmt = stmt.where(Transaction.date >= date_from)
+        if date_to:
+            stmt = stmt.where(Transaction.date <= date_to)
+    else:
+        stmt = stmt.where(Transaction.year == year)
+        if month is not None:
+            stmt = stmt.where(Transaction.month == month)
     if bank_name:
         stmt = stmt.where(Transaction.bank_name == bank_name)
     if category:
@@ -144,6 +152,8 @@ def get_summary(
     db: Session,
     month: int | None,
     year: int,
+    date_from: date | None = None,
+    date_to: date | None = None,
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
@@ -155,7 +165,16 @@ def get_summary(
         )
         .where(Transaction.type != "ignored")
     )
-    stmt = apply_transaction_filters(stmt, month=month, year=year, bank_name=bank_name, category=category, type=type)
+    stmt = apply_transaction_filters(
+        stmt,
+        month=month,
+        year=year,
+        date_from=date_from,
+        date_to=date_to,
+        bank_name=bank_name,
+        category=category,
+        type=type,
+    )
     income, expenses = db.execute(stmt).one()
     return SummaryResponse(income=income, expenses=expenses, net=income - expenses)
 
@@ -164,6 +183,8 @@ def get_breakdown(
     db: Session,
     month: int | None,
     year: int,
+    date_from: date | None = None,
+    date_to: date | None = None,
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
@@ -179,7 +200,16 @@ def get_breakdown(
         .group_by(Transaction.category, Transaction.type)
         .order_by(Transaction.type, func.sum(Transaction.amount_mxn).desc())
     )
-    stmt = apply_transaction_filters(stmt, month=month, year=year, bank_name=bank_name, category=category, type=type)
+    stmt = apply_transaction_filters(
+        stmt,
+        month=month,
+        year=year,
+        date_from=date_from,
+        date_to=date_to,
+        bank_name=bank_name,
+        category=category,
+        type=type,
+    )
     rows = db.execute(stmt).all()
     income = [BreakdownItem(category=r.category, type=r.type, total=r.total, count=r.count) for r in rows if r.type == "income"]
     expenses = [BreakdownItem(category=r.category, type=r.type, total=r.total, count=r.count) for r in rows if r.type == "expense"]

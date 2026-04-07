@@ -87,13 +87,24 @@ async def upload_statements(files: list[UploadFile] = File(...), db: Session = D
 def list_transactions(
     month: int | None = Query(default=None),
     year: int = Query(...),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[TransactionRead]:
     stmt = select(Transaction)
-    stmt = apply_transaction_filters(stmt, month=month, year=year, bank_name=bank_name, category=category, type=type)
+    stmt = apply_transaction_filters(
+        stmt,
+        month=month,
+        year=year,
+        date_from=date_from,
+        date_to=date_to,
+        bank_name=bank_name,
+        category=category,
+        type=type,
+    )
     stmt = stmt.order_by(Transaction.date.desc(), Transaction.created_at.desc())
     transactions = db.scalars(stmt).all()
     return [TransactionRead.model_validate(serialize_transaction(tx)) for tx in transactions]
@@ -103,24 +114,28 @@ def list_transactions(
 def summary(
     month: int | None = Query(default=None),
     year: int = Query(...),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
     db: Session = Depends(get_db),
 ) -> SummaryResponse:
-    return get_summary(db, month, year, bank_name=bank_name, category=category, type=type)
+    return get_summary(db, month, year, date_from=date_from, date_to=date_to, bank_name=bank_name, category=category, type=type)
 
 
 @app.get("/breakdown", response_model=BreakdownResponse)
 def breakdown(
     month: int | None = Query(default=None),
     year: int = Query(...),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
     db: Session = Depends(get_db),
 ) -> BreakdownResponse:
-    return get_breakdown(db, month, year, bank_name=bank_name, category=category, type=type)
+    return get_breakdown(db, month, year, date_from=date_from, date_to=date_to, bank_name=bank_name, category=category, type=type)
 
 
 @app.post("/transactions", response_model=TransactionRead)
