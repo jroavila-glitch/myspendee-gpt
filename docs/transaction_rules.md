@@ -36,6 +36,7 @@ When a new rule is added or changed, we should update:
 ## FX and Amount Resolution
 
 - `Implemented`: Banamex and HSBC foreign-card rows use statement FX fields like `TC1` and `TC2` when present.
+- `Implemented`: HSBC 2Now rows use `Fecha de la operación` as the transaction date, not `Fecha de cargo`.
 - `Implemented`: DolarApp/ARQ rows must not silently copy foreign-currency amounts into `amount_mxn`.
 - `Implemented`: `EURc` is treated as `EUR`; `USDc` is treated as `USD`.
 - `Implemented`: Fallback rates exist for unsupported or missing FX details.
@@ -138,6 +139,13 @@ Additional ignore behavior:
 - `Implemented`: Extracts installment notes like `Installment 21/48`
 - `Implemented`: Ignores `DIFERIMIENTO DE SALDO APP MOBILE`
 - `Implemented`: Groups and ignores `PAGO INTERBANCARIO`
+
+### HSBC
+
+- `Implemented`: Deterministic parser for HSBC 2Now regular movement rows
+- `Implemented`: Uses operation date instead of charge date
+- `Implemented`: Keeps `MONEDA EXTRANJERA` lines as FX metadata attached to the merchant row, not separate transactions
+- `Implemented`: Extracts `INTERESES` and `IVA SOBRE COMISIONES E INTERESES` rows as `Bills/Fees`
 
 ### Rappi
 

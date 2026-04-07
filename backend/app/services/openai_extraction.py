@@ -9,6 +9,7 @@ from pdf2image import convert_from_bytes
 
 from app.services.arq_parser import parse_arq_pdf
 from app.services.banamex_parser import parse_banamex_pdf
+from app.services.hsbc_parser import parse_hsbc_pdf
 from app.services.rappi_parser import parse_rappi_pdf
 
 
@@ -119,6 +120,10 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
     arq_result = parse_arq_pdf(pdf_bytes)
     if arq_result and arq_result.get("transactions"):
         return arq_result
+
+    hsbc_result = parse_hsbc_pdf(pdf_bytes)
+    if hsbc_result and hsbc_result.get("transactions"):
+        return hsbc_result
 
     rappi_result = parse_rappi_pdf(pdf_bytes)
     if rappi_result and rappi_result.get("transactions"):
