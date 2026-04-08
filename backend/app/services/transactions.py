@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Statement, Transaction
 from app.schemas.common import BreakdownItem, BreakdownResponse, SummaryResponse, TransactionCreate, TransactionUpdate
-from app.services.classification import apply_special_description_rules, classify_transaction
+from app.services.classification import apply_special_description_rules, classify_transaction, normalize_category
 from app.services.normalization import normalize_bank_name, resolve_amounts
 
 
@@ -144,10 +144,12 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
     # Edits from the dashboard are intentional overrides. The normalization
     # pipeline may still recompute amounts/dates, but it should not reclassify
     # a category/type the user explicitly selected in the edit modal.
-    if "category" in updated_values and updated_values["category"] is not None:
-        prepared["category"] = updated_values["category"]
     if "type" in updated_values and updated_values["type"] is not None:
         prepared["type"] = updated_values["type"]
+    if "category" in updated_values and updated_values["category"] is not None:
+        prepared["category"] = updated_values["category"]
+    if "category" in updated_values or "type" in updated_values:
+        prepared["category"] = normalize_category(prepared["category"], prepared["type"])
     for key, value in prepared.items():
         setattr(transaction, key, value)
     db.commit()

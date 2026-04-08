@@ -111,6 +111,7 @@ Additional ignore behavior:
 - `Implemented`: `Compra USDc comisión` on ARQ is an expense in `Bills/Fees`
 - `Implemented`: `ALGARVEKNOWHOW` -> `Visa Portugal`
 - `Implemented`: Unmatched expenses fall back to `Other` with note `Unclassified expense — manual review needed`
+- `Implemented`: Imported or GPT-proposed categories must be one of the approved categories. Unknown/made-up categories fall back to `Other` instead of creating new dashboard categories.
 
 ## Rename and Cleanup Rules
 

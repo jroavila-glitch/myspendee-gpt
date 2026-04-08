@@ -86,6 +86,28 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("ignored", "ignored"), (tx_type, category))
 
+    def test_unknown_imported_categories_fall_back_to_other(self) -> None:
+        tx_type, category, notes = classify_transaction(
+            description="Unrecognized merchant",
+            amount_mxn=Decimal("1200"),
+            bank_name="Unknown Bank",
+            current_type="expense",
+            current_category="Made Up Category",
+        )
+        self.assertEqual(("expense", "Other"), (tx_type, category))
+        self.assertIsNone(notes)
+
+    def test_known_imported_categories_are_preserved(self) -> None:
+        tx_type, category, notes = classify_transaction(
+            description="Unrecognized merchant",
+            amount_mxn=Decimal("1200"),
+            bank_name="Unknown Bank",
+            current_type="expense",
+            current_category="Travel",
+        )
+        self.assertEqual(("expense", "Travel"), (tx_type, category))
+        self.assertIsNone(notes)
+
     def test_claude_anthropic_is_ig_ro_project(self) -> None:
         for description in ["CLAUDE.AI SUBSCRIPTION ANTHROPIC.COMCA", "ANTHROPIC ANTHROPIC.COMCA"]:
             with self.subTest(description=description):

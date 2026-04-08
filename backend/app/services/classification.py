@@ -2,6 +2,14 @@ import re
 import unicodedata
 from decimal import Decimal
 
+from app.schemas.common import EXPENSE_CATEGORIES, INCOME_CATEGORIES
+
+ALLOWED_CATEGORIES = {
+    "income": set(INCOME_CATEGORIES),
+    "expense": set(EXPENSE_CATEGORIES),
+    "ignored": {"ignored"},
+}
+
 IGNORE_PATTERNS = [
     "MACSTORE MERIDA",
     "PAGO INTERBANCARIO",
@@ -53,6 +61,14 @@ EXPENSE_RULES = [
     (r"ALGARVEKNOWHOW", "Visa Portugal"),
     (r"FUNDEDNEXT", "Other"),
 ]
+
+
+def normalize_category(category: str | None, tx_type: str | None) -> str:
+    if tx_type == "ignored":
+        return "ignored"
+    if tx_type in {"income", "expense"} and category in ALLOWED_CATEGORIES[tx_type]:
+        return category
+    return "Other"
 
 
 def normalize_text(value: str) -> str:
@@ -175,9 +191,7 @@ def classify_transaction(
     if current_type in {"income", "expense", "ignored"} and current_category:
         if current_category == "Bank Fee":
             return current_type, "Bills/Fees", None
-        if current_category == "Transfer":
-            return current_type, ("Tennis Lessons" if current_type == "income" else "Other"), None
-        return current_type, current_category, None
+        return current_type, normalize_category(current_category, current_type), None
 
     fallback_type = "expense"
     fallback_notes = "Unclassified expense — manual review needed"
