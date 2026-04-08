@@ -126,10 +126,38 @@ def _parse_installment_blocks(section: str) -> list[str]:
     lines = [line.rstrip() for line in section.splitlines()]
     blocks: list[str] = []
     current: list[str] = []
+    skip_prefixes = tuple(
+        prefix.lower()
+        for prefix in (
+            "Compras a meses",
+            "Fecha Más detalle",
+            "Número de contrato:",
+            "Página ",
+            "Ver notas",
+            "Notas:",
+            "Fecha de la",
+            "operación Descripción",
+            "Monto",
+            "original",
+            "Saldo",
+            "pendiente",
+            "Intereses",
+            "interés",
+            "del",
+            "periodo",
+            "IVA de",
+            "Pago",
+            "requerido",
+            "Núm. de",
+            "pago",
+            "Tasa de",
+            "aplicable",
+        )
+    )
 
     for line in lines:
         stripped = line.strip()
-        if not stripped or stripped == "Compras a meses" or stripped.startswith("Fecha Más detalle"):
+        if not stripped or stripped.lower().startswith(skip_prefixes):
             continue
         if re.match(r"^\d{4}-\d{2}-\d{2}\b", stripped):
             if current:
@@ -343,6 +371,7 @@ def parse_rappi_pdf(pdf_bytes: bytes) -> dict | None:
         return None
 
     period_start, period_end = _extract_period(text)
+    installment_date = period_end
     transactions: list[dict] = []
     transactions.extend(_parse_regular_transactions(text))
     transactions.extend(_parse_banorte_regular_transactions(text))
@@ -361,7 +390,7 @@ def parse_rappi_pdf(pdf_bytes: bytes) -> dict | None:
 
         transactions.append(
             {
-                "date": match.group("date"),
+                "date": installment_date or match.group("date"),
                 "description": detail,
                 "amount_original": float(mensualidad),
                 "currency_original": "MXN",
@@ -387,7 +416,7 @@ def parse_rappi_pdf(pdf_bytes: bytes) -> dict | None:
 
         transactions.append(
             {
-                "date": match.group("date"),
+                "date": installment_date or match.group("date"),
                 "description": detail,
                 "amount_original": float(mensualidad),
                 "currency_original": "MXN",

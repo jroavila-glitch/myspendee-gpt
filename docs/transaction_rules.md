@@ -151,6 +151,7 @@ Additional ignore behavior:
 ### Rappi
 
 - `Implemented`: `Compras a meses` uses `Mensualidad` as the actual amount
+- `Implemented`: `Compras a meses` rows use the statement period end date as the charged installment date, even when the row's original purchase `Fecha` is from an earlier month/year.
 - `Implemented`: Installment columns become notes like `Installment X/Y`
 - `Implemented`: Supports both the older Rappi layout and newer Banorte-era `DESGLOSE DE MOVIMIENTOS` layout
 - `Implemented`: `IVA INTERES COMPRA EN CUOTAS` -> `Bills/Fees`
