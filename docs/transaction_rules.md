@@ -170,6 +170,7 @@ Additional ignore behavior:
 - `Implemented`: Add transaction form uses a currency dropdown with `MXN`, `USD`, `EUR`
 - `Implemented`: Dashboard includes a global display-currency dropdown for `MXN`, `EUR`, `USD`
 - `Implemented`: Notes autosave on blur/debounce
+- `Implemented`: Manual transaction edits for category/type override automatic classification.
 - `Implemented`: Bulk actions can change category and type
 - `Implemented`: Bulk type changes can set `income`, `expense`, or `ignored`
 - `Implemented`: Statement delete cascades to linked transactions

@@ -141,6 +141,13 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
     updated_values = payload.model_dump(exclude_unset=True)
     raw_data = serialize_transaction(transaction) | updated_values
     prepared = prepare_transaction_data(raw_data)
+    # Edits from the dashboard are intentional overrides. The normalization
+    # pipeline may still recompute amounts/dates, but it should not reclassify
+    # a category/type the user explicitly selected in the edit modal.
+    if "category" in updated_values and updated_values["category"] is not None:
+        prepared["category"] = updated_values["category"]
+    if "type" in updated_values and updated_values["type"] is not None:
+        prepared["type"] = updated_values["type"]
     for key, value in prepared.items():
         setattr(transaction, key, value)
     db.commit()
