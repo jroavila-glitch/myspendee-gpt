@@ -1,6 +1,6 @@
 # Transaction Rules
 
-This document is the canonical source of truth for transaction parsing, normalization, classification, and dashboard behavior in `myspendee-gpt`.
+This document is the canonical source of truth for transaction parsing, normalization, classification, and dashboard behavior in `Moneo`.
 
 When a new rule is added or changed, we should update:
 

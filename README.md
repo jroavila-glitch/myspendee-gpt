@@ -1,4 +1,4 @@
-# myspendee-gpt
+# Moneo
 
 Separate greenfield version of the expense tracking dashboard using FastAPI, React, PostgreSQL, Railway, Vercel, and the OpenAI API (`gpt-4o`) for PDF statement extraction.
 
@@ -46,7 +46,7 @@ Frontend:
 
 ### Railway
 
-- Create a new project named `myspendee-gpt`
+- Create a new project named `moneo`
 - Add PostgreSQL in that project only
 - Point the backend service root to `backend/`
 - Set `OPENAI_API_KEY`, `DATABASE_URL`, and `FRONTEND_URL`
@@ -82,7 +82,7 @@ Frontend:
 
 ## What Still Needs Real Inputs
 
-- A GitHub repo at `jroavila-glitch/myspendee-gpt` so this local repo can be pushed and connected cleanly to Vercel.
+- A GitHub repo at `jroavila-glitch/moneo` so this local repo can be pushed and connected cleanly to Vercel.
 - A valid `OPENAI_API_KEY` in Railway for live PDF extraction.
 - Real sample PDFs from each bank you care about, ideally 1-2 per institution, so bank-specific parsing and classification can be validated.
 - Railway environment variables on the `backend` service:
