@@ -31,6 +31,8 @@ Infra:
 
 Before making product or logic changes, the next agent should read:
 
+0. [AGENTS.md](/Users/roavila/moneo/AGENTS.md)
+
 1. [`docs/transaction_rules.md`](/Users/roavila/moneo/docs/transaction_rules.md)
 2. [`docs/TEAM.md`](/Users/roavila/moneo/docs/TEAM.md)
 3. [`docs/roadmap.md`](/Users/roavila/moneo/docs/roadmap.md)

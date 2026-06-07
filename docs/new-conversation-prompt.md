@@ -7,9 +7,11 @@ We are working on Moneo, a personal finance / expense-tracking app in:
 /Users/roavila/moneo
 
 Use Context7, Build Web Apps, and Superpowers if they are available in this session.
+Adopt the operating model in /Users/roavila/moneo/AGENTS.md and /Users/roavila/moneo/docs/TEAM.md.
 Use Browser for visual QA when frontend changes matter.
 
 Before doing any meaningful work, read these files first:
+- /Users/roavila/moneo/AGENTS.md
 - /Users/roavila/moneo/docs/transaction_rules.md
 - /Users/roavila/moneo/docs/TEAM.md
 - /Users/roavila/moneo/docs/roadmap.md

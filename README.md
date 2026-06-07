@@ -4,6 +4,7 @@ Separate greenfield version of the expense tracking dashboard using FastAPI, Rea
 
 ## Project Docs
 
+- [AGENTS.md](/Users/roavila/moneo/AGENTS.md)
 - [`CHANGELOG.md`](/Users/roavila/moneo/CHANGELOG.md)
 - [`docs/handoff.md`](/Users/roavila/moneo/docs/handoff.md)
 - [`docs/new-conversation-prompt.md`](/Users/roavila/moneo/docs/new-conversation-prompt.md)
