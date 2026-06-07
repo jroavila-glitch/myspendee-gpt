@@ -115,7 +115,7 @@ def _parse_blocks(section: str) -> list[str]:
 
 
 def _normalize_currency(value: str, account_currency: str) -> str:
-    normalized = value.upper()
+    normalized = value.strip().upper()
     if normalized == "N/A":
         return account_currency
     if normalized == "USDC":

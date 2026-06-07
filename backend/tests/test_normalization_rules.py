@@ -45,3 +45,19 @@ class NormalizationRulesTest(TestCase):
         self.assertEqual(Decimal("1333.00"), original)
         self.assertEqual(Decimal("27493.39"), mxn_amount)
         self.assertEqual(Decimal("20.625200"), rate)
+
+    def test_arq_usdc_amount_still_resolves_when_currency_has_extra_whitespace(self) -> None:
+        with patch("app.services.normalization.get_banxico_rate", return_value=None):
+            original, mxn_amount, rate, _ = resolve_amounts(
+                tx_date=__import__("datetime").date(2026, 1, 5),
+                bank_name="ARQ",
+                description="Compra USDc comisión",
+                currency_original=" USDc ",
+                amount_original=Decimal("3"),
+                amount_mxn=None,
+                exchange_rate_used=None,
+                local_mxn=None,
+            )
+        self.assertEqual(Decimal("3.00"), original)
+        self.assertEqual(Decimal("53.70"), mxn_amount)
+        self.assertEqual(Decimal("17.900000"), rate)

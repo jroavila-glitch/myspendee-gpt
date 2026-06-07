@@ -21,6 +21,13 @@ CURRENCY_ALIASES = {
 }
 
 
+def normalize_currency_code(value: str | None) -> str:
+    if not value:
+        return "MXN"
+    normalized = value.strip().upper()
+    return CURRENCY_ALIASES.get(normalized, normalized)
+
+
 def normalize_bank_name(bank_name: str) -> str:
     normalized = normalize_text(bank_name)
     if normalized == "NU" or normalized.startswith("NU ") or "NU MEXICO" in normalized:
@@ -45,7 +52,7 @@ def quantize_rate(value: Decimal | int | float | str) -> Decimal:
 
 
 def resolve_exchange_rate(bank_name: str, currency_original: str, exchange_rate: Decimal | None) -> Decimal | None:
-    currency_original = CURRENCY_ALIASES.get(currency_original.upper(), currency_original.upper())
+    currency_original = normalize_currency_code(currency_original)
     if exchange_rate and exchange_rate > 0:
         return quantize_rate(exchange_rate)
     if currency_original == "MXN":
@@ -71,7 +78,7 @@ def resolve_amounts(
 ) -> tuple[Decimal | None, Decimal, Decimal | None, str | None]:
     normalized_description = normalize_text(description)
     notes = None
-    normalized_currency = CURRENCY_ALIASES.get(currency_original.upper(), currency_original.upper())
+    normalized_currency = normalize_currency_code(currency_original)
 
     rate = resolve_exchange_rate(bank_name, normalized_currency, exchange_rate_used)
     mxn_amount = quantize_money(local_mxn if local_mxn is not None else amount_mxn) if (local_mxn is not None or amount_mxn is not None) else None
