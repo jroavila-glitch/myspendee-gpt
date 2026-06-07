@@ -4,17 +4,17 @@ Separate greenfield version of the expense tracking dashboard using FastAPI, Rea
 
 ## Project Docs
 
-- [`CHANGELOG.md`](/Users/roavila/Documents/New%20project/CHANGELOG.md)
-- [`docs/handoff.md`](/Users/roavila/Documents/New%20project/docs/handoff.md)
-- [`docs/new-conversation-prompt.md`](/Users/roavila/Documents/New%20project/docs/new-conversation-prompt.md)
-- [`docs/TEAM.md`](/Users/roavila/Documents/New%20project/docs/TEAM.md)
-- [`docs/roadmap.md`](/Users/roavila/Documents/New%20project/docs/roadmap.md)
-- [`docs/transaction_rules.md`](/Users/roavila/Documents/New%20project/docs/transaction_rules.md)
-- [`docs/incidents.md`](/Users/roavila/Documents/New%20project/docs/incidents.md)
-- [`docs/tooling.md`](/Users/roavila/Documents/New%20project/docs/tooling.md)
-- [`docs/security.md`](/Users/roavila/Documents/New%20project/docs/security.md)
-- [`docs/runbooks/deploy-and-restore.md`](/Users/roavila/Documents/New%20project/docs/runbooks/deploy-and-restore.md)
-- [`docs/decisions/README.md`](/Users/roavila/Documents/New%20project/docs/decisions/README.md)
+- [`CHANGELOG.md`](/Users/roavila/moneo/CHANGELOG.md)
+- [`docs/handoff.md`](/Users/roavila/moneo/docs/handoff.md)
+- [`docs/new-conversation-prompt.md`](/Users/roavila/moneo/docs/new-conversation-prompt.md)
+- [`docs/TEAM.md`](/Users/roavila/moneo/docs/TEAM.md)
+- [`docs/roadmap.md`](/Users/roavila/moneo/docs/roadmap.md)
+- [`docs/transaction_rules.md`](/Users/roavila/moneo/docs/transaction_rules.md)
+- [`docs/incidents.md`](/Users/roavila/moneo/docs/incidents.md)
+- [`docs/tooling.md`](/Users/roavila/moneo/docs/tooling.md)
+- [`docs/security.md`](/Users/roavila/moneo/docs/security.md)
+- [`docs/runbooks/deploy-and-restore.md`](/Users/roavila/moneo/docs/runbooks/deploy-and-restore.md)
+- [`docs/decisions/README.md`](/Users/roavila/moneo/docs/decisions/README.md)
 
 ## Structure
 

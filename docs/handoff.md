@@ -31,13 +31,13 @@ Infra:
 
 Before making product or logic changes, the next agent should read:
 
-1. [`docs/transaction_rules.md`](/Users/roavila/Documents/New%20project/docs/transaction_rules.md)
-2. [`docs/TEAM.md`](/Users/roavila/Documents/New%20project/docs/TEAM.md)
-3. [`docs/roadmap.md`](/Users/roavila/Documents/New%20project/docs/roadmap.md)
-4. [`docs/security.md`](/Users/roavila/Documents/New%20project/docs/security.md)
-5. [`docs/runbooks/deploy-and-restore.md`](/Users/roavila/Documents/New%20project/docs/runbooks/deploy-and-restore.md)
-6. [`docs/incidents.md`](/Users/roavila/Documents/New%20project/docs/incidents.md)
-7. [`docs/tooling.md`](/Users/roavila/Documents/New%20project/docs/tooling.md)
+1. [`docs/transaction_rules.md`](/Users/roavila/moneo/docs/transaction_rules.md)
+2. [`docs/TEAM.md`](/Users/roavila/moneo/docs/TEAM.md)
+3. [`docs/roadmap.md`](/Users/roavila/moneo/docs/roadmap.md)
+4. [`docs/security.md`](/Users/roavila/moneo/docs/security.md)
+5. [`docs/runbooks/deploy-and-restore.md`](/Users/roavila/moneo/docs/runbooks/deploy-and-restore.md)
+6. [`docs/incidents.md`](/Users/roavila/moneo/docs/incidents.md)
+7. [`docs/tooling.md`](/Users/roavila/moneo/docs/tooling.md)
 
 ## Current High-Value Context
 
@@ -66,4 +66,4 @@ For meaningful changes:
 
 ## New Conversation Starter Prompt
 
-Use the prompt in [`docs/new-conversation-prompt.md`](/Users/roavila/Documents/New%20project/docs/new-conversation-prompt.md).
+Use the prompt in [`docs/new-conversation-prompt.md`](/Users/roavila/moneo/docs/new-conversation-prompt.md).

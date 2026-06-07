@@ -108,7 +108,7 @@ If using multiple agents, they should map to responsibilities, not random tasks.
 
 ## Non-Negotiables
 
-- Canonical rules live in [`docs/transaction_rules.md`](/Users/roavila/Documents/New%20project/docs/transaction_rules.md)
+- Canonical rules live in [`docs/transaction_rules.md`](/Users/roavila/moneo/docs/transaction_rules.md)
 - Major product/ops changes should be documented
 - Production bugs should leave behind a written trace
 - Live fixes should add protection against regressions when practical

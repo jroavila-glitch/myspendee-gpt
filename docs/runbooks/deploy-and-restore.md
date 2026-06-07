@@ -63,6 +63,6 @@ Data restore:
 
 ## Required After Major Fixes
 
-- Update [`CHANGELOG.md`](/Users/roavila/Documents/New%20project/CHANGELOG.md) when the change is meaningful
-- Update [`docs/incidents.md`](/Users/roavila/Documents/New%20project/docs/incidents.md) for important production failures
-- Update [`docs/transaction_rules.md`](/Users/roavila/Documents/New%20project/docs/transaction_rules.md) when business logic changes
+- Update [`CHANGELOG.md`](/Users/roavila/moneo/CHANGELOG.md) when the change is meaningful
+- Update [`docs/incidents.md`](/Users/roavila/moneo/docs/incidents.md) for important production failures
+- Update [`docs/transaction_rules.md`](/Users/roavila/moneo/docs/transaction_rules.md) when business logic changes
