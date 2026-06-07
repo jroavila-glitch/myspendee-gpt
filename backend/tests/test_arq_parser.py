@@ -49,3 +49,18 @@ class ArqParserTest(TestCase):
         self.assertEqual(111.8, jose_sale["amount_original"])
         self.assertEqual(2000.0, jose_sale["local_mxn"])
         self.assertEqual("out", jose_sale["direction"])
+
+    def test_parses_new_digital_usd_arq_statement_layout(self) -> None:
+        with patch("app.services.arq_parser._extract_text", return_value=self._load_fixture("usd_arq_2026_05_digital.txt")):
+            parsed = parse_arq_pdf(b"stub")
+
+        assert parsed is not None
+        self.assertEqual("ARQ", parsed["bank_name"])
+        self.assertEqual("2026-05-01", parsed["period_start"])
+        self.assertEqual("2026-05-31", parsed["period_end"])
+
+        juan_sale = next(item for item in parsed["transactions"] if item["description"].startswith("Venta USDc") and "Juan Avila" in item["notes"])
+        self.assertEqual("USD", juan_sale["currency_original"])
+        self.assertEqual(28.0, juan_sale["amount_original"])
+        self.assertIsNone(juan_sale["local_mxn"])
+        self.assertEqual("out", juan_sale["direction"])

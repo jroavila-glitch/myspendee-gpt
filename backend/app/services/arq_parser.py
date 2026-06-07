@@ -137,13 +137,19 @@ def _build_description(kind: str, detail: str) -> str:
     return f"{normalized_kind} - {normalized_detail}"
 
 
+def _detect_account_currency(text: str) -> str | None:
+    if re.search(r"^(EURc|Euros digitales) Estado de Cuenta", text, re.IGNORECASE | re.MULTILINE):
+        return "EUR"
+    if re.search(r"^(USDc|D[oó]lares digitales) Estado de Cuenta", text, re.IGNORECASE | re.MULTILINE):
+        return "USD"
+    return None
+
+
 def parse_arq_pdf(pdf_bytes: bytes) -> dict | None:
     text = _extract_text(pdf_bytes)
-    title_match = re.search(r"^(EURc|USDc) Estado de Cuenta", text, re.IGNORECASE | re.MULTILINE)
-    if not title_match:
+    account_currency = _detect_account_currency(text)
+    if not account_currency:
         return None
-
-    account_currency = "EUR" if title_match.group(1).upper() == "EURC" else "USD"
     section, period_start, period_end = _extract_transaction_section(text)
     if not section:
         return None

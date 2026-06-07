@@ -1,0 +1,37 @@
+Dólares digitales Estado de Cuenta
+JOSE RODRIGO AVILA NEIRA
+US - Número de cuenta: 211500915363
+US - Número de ruteo: 101019644
+Fechas de Estado de Cuenta
+Detalle de 
+Transacciones
+Generado el June 7, 2026
++351 911107122 
+Lepetit 3
+Acapantzingo
+62440 Cuernavaca, Morelos 
+Mexico
+Fecha de inicio
+Fecha de fin
+Duración
+Fecha Tipo Monto
+Moneda 
+Local 
+Equivalente
+Monto Local 
+Equivalente Descripción
+May 11 Compra USDc + 350 USD + 350 CONTINI SOLUTIONS INC
+May 11 Comisión - 3 N/A N/A Compra USDc comisión
+May 15 Compra USDc + 400 USD + 400 CONTINI SOLUTIONS INC
+May 15 Comisión - 3 N/A N/A Compra USDc comisión
+May 17 Venta USDc - 743.97 MXN - 12,890 Jose Rodrigo Avila Neira
+May 19 Compra de USDc 
+con EURc + 31 EURc + 26.71 Conversión EURc a USDc
+May 19 Venta USDc - 28 USD - 28 Juan Avila
+May 19 Comisión - 3 N/A N/A Venta USDc comisión
+May 21 Compra USDc + 250 USD + 250 CONTINI SOLUTIONS INC
+May 21 Comisión - 3 N/A N/A Compra USDc comisión
+May 23 Venta USDc - 175.27 MXN - 3,034.48 Jose Rodrigo Avila Neira
+1 May 2026
+31 May 2026
+(31 Días)
