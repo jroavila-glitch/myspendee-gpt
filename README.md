@@ -2,6 +2,17 @@
 
 Separate greenfield version of the expense tracking dashboard using FastAPI, React, PostgreSQL, Railway, Vercel, and the OpenAI API (`gpt-4o`) for PDF statement extraction.
 
+## Project Docs
+
+- [`CHANGELOG.md`](/Users/roavila/Documents/New%20project/CHANGELOG.md)
+- [`docs/TEAM.md`](/Users/roavila/Documents/New%20project/docs/TEAM.md)
+- [`docs/roadmap.md`](/Users/roavila/Documents/New%20project/docs/roadmap.md)
+- [`docs/transaction_rules.md`](/Users/roavila/Documents/New%20project/docs/transaction_rules.md)
+- [`docs/incidents.md`](/Users/roavila/Documents/New%20project/docs/incidents.md)
+- [`docs/security.md`](/Users/roavila/Documents/New%20project/docs/security.md)
+- [`docs/runbooks/deploy-and-restore.md`](/Users/roavila/Documents/New%20project/docs/runbooks/deploy-and-restore.md)
+- [`docs/decisions/README.md`](/Users/roavila/Documents/New%20project/docs/decisions/README.md)
+
 ## Structure
 
 - `backend/`: FastAPI API, PostgreSQL models, upload pipeline, summary/breakdown endpoints
