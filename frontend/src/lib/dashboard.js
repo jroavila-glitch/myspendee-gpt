@@ -42,6 +42,26 @@ export function buildDrilldownFilter({ category = '', type = '' }) {
   return { category, type }
 }
 
+export function mergeDrilldownFilters(currentFilters, drilldown) {
+  return {
+    ...currentFilters,
+    category: drilldown.category || '',
+    type: drilldown.type || '',
+  }
+}
+
+export function buildReviewBannerSummary(insights, displayCurrency, displayRates) {
+  const affectedValue = convertInsightMetric(insights?.review_amount_mxn, displayCurrency, displayRates)
+  return {
+    count: Number(insights?.review_count || 0),
+    affectedValue,
+    reasons: (insights?.review_reasons || [])
+      .map((reason) => `${reason.label} ${reason.count}`)
+      .join(' · '),
+    conversionAvailable: affectedValue !== null,
+  }
+}
+
 export function convertInsightMetric(valueMxn, displayCurrency, displayRates) {
   if (displayCurrency === 'MXN') return Number(valueMxn || 0)
   const rate = Number(displayRates[displayCurrency] || 0)

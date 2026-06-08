@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
+  buildReviewBannerSummary,
   calculateSavingsRate,
   convertInsightMetric,
+  mergeDrilldownFilters,
 } from '../src/lib/dashboard.js'
 
 const rates = { MXN: 1, EUR: 20, USD: 18 }
@@ -50,4 +52,39 @@ test('normalizes display summary values to two decimal places', () => {
     expenses: 0.3,
     net: 0,
   })
+})
+
+test('prepares review banner summary from insight inputs', () => {
+  assert.deepEqual(
+    buildReviewBannerSummary({
+      review_count: 3,
+      review_amount_mxn: 1000,
+      review_reasons: [
+        { label: 'Unclassified', count: 2 },
+        { label: 'Missing FX', count: 1 },
+      ],
+    }, 'EUR', rates),
+    {
+      count: 3,
+      affectedValue: 50,
+      reasons: 'Unclassified 2 · Missing FX 1',
+      conversionAvailable: true,
+    },
+  )
+})
+
+test('keeps savings rate at zero when income is zero', () => {
+  assert.equal(calculateSavingsRate({ income: 0, net: -25 }), 0)
+})
+
+test('merges click drilldown while preserving global filters', () => {
+  const current = { bank_name: 'NU', category: '', type: 'expense' }
+  assert.deepEqual(
+    mergeDrilldownFilters(current, buildDrilldownFilter({ category: 'Food & Drink', type: 'expense' })),
+    { bank_name: 'NU', category: 'Food & Drink', type: 'expense' },
+  )
+  assert.deepEqual(
+    mergeDrilldownFilters(current, buildDrilldownFilter({ category: '', type: 'income' })),
+    { bank_name: 'NU', category: '', type: 'income' },
+  )
 })

@@ -1,23 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AppHeader from './components/AppHeader'
+import DashboardWorkspace from './components/DashboardWorkspace'
 import GlobalFilters from './components/GlobalFilters'
 import StatementsWorkspace from './components/StatementsWorkspace'
 import TransactionTable, { getReviewReason } from './components/TransactionTable'
 import { api } from './lib/api'
-import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from './lib/currency'
-
-const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-const BreakdownChart = lazy(() => import('./components/BreakdownChart'))
-const PIE_COLORS = ['#1d7a6f', '#f47d38', '#d85757', '#4c6fff', '#c59a2d', '#74809b']
-
-function formatPercent(value) {
-  return `${Number(value || 0).toFixed(1)}%`
-}
-
-function formatShortDate(value) {
-  return shortDateFormatter.format(new Date(`${value}T00:00:00`))
-}
+import { buildDisplayAnalytics, buildDrilldownFilter, mergeDrilldownFilters } from './lib/dashboard'
 
 function getCurrentMonthState() {
   const now = new Date()
@@ -26,129 +15,6 @@ function getCurrentMonthState() {
 
 function dedupeCategories(categories) {
   return Array.from(new Set([...categories.expense, ...categories.income]))
-}
-
-function summarizeReviewItems(items) {
-  const summary = new Map()
-  for (const item of items) {
-    const reason = item.reviewReason || 'Needs review'
-    summary.set(reason, (summary.get(reason) || 0) + 1)
-  }
-  return Array.from(summary.entries())
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count)
-}
-
-function getRoommateLabel(transaction) {
-  const haystack = `${transaction.description || ''} ${transaction.notes || ''}`.toLowerCase()
-  if (haystack.includes('sebastian wohler')) return 'Sebastian'
-  if (haystack.includes('paul pitterlein')) return 'Paul'
-  if (haystack.includes('almitas inc invest')) return 'Rent'
-  return null
-}
-
-function buildRoommateSnapshot(transactions, displayCurrency, displayRates) {
-  const entries = transactions
-    .map((transaction) => {
-      const label = getRoommateLabel(transaction)
-      return label
-        ? {
-            ...transaction,
-            roommateLabel: label,
-            displayAmount: getDisplayAmount(transaction, displayCurrency, displayRates),
-            secondaryAmountLabel: getSecondaryAmountLabel(transaction, displayCurrency),
-          }
-        : null
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.date.localeCompare(b.date))
-
-  const totals = {
-    Sebastian: 0,
-    Paul: 0,
-    Rent: 0,
-  }
-
-  for (const item of entries) {
-    totals[item.roommateLabel] += item.displayAmount
-  }
-
-  return {
-    entries,
-    totals,
-    inflows: totals.Sebastian + totals.Paul,
-    netRent: totals.Rent - (totals.Sebastian + totals.Paul),
-  }
-}
-
-function SummaryCard({ label, value, tone }) {
-  return (
-    <div className={`summary-card ${tone}`}>
-      <span>{label}</span>
-      <strong>{formatMoney(value.value, value.currency)}</strong>
-    </div>
-  )
-}
-
-function BreakdownSection({ title, data, onSelectCategory, tone, displayCurrency }) {
-  const total = data.reduce((sum, item) => sum + Number(item.total || 0), 0)
-
-  return (
-    <section className={`panel analytics-panel ${tone}`}>
-      <div className="panel-header">
-        <div>
-          <h3>{title}</h3>
-          <p className="section-meta">{data.length ? `${data.length} categories` : 'No activity this period'}</p>
-        </div>
-        {data.length ? <strong className="panel-total">{formatMoney(total, displayCurrency)}</strong> : null}
-      </div>
-
-      {data.length === 0 ? (
-        <div className="empty-panel">
-          <p>No transactions in this period.</p>
-        </div>
-      ) : (
-        <div className="analytics-layout">
-          <div className="analytics-chart">
-            <Suspense fallback={<div className="chart-skeleton" />}>
-              <BreakdownChart data={data} />
-            </Suspense>
-          </div>
-
-          <div className="analytics-list">
-            {data.map((item, index) => {
-              const share = total ? (Number(item.total) / total) * 100 : 0
-              return (
-                <button
-                  key={`${title}-${item.category}`}
-                  className="analytics-row"
-                  onClick={() => onSelectCategory(item)}
-                >
-                  <div className="analytics-row-main">
-                    <span className="analytics-dot" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
-                    <strong>{item.category}</strong>
-                  </div>
-                  <div className="analytics-row-meta">
-                    <div className="analytics-row-values">
-                      <strong>{formatMoney(item.total, displayCurrency)}</strong>
-                    </div>
-                    <div className="analytics-row-share">
-                      <span>{formatPercent(share)}</span>
-                    </div>
-                  </div>
-                  <div className="analytics-row-progress">
-                    <div className="analytics-bar">
-                      <span style={{ width: `${Math.min(share, 100)}%`, backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </section>
-  )
 }
 
 function Modal({ title, children, onClose }) {
@@ -239,6 +105,7 @@ function App() {
   const [displayRates, setDisplayRates] = useState({ MXN: 1, EUR: 21.5, USD: 17.9 })
   const [searchText, setSearchText] = useState('')
   const [transactions, setTransactions] = useState([])
+  const [insights, setInsights] = useState(null)
   const [statements, setStatements] = useState([])
   const [banks, setBanks] = useState([])
   const [categories, setCategories] = useState({ income: ['Other'], expense: ['Other'] })
@@ -280,6 +147,23 @@ function App() {
     return params
   }, [period, filters])
 
+  const insightsQueryParams = useMemo(() => {
+    const params = {
+      year: String(period.year),
+      ...(filters.bank_name ? { bank_name: filters.bank_name } : {}),
+      ...(filters.type ? { type: filters.type } : {}),
+    }
+
+    if (period.month === 'custom') {
+      if (period.dateFrom) params.date_from = period.dateFrom
+      if (period.dateTo) params.date_to = period.dateTo
+    } else if (period.month !== 'ytd') {
+      params.month = period.month
+    }
+
+    return params
+  }, [period, filters.bank_name, filters.type])
+
   const categoryOptions = useMemo(() => dedupeCategories(categories), [categories])
   const reviewItems = useMemo(
     () => transactions
@@ -290,44 +174,10 @@ function App() {
       .filter(Boolean),
     [transactions],
   )
-  const reviewSummary = useMemo(() => summarizeReviewItems(reviewItems), [reviewItems])
-  const roommateSnapshot = useMemo(
-    () => buildRoommateSnapshot(transactions, displayCurrency, displayRates),
+  const analytics = useMemo(
+    () => buildDisplayAnalytics(transactions, displayCurrency, displayRates),
     [transactions, displayCurrency, displayRates],
   )
-
-  const analytics = useMemo(() => {
-    const base = {
-      summary: { income: 0, expenses: 0, net: 0 },
-      breakdown: { income: [], expenses: [] },
-    }
-    const grouped = new Map()
-
-    for (const transaction of transactions) {
-      if (transaction.type === 'ignored') continue
-      const amount = getDisplayAmount(transaction, displayCurrency, displayRates)
-      if (transaction.type === 'income') base.summary.income += amount
-      if (transaction.type === 'expense') base.summary.expenses += amount
-      const key = `${transaction.type}::${transaction.category}`
-      const current = grouped.get(key) || {
-        category: transaction.category,
-        type: transaction.type,
-        total: 0,
-        count: 0,
-      }
-      current.total += amount
-      current.count += 1
-      grouped.set(key, current)
-    }
-
-    base.summary.net = base.summary.income - base.summary.expenses
-    const items = Array.from(grouped.values())
-      .map((item) => ({ ...item, total: Number(item.total.toFixed(2)) }))
-      .sort((a, b) => b.total - a.total)
-    base.breakdown.income = items.filter((item) => item.type === 'income')
-    base.breakdown.expenses = items.filter((item) => item.type === 'expense')
-    return base
-  }, [transactions, displayCurrency, displayRates])
 
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -354,8 +204,9 @@ function App() {
   async function loadAll() {
     try {
       setError('')
-      const [transactionsRes, statementsRes, banksRes, categoriesRes] = await Promise.all([
+      const [transactionsRes, insightsRes, statementsRes, banksRes, categoriesRes] = await Promise.all([
         api.listTransactions(queryParams),
+        api.insights(insightsQueryParams),
         api.statements(),
         api.banks(),
         api.categories(),
@@ -367,6 +218,7 @@ function App() {
         fxRatesRes = {}
       }
       setTransactions(transactionsRes)
+      setInsights(insightsRes)
       setStatements(statementsRes)
       setBanks(banksRes)
       setCategories(categoriesRes)
@@ -382,7 +234,7 @@ function App() {
 
   useEffect(() => {
     loadAll()
-  }, [queryParams])
+  }, [queryParams, insightsQueryParams])
 
   useEffect(() => {
     setNotesDrafts(Object.fromEntries(transactions.map((transaction) => {
@@ -447,6 +299,14 @@ function App() {
         dateTo: current.dateTo || `${current.year}-12-31`,
       }
     })
+  }
+
+  function handleDashboardDrilldown(drilldown) {
+    setFilters((current) => mergeDrilldownFilters(current, buildDrilldownFilter(drilldown)))
+  }
+
+  function clearDashboardDrilldown() {
+    setFilters((current) => mergeDrilldownFilters(current, buildDrilldownFilter({})))
   }
 
   async function saveNotes(transaction, notes) {
@@ -579,95 +439,38 @@ function App() {
         ) : null}
 
         {tab === 'dashboard' ? (
-          <main className="dashboard-layout">
-            <div className="main-grid">
-              <section className="insight-strip">
-                <div className="insight-card">
-                  <span>Transactions</span>
-                  <strong>{transactions.length}</strong>
-                  <p>{visibleTransactions.length === transactions.length ? 'All visible in current view' : `${visibleTransactions.length} shown with current filters`}</p>
-                </div>
-                <div className="insight-card">
-                  <span>Needs Review</span>
-                  <strong>{reviewItems.length}</strong>
-                  <p>{reviewItems.length ? `${reviewSummary.slice(0, 2).map((item) => `${item.label} ${item.count}`).join(' · ')}` : 'No review queue for this month'}</p>
-                </div>
-                <div className="insight-card">
-                  <span>Ignored</span>
-                  <strong>{transactions.filter((item) => item.type === 'ignored').length}</strong>
-                  <p>Hidden from summary metrics, still accessible below</p>
-                </div>
-              </section>
-
-              <section className="summary-grid">
-                <SummaryCard label="Total Income" value={{ value: analytics.summary.income, currency: displayCurrency }} tone="income" />
-                <SummaryCard label="Total Expenses" value={{ value: analytics.summary.expenses, currency: displayCurrency }} tone="expense" />
-                <SummaryCard label="Net" value={{ value: analytics.summary.net, currency: displayCurrency }} tone="net" />
-              </section>
-
-              {roommateSnapshot.entries.length ? (
-                <section className="panel roommate-panel">
-                  <div className="panel-header">
-                    <div>
-                      <h3>Rent & Roommates</h3>
-                      <p className="section-meta">Ignored roommate transfers, plus rent payments, tracked separately from P&amp;L.</p>
-                    </div>
-                  </div>
-
-                  <div className="roommate-summary">
-                    <div className="roommate-metric"><span>Sebastian</span><strong>{formatMoney(roommateSnapshot.totals.Sebastian, displayCurrency)}</strong></div>
-                    <div className="roommate-metric"><span>Paul</span><strong>{formatMoney(roommateSnapshot.totals.Paul, displayCurrency)}</strong></div>
-                    <div className="roommate-metric"><span>Rent Paid</span><strong>{formatMoney(roommateSnapshot.totals.Rent, displayCurrency)}</strong></div>
-                    <div className="roommate-metric emphasis"><span>Net After Roommates</span><strong>{formatMoney(roommateSnapshot.netRent, displayCurrency)}</strong></div>
-                  </div>
-
-                  <div className="roommate-table">
-                    <div className="roommate-head"><span>Date</span><span>Line Item</span><span>Group</span><span>Amount</span></div>
-                    {roommateSnapshot.entries.map((item) => (
-                      <div key={item.id} className="roommate-row">
-                        <span>{formatShortDate(item.date)}</span>
-                        <div className="roommate-line">
-                          <strong>{item.description}</strong>
-                          {item.secondaryAmountLabel ? <small>{item.secondaryAmountLabel}</small> : null}
-                        </div>
-                        <span className={`roommate-tag ${item.roommateLabel.toLowerCase()}`}>{item.roommateLabel}</span>
-                        <strong>{formatMoney(item.displayAmount, displayCurrency)}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              <section className="breakdown-grid">
-                <BreakdownSection title="Income Breakdown" data={analytics.breakdown.income} tone="income" displayCurrency={displayCurrency} onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))} />
-                <BreakdownSection title="Expense Breakdown" data={analytics.breakdown.expenses} tone="expense" displayCurrency={displayCurrency} onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))} />
-              </section>
-
-              <TransactionTable
-                meta={visibleTransactions.length === transactions.length ? `${transactions.length} transactions` : `${visibleTransactions.length} of ${transactions.length} shown`}
-                transactions={visibleTransactions}
-                selectedIds={selectedIds}
-                categoryOptions={categoryOptions}
-                category={filters.category}
-                searchText={searchText}
-                searchInputRef={searchInputRef}
-                displayCurrency={displayCurrency}
-                displayRates={displayRates}
-                notesDrafts={notesDrafts}
-                savingNotesIds={savingNotesIds}
-                menuState={menuState}
-                onCategoryChange={(value) => setFilters((current) => ({ ...current, category: value }))}
-                onSearchChange={setSearchText}
-                onToggleSelected={toggleSelected}
-                onNotesChange={handleNotesChange}
-                onNotesBlur={handleNotesBlur}
-                onMenuOpen={(id, trigger) => setMenuState({ id, trigger, rect: trigger.getBoundingClientRect() })}
-                onMenuClose={closeTransactionMenu}
-                onEdit={(transaction) => { setEditingTransaction(transaction); setMenuState(null) }}
-                onDelete={handleDeleteTransaction}
-              />
-            </div>
-          </main>
+          <DashboardWorkspace
+            insights={insights}
+            analytics={analytics}
+            filters={filters}
+            displayCurrency={displayCurrency}
+            displayRates={displayRates}
+            visibleTransactions={visibleTransactions}
+            onOpenReview={() => setTab('review')}
+            onDrilldown={handleDashboardDrilldown}
+            onClearDrilldown={clearDashboardDrilldown}
+            transactionTableProps={{
+              selectedIds,
+              categoryOptions,
+              category: filters.category,
+              searchText,
+              searchInputRef,
+              displayCurrency,
+              displayRates,
+              notesDrafts,
+              savingNotesIds,
+              menuState,
+              onCategoryChange: (value) => setFilters((current) => ({ ...current, category: value })),
+              onSearchChange: setSearchText,
+              onToggleSelected: toggleSelected,
+              onNotesChange: handleNotesChange,
+              onNotesBlur: handleNotesBlur,
+              onMenuOpen: (id, trigger) => setMenuState({ id, trigger, rect: trigger.getBoundingClientRect() }),
+              onMenuClose: closeTransactionMenu,
+              onEdit: (transaction) => { setEditingTransaction(transaction); setMenuState(null) },
+              onDelete: handleDeleteTransaction,
+            }}
+          />
         ) : tab === 'review' ? (
           <main className="workspace-main">
             <TransactionTable
