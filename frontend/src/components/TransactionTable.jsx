@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from '../lib/currency'
 
@@ -20,17 +21,36 @@ function ReviewBadge({ transaction }) {
   return reason ? <span className="review-badge">{reason}</span> : null
 }
 
-function TransactionMenu({ onEdit, onDelete, anchorRect, onClose }) {
+function TransactionMenu({ id, onEdit, onDelete, anchorRect, onClose }) {
+  const editButtonRef = useRef(null)
+
+  useEffect(() => {
+    editButtonRef.current?.focus()
+  }, [])
+
   if (!anchorRect) return null
   const top = anchorRect.bottom + window.scrollY + 8
   const left = anchorRect.right + window.scrollX - 184
 
   return createPortal(
     <>
-      <button className="menu-backdrop" aria-label="Close actions menu" onClick={onClose} />
-      <div className="menu-popover" style={{ top, left }}>
-        <button onClick={onEdit}>Edit</button>
-        <button className="danger-action" onClick={onDelete}>Delete</button>
+      <div className="menu-backdrop" aria-hidden="true" onClick={() => onClose(true)} />
+      <div
+        id={id}
+        className="menu-popover"
+        role="menu"
+        aria-label="Transaction actions"
+        style={{ top, left }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            onClose(true)
+          }
+        }}
+      >
+        <button ref={editButtonRef} role="menuitem" onClick={onEdit}>Edit</button>
+        <button role="menuitem" className="danger-action" onClick={onDelete}>Delete</button>
       </div>
     </>,
     document.body,
@@ -140,13 +160,17 @@ export default function TransactionTable({
             <div className="actions-cell">
               <button
                 aria-label={`Actions for ${transaction.description}`}
+                aria-haspopup="menu"
+                aria-expanded={menuState?.id === transaction.id}
+                aria-controls={menuState?.id === transaction.id ? `transaction-menu-${transaction.id}` : undefined}
                 className="ghost-button icon-button"
-                onClick={(event) => onMenuOpen(transaction.id, event.currentTarget.getBoundingClientRect())}
+                onClick={(event) => onMenuOpen(transaction.id, event.currentTarget)}
               >
                 •••
               </button>
               {menuState?.id === transaction.id ? (
                 <TransactionMenu
+                  id={`transaction-menu-${transaction.id}`}
                   anchorRect={menuState.rect}
                   onClose={onMenuClose}
                   onEdit={() => onEdit(transaction)}

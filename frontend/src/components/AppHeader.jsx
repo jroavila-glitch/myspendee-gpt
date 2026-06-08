@@ -18,9 +18,9 @@ export default function AppHeader({
 
       <div className="topbar-actions">
         <nav className="tabs" aria-label="Workspaces">
-          <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => onTabChange('dashboard')}>Dashboard</button>
-          <button className={tab === 'review' ? 'active' : ''} onClick={() => onTabChange('review')}>Review</button>
-          <button className={tab === 'statements' ? 'active' : ''} onClick={() => onTabChange('statements')}>Statements</button>
+          <button className={tab === 'dashboard' ? 'active' : ''} aria-current={tab === 'dashboard' ? 'page' : undefined} onClick={() => onTabChange('dashboard')}>Dashboard</button>
+          <button className={tab === 'review' ? 'active' : ''} aria-current={tab === 'review' ? 'page' : undefined} onClick={() => onTabChange('review')}>Review</button>
+          <button className={tab === 'statements' ? 'active' : ''} aria-current={tab === 'statements' ? 'page' : undefined} onClick={() => onTabChange('statements')}>Statements</button>
         </nav>
         <button className="accent-button secondary-action" onClick={onCreateTransaction}>New Transaction</button>
         <label className="upload-button quiet-action">

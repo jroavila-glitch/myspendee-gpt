@@ -254,6 +254,11 @@ function App() {
   const [savingNotesIds, setSavingNotesIds] = useState([])
   const [density, setDensity] = useState('comfortable')
   const notesTimers = useRef({})
+  const notesSaveChains = useRef({})
+  const notesSaveVersions = useRef({})
+  const notesRequestedValues = useRef({})
+  const notesPersistedValues = useRef({})
+  const notesLatestDrafts = useRef({})
   const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
 
@@ -380,19 +385,30 @@ function App() {
   }, [queryParams])
 
   useEffect(() => {
-    setNotesDrafts(Object.fromEntries(transactions.map((transaction) => [transaction.id, transaction.notes || ''])))
+    setNotesDrafts(Object.fromEntries(transactions.map((transaction) => {
+      const persistedNotes = transaction.notes || ''
+      notesPersistedValues.current[transaction.id] = persistedNotes
+      return [transaction.id, notesLatestDrafts.current[transaction.id] ?? persistedNotes]
+    })))
   }, [transactions])
 
+  useEffect(() => () => {
+    Object.values(notesTimers.current).forEach(clearTimeout)
+  }, [])
+
   useEffect(() => {
-    function handleEscape(event) {
+    if (!menuState) return undefined
+
+    function handleMenuEscape(event) {
       if (event.key === 'Escape') {
-        setMenuState(null)
+        event.preventDefault()
+        closeTransactionMenu(true)
       }
     }
 
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [])
+    window.addEventListener('keydown', handleMenuEscape)
+    return () => window.removeEventListener('keydown', handleMenuEscape)
+  }, [menuState])
 
   useEffect(() => {
     function handleShortcuts(event) {
@@ -434,21 +450,58 @@ function App() {
   }
 
   async function saveNotes(transaction, notes) {
-    const currentNotes = transaction.notes || ''
-    if (notes === currentNotes) return
-    setSavingNotesIds((current) => [...new Set([...current, transaction.id])])
+    const id = transaction.id
+    const activeSave = notesSaveChains.current[id]
+    if (activeSave && notesRequestedValues.current[id] === notes) return activeSave
+    if (!activeSave && notes === (notesPersistedValues.current[id] ?? transaction.notes ?? '')) return
+
+    const version = (notesSaveVersions.current[id] || 0) + 1
+    notesSaveVersions.current[id] = version
+    notesRequestedValues.current[id] = notes
+    notesLatestDrafts.current[id] = notes
+    setSavingNotesIds((current) => [...new Set([...current, id])])
+
+    const request = (activeSave || Promise.resolve())
+      .catch(() => {})
+      .then(() => api.updateTransaction(id, { notes }))
+    notesSaveChains.current[id] = request
+
     try {
-      await api.updateTransaction(transaction.id, { notes })
-      setTransactions((current) => current.map((item) => item.id === transaction.id ? { ...item, notes } : item))
+      await request
+      if (notesSaveVersions.current[id] === version) {
+        notesPersistedValues.current[id] = notes
+        if (notesLatestDrafts.current[id] === notes) {
+          setTransactions((current) => current.map((item) => item.id === id ? { ...item, notes } : item))
+        }
+      }
     } finally {
-      setSavingNotesIds((current) => current.filter((id) => id !== transaction.id))
+      if (notesSaveVersions.current[id] === version) {
+        delete notesSaveChains.current[id]
+        setSavingNotesIds((current) => current.filter((savingId) => savingId !== id))
+      }
     }
   }
 
   function handleNotesChange(transaction, value) {
     clearTimeout(notesTimers.current[transaction.id])
+    notesLatestDrafts.current[transaction.id] = value
     setNotesDrafts((current) => ({ ...current, [transaction.id]: value }))
-    notesTimers.current[transaction.id] = setTimeout(() => saveNotes(transaction, value), 900)
+    notesTimers.current[transaction.id] = setTimeout(() => {
+      delete notesTimers.current[transaction.id]
+      saveNotes(transaction, value)
+    }, 900)
+  }
+
+  function handleNotesBlur(transaction, value) {
+    clearTimeout(notesTimers.current[transaction.id])
+    delete notesTimers.current[transaction.id]
+    saveNotes(transaction, value)
+  }
+
+  function closeTransactionMenu(restoreFocus = false) {
+    const trigger = menuState?.trigger
+    setMenuState(null)
+    if (restoreFocus) requestAnimationFrame(() => trigger?.focus())
   }
 
   async function handleDeleteTransaction(id) {
@@ -510,18 +563,20 @@ function App() {
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div className="dashboard-stack">
-        <GlobalFilters
-          period={period}
-          filters={filters}
-          banks={banks}
-          displayCurrency={displayCurrency}
-          density={density}
-          onPeriodChange={handlePeriodChange}
-          onPeriodUpdate={(updates) => setPeriod((current) => ({ ...current, ...updates }))}
-          onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
-          onDisplayCurrencyChange={setDisplayCurrency}
-          onDensityToggle={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}
-        />
+        {tab !== 'statements' ? (
+          <GlobalFilters
+            period={period}
+            filters={filters}
+            banks={banks}
+            displayCurrency={displayCurrency}
+            density={density}
+            onPeriodChange={handlePeriodChange}
+            onPeriodUpdate={(updates) => setPeriod((current) => ({ ...current, ...updates }))}
+            onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
+            onDisplayCurrencyChange={setDisplayCurrency}
+            onDensityToggle={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}
+          />
+        ) : null}
 
         {tab === 'dashboard' ? (
           <main className="dashboard-layout">
@@ -605,9 +660,9 @@ function App() {
                 onSearchChange={setSearchText}
                 onToggleSelected={toggleSelected}
                 onNotesChange={handleNotesChange}
-                onNotesBlur={saveNotes}
-                onMenuOpen={(id, rect) => setMenuState({ id, rect })}
-                onMenuClose={() => setMenuState(null)}
+                onNotesBlur={handleNotesBlur}
+                onMenuOpen={(id, trigger) => setMenuState({ id, trigger, rect: trigger.getBoundingClientRect() })}
+                onMenuClose={closeTransactionMenu}
                 onEdit={(transaction) => { setEditingTransaction(transaction); setMenuState(null) }}
                 onDelete={handleDeleteTransaction}
               />
@@ -634,9 +689,9 @@ function App() {
               onSearchChange={setSearchText}
               onToggleSelected={toggleSelected}
               onNotesChange={handleNotesChange}
-              onNotesBlur={saveNotes}
-              onMenuOpen={(id, rect) => setMenuState({ id, rect })}
-              onMenuClose={() => setMenuState(null)}
+              onNotesBlur={handleNotesBlur}
+              onMenuOpen={(id, trigger) => setMenuState({ id, trigger, rect: trigger.getBoundingClientRect() })}
+              onMenuClose={closeTransactionMenu}
               onEdit={(transaction) => { setEditingTransaction(transaction); setMenuState(null) }}
               onDelete={handleDeleteTransaction}
             />
