@@ -30,3 +30,24 @@ test('builds a category drilldown filter', () => {
 test('converts backend MXN insight metrics into display currency', () => {
   assert.equal(convertInsightMetric(400, 'EUR', rates), 20)
 })
+
+test('returns null when a requested display rate is unavailable', () => {
+  assert.equal(convertInsightMetric(400, 'EUR', { MXN: 1 }), null)
+  assert.equal(convertInsightMetric(400, 'EUR', { MXN: 1, EUR: 0 }), null)
+  assert.equal(convertInsightMetric('400', 'MXN', { MXN: 1 }), 400)
+})
+
+test('normalizes display summary values to two decimal places', () => {
+  const transactions = [
+    { type: 'income', category: 'Income', amount_mxn: 0.1, currency_original: 'MXN' },
+    { type: 'income', category: 'Income', amount_mxn: 0.2, currency_original: 'MXN' },
+    { type: 'expense', category: 'Expense', amount_mxn: 0.1, currency_original: 'MXN' },
+    { type: 'expense', category: 'Expense', amount_mxn: 0.2, currency_original: 'MXN' },
+  ]
+
+  assert.deepEqual(buildDisplayAnalytics(transactions, 'MXN', rates).summary, {
+    income: 0.3,
+    expenses: 0.3,
+    net: 0,
+  })
+})

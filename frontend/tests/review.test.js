@@ -4,8 +4,8 @@ import { groupReviewReasons, reviewAffectedValue } from '../src/lib/review.js'
 
 test('groups review reasons and totals affected MXN value', () => {
   const items = [
-    { review_reasons: ['Unclassified'], amount_mxn: 100 },
-    { review_reasons: ['Unclassified', 'Higher than usual'], amount_mxn: 50 },
+    { reasons: ['Unclassified'], amount_mxn: 100 },
+    { reasons: ['Unclassified', 'Higher than usual'], amount_mxn: 50 },
   ]
   assert.deepEqual(groupReviewReasons(items), [
     { label: 'Unclassified', count: 2 },
@@ -16,7 +16,7 @@ test('groups review reasons and totals affected MXN value', () => {
 
 test('sorts equally frequent review reasons by label', () => {
   const items = [
-    { review_reasons: ['Unclassified', 'Higher than usual'], amount_mxn: 100 },
+    { reasons: ['Unclassified', 'Higher than usual'], amount_mxn: 100 },
   ]
 
   assert.deepEqual(groupReviewReasons(items), [

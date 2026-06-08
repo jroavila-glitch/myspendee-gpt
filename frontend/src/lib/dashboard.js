@@ -23,7 +23,9 @@ export function buildDisplayAnalytics(transactions, displayCurrency, displayRate
     current.count += 1
     grouped.set(key, current)
   }
-  summary.net = summary.income - summary.expenses
+  summary.income = Number(summary.income.toFixed(2))
+  summary.expenses = Number(summary.expenses.toFixed(2))
+  summary.net = Number((summary.income - summary.expenses).toFixed(2))
   const items = [...grouped.values()]
     .map((item) => ({ ...item, total: Number(item.total.toFixed(2)) }))
     .sort((a, b) => b.total - a.total)
@@ -43,5 +45,5 @@ export function buildDrilldownFilter({ category = '', type = '' }) {
 export function convertInsightMetric(valueMxn, displayCurrency, displayRates) {
   if (displayCurrency === 'MXN') return Number(valueMxn || 0)
   const rate = Number(displayRates[displayCurrency] || 0)
-  return rate ? Number(valueMxn || 0) / rate : Number(valueMxn || 0)
+  return rate ? Number(valueMxn || 0) / rate : null
 }

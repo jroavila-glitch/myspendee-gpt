@@ -1,7 +1,7 @@
 export function groupReviewReasons(items) {
   const counts = new Map()
   for (const item of items) {
-    for (const reason of item.review_reasons) {
+    for (const reason of item.reasons) {
       counts.set(reason, (counts.get(reason) || 0) + 1)
     }
   }
