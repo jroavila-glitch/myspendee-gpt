@@ -9,8 +9,10 @@ import {
   calculateSavingsRate,
   convertInsightMetric,
   filterTransactionsByDrilldown,
+  getTransactionReviewReasons,
   joinReviewItems,
   mergeDrilldownFilters,
+  replaceDisplayRatesFromFx,
   shouldApplyRequestVersion,
 } from '../src/lib/dashboard.js'
 
@@ -164,4 +166,26 @@ test('only applies the latest mounted request version', () => {
   assert.equal(shouldApplyRequestVersion(4, 4, true), true)
   assert.equal(shouldApplyRequestVersion(3, 4, true), false)
   assert.equal(shouldApplyRequestVersion(4, 4, false), false)
+})
+
+test('replaces display rates with latest successful FX payload only', () => {
+  assert.deepEqual(replaceDisplayRatesFromFx({ EUR: 20 }), { MXN: 1, EUR: 20 })
+  assert.deepEqual(replaceDisplayRatesFromFx({ USD: 18, EUR: 0 }), { MXN: 1, USD: 18 })
+})
+
+test('clears non-MXN display rates on FX failure', () => {
+  assert.deepEqual(replaceDisplayRatesFromFx(null), { MXN: 1 })
+})
+
+test('prefers supplied backend review reasons including multiple reasons', () => {
+  assert.deepEqual(getTransactionReviewReasons({
+    type: 'expense',
+    category: 'Other',
+    review_reasons: ['Missing FX', 'Higher than usual'],
+  }), ['Missing FX', 'Higher than usual'])
+})
+
+test('falls back to legacy review heuristic only without supplied reasons', () => {
+  assert.deepEqual(getTransactionReviewReasons({ type: 'expense', category: 'Other' }), ['Unclassified expense'])
+  assert.deepEqual(getTransactionReviewReasons({ type: 'expense', category: 'Other', review_reasons: [] }), [])
 })

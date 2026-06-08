@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from '../lib/currency'
+import { getTransactionReviewReasons } from '../lib/dashboard'
 
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 
@@ -9,16 +10,16 @@ function formatShortDate(value) {
 }
 
 export function getReviewReason(transaction) {
-  const notes = (transaction.notes || '').toLowerCase()
-  if (transaction.category === 'Other' && notes.includes('manual review')) return 'Needs category review'
-  if (transaction.category === 'Other' && transaction.type === 'expense') return 'Unclassified expense'
-  if (transaction.type === 'ignored') return 'Ignored transaction'
-  return null
+  return getTransactionReviewReasons(transaction)[0] || null
 }
 
 function ReviewBadge({ transaction }) {
-  const reason = getReviewReason(transaction)
-  return reason ? <span className="review-badge">{reason}</span> : null
+  const reasons = getTransactionReviewReasons(transaction)
+  return reasons.length ? (
+    <div className="review-badges" aria-label={`Review reasons: ${reasons.join(', ')}`}>
+      {reasons.map((reason) => <span key={reason} className="review-badge">{reason}</span>)}
+    </div>
+  ) : null
 }
 
 function TransactionMenu({ id, onEdit, onDelete, anchorRect, onClose }) {

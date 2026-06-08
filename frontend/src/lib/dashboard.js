@@ -81,6 +81,24 @@ export function shouldApplyRequestVersion(requestVersion, latestVersion, isMount
   return isMounted && requestVersion === latestVersion
 }
 
+export function replaceDisplayRatesFromFx(fxRates) {
+  if (!fxRates) return { MXN: 1 }
+  return {
+    MXN: 1,
+    ...(Number(fxRates.EUR) > 0 ? { EUR: Number(fxRates.EUR) } : {}),
+    ...(Number(fxRates.USD) > 0 ? { USD: Number(fxRates.USD) } : {}),
+  }
+}
+
+export function getTransactionReviewReasons(transaction) {
+  if (Array.isArray(transaction.review_reasons)) return transaction.review_reasons
+  const notes = (transaction.notes || '').toLowerCase()
+  if (transaction.category === 'Other' && notes.includes('manual review')) return ['Needs category review']
+  if (transaction.category === 'Other' && transaction.type === 'expense') return ['Unclassified expense']
+  if (transaction.type === 'ignored') return ['Ignored transaction']
+  return []
+}
+
 function nullableSavingsRate(income, net) {
   const numericIncome = Number(income)
   const numericNet = Number(net)

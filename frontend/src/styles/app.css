@@ -998,6 +998,17 @@ h3 {
   font-weight: 700;
 }
 
+.review-badges {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.review-badges .review-badge {
+  margin-top: 0.34rem;
+}
+
 .transaction-category,
 .transaction-amount,
 .transaction-notes,

@@ -13,6 +13,7 @@ import {
   filterTransactionsByDrilldown,
   joinReviewItems,
   mergeDrilldownFilters,
+  replaceDisplayRatesFromFx,
   shouldApplyRequestVersion,
 } from './lib/dashboard'
 
@@ -263,13 +264,9 @@ function App() {
     if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value)
     else nonfatalErrors.push(`Categories: ${categoriesResult.reason.message}`)
     if (fxRatesResult.status === 'fulfilled') {
-      setDisplayRates((current) => ({
-        ...current,
-        MXN: 1,
-        ...(Number(fxRatesResult.value.EUR) > 0 ? { EUR: Number(fxRatesResult.value.EUR) } : {}),
-        ...(Number(fxRatesResult.value.USD) > 0 ? { USD: Number(fxRatesResult.value.USD) } : {}),
-      }))
+      setDisplayRates(replaceDisplayRatesFromFx(fxRatesResult.value))
     } else {
+      setDisplayRates(replaceDisplayRatesFromFx(null))
       nonfatalErrors.push(`Exchange rates: ${fxRatesResult.reason.message}`)
     }
     setError(nonfatalErrors.join(' · '))
