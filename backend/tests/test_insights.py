@@ -27,12 +27,26 @@ class InsightsTest(TestCase):
         self.assertEqual((date(2026, 1, 1), date(2026, 1, 31)), current)
         self.assertEqual((date(2025, 12, 1), date(2025, 12, 31)), previous)
 
-    def test_ytd_compares_with_previous_year(self) -> None:
+    def test_current_year_ytd_compares_through_equivalent_prior_date(self) -> None:
         current, previous = resolve_comparison_period(
-            year=2026, month=None, date_from=None, date_to=None
+            year=2026, month=None, date_from=None, date_to=None, today=date(2026, 6, 8)
         )
-        self.assertEqual((date(2026, 1, 1), date(2026, 12, 31)), current)
-        self.assertEqual((date(2025, 1, 1), date(2025, 12, 31)), previous)
+        self.assertEqual((date(2026, 1, 1), date(2026, 6, 8)), current)
+        self.assertEqual((date(2025, 1, 1), date(2025, 6, 8)), previous)
+
+    def test_current_year_ytd_clamps_prior_leap_day(self) -> None:
+        current, previous = resolve_comparison_period(
+            year=2024, month=None, date_from=None, date_to=None, today=date(2024, 2, 29)
+        )
+        self.assertEqual((date(2024, 1, 1), date(2024, 2, 29)), current)
+        self.assertEqual((date(2023, 1, 1), date(2023, 2, 28)), previous)
+
+    def test_completed_past_year_compares_with_previous_full_year(self) -> None:
+        current, previous = resolve_comparison_period(
+            year=2025, month=None, date_from=None, date_to=None, today=date(2026, 6, 8)
+        )
+        self.assertEqual((date(2025, 1, 1), date(2025, 12, 31)), current)
+        self.assertEqual((date(2024, 1, 1), date(2024, 12, 31)), previous)
 
     def test_custom_range_compares_with_immediately_preceding_equal_range(self) -> None:
         current, previous = resolve_comparison_period(
@@ -57,8 +71,33 @@ class InsightsTest(TestCase):
                 date_to=date(2026, 5, 10),
             )
 
+    def test_rejects_invalid_month_and_year_with_clear_errors(self) -> None:
+        with self.assertRaisesRegex(ValueError, "month must be between 1 and 12"):
+            resolve_comparison_period(year=2026, month=13, date_from=None, date_to=None)
+        with self.assertRaisesRegex(ValueError, "year must be between 1 and 9999"):
+            resolve_comparison_period(year=0, month=None, date_from=None, date_to=None)
+
+    def test_rejects_future_year(self) -> None:
+        with self.assertRaisesRegex(ValueError, "future year"):
+            resolve_comparison_period(
+                year=2027, month=None, date_from=None, date_to=None, today=date(2026, 6, 8)
+            )
+
+    def test_rejects_comparison_period_underflow_with_clear_error(self) -> None:
+        with self.assertRaisesRegex(ValueError, "comparison period underflow"):
+            resolve_comparison_period(
+                year=1, month=1, date_from=None, date_to=None, today=date(2026, 6, 8)
+            )
+        with self.assertRaisesRegex(ValueError, "comparison period underflow"):
+            resolve_comparison_period(
+                year=1, month=None, date_from=date.min, date_to=date.min, today=date(2026, 6, 8)
+            )
+
     def test_percent_change_handles_zero_baseline(self) -> None:
         self.assertIsNone(calculate_percent_change(Decimal("10"), Decimal("0")))
+
+    def test_percent_change_rejects_negative_baseline(self) -> None:
+        self.assertIsNone(calculate_percent_change(Decimal("10"), Decimal("-5")))
 
     def test_percent_change_calculates_increase_and_decrease(self) -> None:
         self.assertEqual(
@@ -139,6 +178,8 @@ class InsightsTest(TestCase):
         )
         self.assertEqual("Needs Attention", status.label)
         self.assertIn("negative net", status.explanation.lower())
+        self.assertIn("-200", status.explanation)
+        self.assertIn("-20", status.explanation)
 
     def test_status_is_excellent_when_all_thresholds_are_met(self) -> None:
         status = calculate_month_status(
@@ -150,6 +191,10 @@ class InsightsTest(TestCase):
         )
         self.assertEqual("Excellent", status.label)
         self.assertEqual(Decimal("40.0"), status.savings_rate)
+        self.assertIn("40", status.explanation)
+        self.assertIn("1.00", status.explanation)
+        self.assertIn("4", status.explanation)
+        self.assertIn("1 transaction", status.explanation)
 
     def test_status_is_healthy_when_excellent_threshold_is_missed(self) -> None:
         status = calculate_month_status(
@@ -160,6 +205,10 @@ class InsightsTest(TestCase):
             review_amount=Decimal("60"),
         )
         self.assertEqual("Healthy", status.label)
+        self.assertIn("30", status.explanation)
+        self.assertIn("1.08", status.explanation)
+        self.assertIn("6", status.explanation)
+        self.assertIn("healthy thresholds", status.explanation.lower())
 
     def test_status_is_watch_for_non_negative_net_below_target(self) -> None:
         status = calculate_month_status(
@@ -170,6 +219,9 @@ class InsightsTest(TestCase):
             review_amount=Decimal("0"),
         )
         self.assertEqual("Watch", status.label)
+        self.assertIn("10", status.explanation)
+        self.assertIn("no spending baseline", status.explanation.lower())
+        self.assertIn("below the 25% target", status.explanation.lower())
 
     def test_review_item_schema_uses_transaction_id_and_reasons(self) -> None:
         transaction_id = uuid4()

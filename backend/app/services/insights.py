@@ -11,25 +11,47 @@ def resolve_comparison_period(
     month: int | None,
     date_from: date | None,
     date_to: date | None,
+    today: date | None = None,
 ) -> tuple[tuple[date, date], tuple[date, date]]:
+    today = today or date.today()
+    if not 1 <= year <= 9999:
+        raise ValueError("year must be between 1 and 9999")
+    if year > today.year:
+        raise ValueError("future year is not allowed")
+    if month is not None and not 1 <= month <= 12:
+        raise ValueError("month must be between 1 and 12")
+
     if date_from is not None or date_to is not None:
         if date_from is None or date_to is None:
             raise ValueError("Custom ranges require both date_from and date_to")
         if date_from > date_to:
             raise ValueError("date_from must be on or before date_to")
         duration = date_to - date_from
-        previous_end = date_from - timedelta(days=1)
-        previous_start = previous_end - duration
+        try:
+            previous_end = date_from - timedelta(days=1)
+            previous_start = previous_end - duration
+        except OverflowError as error:
+            raise ValueError("comparison period underflow") from error
         return (date_from, date_to), (previous_start, previous_end)
 
     if month is None:
-        return (
-            (date(year, 1, 1), date(year, 12, 31)),
-            (date(year - 1, 1, 1), date(year - 1, 12, 31)),
-        )
+        try:
+            if year == today.year:
+                current = (date(year, 1, 1), today)
+                previous_end = _clamped_date(year - 1, today.month, today.day)
+                previous = (date(year - 1, 1, 1), previous_end)
+            else:
+                current = (date(year, 1, 1), date(year, 12, 31))
+                previous = (date(year - 1, 1, 1), date(year - 1, 12, 31))
+        except (OverflowError, ValueError) as error:
+            raise ValueError("comparison period underflow") from error
+        return current, previous
 
     current = _month_bounds(year, month)
-    previous_month_end = current[0] - timedelta(days=1)
+    try:
+        previous_month_end = current[0] - timedelta(days=1)
+    except OverflowError as error:
+        raise ValueError("comparison period underflow") from error
     previous = _month_bounds(previous_month_end.year, previous_month_end.month)
     return current, previous
 
@@ -38,7 +60,7 @@ def calculate_percent_change(
     current: Decimal,
     previous: Decimal,
 ) -> Decimal | None:
-    if previous == 0:
+    if previous <= 0:
         return None
     return ((current - previous) / previous) * Decimal("100")
 
@@ -82,45 +104,80 @@ def calculate_month_status(
 ) -> MonthStatusRead:
     net = income - expenses
     savings_rate = (net / income) * Decimal("100") if income > 0 else Decimal("0")
-    spending_ratio = (
-        expenses / average_expenses
-        if average_expenses is not None and average_expenses > 0
-        else Decimal("1")
-    )
+    has_spending_baseline = average_expenses is not None and average_expenses > 0
+    spending_ratio = expenses / average_expenses if has_spending_baseline else Decimal("1")
     review_risk = review_amount / income if income > 0 else Decimal("0")
+
+    values = _status_values(
+        savings_rate=savings_rate,
+        spending_ratio=spending_ratio,
+        average_expenses=average_expenses if has_spending_baseline else None,
+        review_risk=review_risk,
+        review_count=review_count,
+        review_amount=review_amount,
+    )
 
     if net < 0:
         label = "Needs Attention"
-        explanation = "Month Status needs attention because negative net cash flow needs action."
+        reason = f"negative net cash flow {net}"
     elif (
         savings_rate >= 35
         and spending_ratio <= Decimal("1.05")
         and review_risk < Decimal("0.05")
     ):
         label = "Excellent"
-        explanation = "Savings, spending, and review risk are all in excellent ranges."
+        reason = "all excellent thresholds are met"
     elif (
         savings_rate >= 25
         and spending_ratio <= Decimal("1.15")
         and review_risk < Decimal("0.10")
     ):
         label = "Healthy"
-        explanation = "Savings meet the target and spending and review risk are healthy."
+        reason = "all healthy thresholds are met"
     elif savings_rate >= 0:
         label = "Watch"
-        explanation = "Net cash flow is non-negative, but one or more targets need watching."
+        watch_reasons: list[str] = []
+        if savings_rate < 25:
+            watch_reasons.append("savings rate is below the 25% target")
+        if spending_ratio > Decimal("1.15"):
+            watch_reasons.append("spending ratio is above the 1.15 healthy limit")
+        if review_risk >= Decimal("0.10"):
+            watch_reasons.append("review risk is at or above the 10% healthy limit")
+        reason = "; ".join(watch_reasons)
     else:
         label = "Needs Attention"
-        explanation = "Month Status needs attention because savings are negative."
-
-    if review_count > 0:
-        explanation = f"{explanation} {review_count} transaction(s) need review."
+        reason = "savings rate is negative"
 
     return MonthStatusRead(
         label=label,
-        explanation=explanation,
+        explanation=f"{label} because {reason}. {values}",
         savings_rate=savings_rate,
     )
+
+
+def _status_values(
+    *,
+    savings_rate: Decimal,
+    spending_ratio: Decimal,
+    average_expenses: Decimal | None,
+    review_risk: Decimal,
+    review_count: int,
+    review_amount: Decimal,
+) -> str:
+    if average_expenses is None:
+        spending = f"no spending baseline; spending ratio defaults to {spending_ratio:.2f}"
+    else:
+        spending = f"spending ratio {spending_ratio:.2f} against baseline {average_expenses}"
+    transaction_label = "transaction" if review_count == 1 else "transactions"
+    return (
+        f"Savings rate {savings_rate:.1f}%; {spending}; "
+        f"review risk {(review_risk * Decimal("100")):.1f}% from "
+        f"{review_count} {transaction_label} totaling {review_amount}."
+    )
+
+
+def _clamped_date(year: int, month: int, day: int) -> date:
+    return date(year, month, min(day, calendar.monthrange(year, month)[1]))
 
 
 def _month_bounds(year: int, month: int) -> tuple[date, date]:
