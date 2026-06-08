@@ -3,9 +3,12 @@ import assert from 'node:assert/strict'
 import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
+  buildPeriodComparisonLabel,
   buildReviewBannerSummary,
+  buildSavingsRateComparison,
   calculateSavingsRate,
   convertInsightMetric,
+  filterTransactionsByDrilldown,
   mergeDrilldownFilters,
 } from '../src/lib/dashboard.js'
 
@@ -77,14 +80,55 @@ test('keeps savings rate at zero when income is zero', () => {
   assert.equal(calculateSavingsRate({ income: 0, net: -25 }), 0)
 })
 
-test('merges click drilldown while preserving global filters', () => {
-  const current = { bank_name: 'NU', category: '', type: 'expense' }
+test('merges preview drilldown independently from global filters', () => {
+  const globalFilters = { bank_name: 'NU', type: 'expense' }
   assert.deepEqual(
-    mergeDrilldownFilters(current, buildDrilldownFilter({ category: 'Food & Drink', type: 'expense' })),
-    { bank_name: 'NU', category: 'Food & Drink', type: 'expense' },
+    mergeDrilldownFilters({ category: '', type: '' }, buildDrilldownFilter({ category: 'Food & Drink', type: 'income' })),
+    { category: 'Food & Drink', type: 'income' },
+  )
+  assert.deepEqual(globalFilters, { bank_name: 'NU', type: 'expense' })
+})
+
+test('filters compact preview by dashboard drilldown only', () => {
+  const transactions = [
+    { id: 1, type: 'expense', category: 'Food & Drink' },
+    { id: 2, type: 'expense', category: 'Transport' },
+    { id: 3, type: 'income', category: 'Tennis Rush' },
+  ]
+
+  assert.deepEqual(
+    filterTransactionsByDrilldown(transactions, { category: 'Food & Drink', type: 'expense' }).map((item) => item.id),
+    [1],
   )
   assert.deepEqual(
-    mergeDrilldownFilters(current, buildDrilldownFilter({ category: '', type: 'income' })),
-    { bank_name: 'NU', category: '', type: 'income' },
+    filterTransactionsByDrilldown(transactions, { category: '', type: 'income' }).map((item) => item.id),
+    [3],
   )
+})
+
+test('derives savings-rate previous and average comparisons from insights', () => {
+  const comparison = buildSavingsRateComparison({
+    income: { current: 2000, previous: 1000, average: 800 },
+    net: { current: 1500, previous: 300, average: 160 },
+  })
+
+  assert.deepEqual(comparison, {
+    previousRate: 30,
+    averageRate: 20,
+    previousPointChange: 45,
+  })
+})
+
+test('handles unavailable savings-rate comparison inputs safely', () => {
+  assert.deepEqual(buildSavingsRateComparison({ income: { previous: 0, average: null }, net: { previous: 10, average: 5 } }), {
+    previousRate: null,
+    averageRate: null,
+    previousPointChange: null,
+  })
+})
+
+test('labels previous comparison basis clearly', () => {
+  assert.equal(buildPeriodComparisonLabel({ year: 2026, month: '5' }), 'April 2026')
+  assert.equal(buildPeriodComparisonLabel({ year: 2026, month: 'custom' }), 'previous equal period')
+  assert.equal(buildPeriodComparisonLabel({ year: 2026, month: 'ytd' }), '2025 YTD')
 })

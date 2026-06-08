@@ -6,7 +6,13 @@ import GlobalFilters from './components/GlobalFilters'
 import StatementsWorkspace from './components/StatementsWorkspace'
 import TransactionTable, { getReviewReason } from './components/TransactionTable'
 import { api } from './lib/api'
-import { buildDisplayAnalytics, buildDrilldownFilter, mergeDrilldownFilters } from './lib/dashboard'
+import {
+  buildDisplayAnalytics,
+  buildDrilldownFilter,
+  buildPeriodComparisonLabel,
+  filterTransactionsByDrilldown,
+  mergeDrilldownFilters,
+} from './lib/dashboard'
 
 function getCurrentMonthState() {
   const now = new Date()
@@ -100,7 +106,9 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
 function App() {
   const [tab, setTab] = useState('dashboard')
   const [period, setPeriod] = useState(getCurrentMonthState)
-  const [filters, setFilters] = useState({ bank_name: '', category: '', type: '' })
+  const [filters, setFilters] = useState({ bank_name: '', type: '' })
+  const [dashboardDrilldown, setDashboardDrilldown] = useState({ category: '', type: '' })
+  const [reviewCategory, setReviewCategory] = useState('')
   const [displayCurrency, setDisplayCurrency] = useState('MXN')
   const [displayRates, setDisplayRates] = useState({ MXN: 1, EUR: 21.5, USD: 17.9 })
   const [searchText, setSearchText] = useState('')
@@ -117,6 +125,7 @@ function App() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [dashboardError, setDashboardError] = useState('')
   const [notesDrafts, setNotesDrafts] = useState({})
   const [savingNotesIds, setSavingNotesIds] = useState([])
   const [density, setDensity] = useState('comfortable')
@@ -133,7 +142,6 @@ function App() {
     const params = {
       year: String(period.year),
       ...(filters.bank_name ? { bank_name: filters.bank_name } : {}),
-      ...(filters.category ? { category: filters.category } : {}),
       ...(filters.type ? { type: filters.type } : {}),
     }
 
@@ -198,12 +206,20 @@ function App() {
     })
   }, [transactions, searchText])
 
-  const workspaceTransactions = tab === 'review' ? visibleTransactions.filter(getReviewReason) : visibleTransactions
+  const previewTransactions = useMemo(
+    () => filterTransactionsByDrilldown(visibleTransactions, dashboardDrilldown),
+    [visibleTransactions, dashboardDrilldown],
+  )
+  const workspaceTransactions = tab === 'review'
+    ? visibleTransactions.filter((transaction) => !reviewCategory || transaction.category === reviewCategory).filter(getReviewReason)
+    : visibleTransactions
+  const previousPeriodLabel = useMemo(() => buildPeriodComparisonLabel(period), [period])
 
 
   async function loadAll() {
     try {
       setError('')
+      setDashboardError('')
       const [transactionsRes, insightsRes, statementsRes, banksRes, categoriesRes] = await Promise.all([
         api.listTransactions(queryParams),
         api.insights(insightsQueryParams),
@@ -228,7 +244,9 @@ function App() {
         USD: Number(fxRatesRes.USD || 17.9),
       })
     } catch (err) {
-      setError(err.message)
+      setTransactions([])
+      setInsights(null)
+      setDashboardError(err.message)
     }
   }
 
@@ -302,11 +320,11 @@ function App() {
   }
 
   function handleDashboardDrilldown(drilldown) {
-    setFilters((current) => mergeDrilldownFilters(current, buildDrilldownFilter(drilldown)))
+    setDashboardDrilldown((current) => mergeDrilldownFilters(current, buildDrilldownFilter(drilldown)))
   }
 
   function clearDashboardDrilldown() {
-    setFilters((current) => mergeDrilldownFilters(current, buildDrilldownFilter({})))
+    setDashboardDrilldown(buildDrilldownFilter({}))
   }
 
   async function saveNotes(transaction, notes) {
@@ -442,17 +460,20 @@ function App() {
           <DashboardWorkspace
             insights={insights}
             analytics={analytics}
-            filters={filters}
+            drilldown={dashboardDrilldown}
+            previousPeriodLabel={previousPeriodLabel}
+            loadError={dashboardError}
             displayCurrency={displayCurrency}
             displayRates={displayRates}
-            visibleTransactions={visibleTransactions}
+            visibleTransactions={previewTransactions}
+            onRetry={loadAll}
             onOpenReview={() => setTab('review')}
             onDrilldown={handleDashboardDrilldown}
             onClearDrilldown={clearDashboardDrilldown}
             transactionTableProps={{
               selectedIds,
               categoryOptions,
-              category: filters.category,
+              category: dashboardDrilldown.category,
               searchText,
               searchInputRef,
               displayCurrency,
@@ -460,7 +481,7 @@ function App() {
               notesDrafts,
               savingNotesIds,
               menuState,
-              onCategoryChange: (value) => setFilters((current) => ({ ...current, category: value })),
+              onCategoryChange: (value) => setDashboardDrilldown((current) => ({ ...current, category: value })),
               onSearchChange: setSearchText,
               onToggleSelected: toggleSelected,
               onNotesChange: handleNotesChange,
@@ -479,7 +500,7 @@ function App() {
               transactions={workspaceTransactions}
               selectedIds={selectedIds}
               categoryOptions={categoryOptions}
-              category={filters.category}
+              category={reviewCategory}
               searchText={searchText}
               searchInputRef={searchInputRef}
               displayCurrency={displayCurrency}
@@ -488,7 +509,7 @@ function App() {
               savingNotesIds={savingNotesIds}
               menuState={menuState}
               emptyMessage="No transactions need review for the current filters."
-              onCategoryChange={(value) => setFilters((current) => ({ ...current, category: value }))}
+              onCategoryChange={setReviewCategory}
               onSearchChange={setSearchText}
               onToggleSelected={toggleSelected}
               onNotesChange={handleNotesChange}

@@ -44,10 +44,46 @@ export function buildDrilldownFilter({ category = '', type = '' }) {
 
 export function mergeDrilldownFilters(currentFilters, drilldown) {
   return {
-    ...currentFilters,
-    category: drilldown.category || '',
-    type: drilldown.type || '',
+    category: drilldown.category ?? currentFilters.category ?? '',
+    type: drilldown.type ?? currentFilters.type ?? '',
   }
+}
+
+export function filterTransactionsByDrilldown(transactions, drilldown) {
+  return transactions.filter((transaction) => {
+    if (drilldown.category && transaction.category !== drilldown.category) return false
+    if (drilldown.type && transaction.type !== drilldown.type) return false
+    return true
+  })
+}
+
+function nullableSavingsRate(income, net) {
+  const numericIncome = Number(income)
+  const numericNet = Number(net)
+  if (!Number.isFinite(numericIncome) || numericIncome <= 0 || !Number.isFinite(numericNet)) return null
+  return Number(((numericNet / numericIncome) * 100).toFixed(1))
+}
+
+export function buildSavingsRateComparison(insights) {
+  const currentRate = nullableSavingsRate(insights?.income?.current, insights?.net?.current)
+  const previousRate = nullableSavingsRate(insights?.income?.previous, insights?.net?.previous)
+  const averageRate = nullableSavingsRate(insights?.income?.average, insights?.net?.average)
+  return {
+    previousRate,
+    averageRate,
+    previousPointChange: currentRate === null || previousRate === null
+      ? null
+      : Number((currentRate - previousRate).toFixed(1)),
+  }
+}
+
+const monthLabelFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+export function buildPeriodComparisonLabel(period) {
+  if (period.month === 'custom') return 'previous equal period'
+  if (period.month === 'ytd') return `${Number(period.year) - 1} YTD`
+  const previousMonthEnd = new Date(Date.UTC(Number(period.year), Number(period.month) - 1, 0))
+  return monthLabelFormatter.format(previousMonthEnd)
 }
 
 export function buildReviewBannerSummary(insights, displayCurrency, displayRates) {

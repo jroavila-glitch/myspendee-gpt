@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import TransactionTable from './TransactionTable'
 import {
   buildReviewBannerSummary,
+  buildSavingsRateComparison,
   calculateSavingsRate,
   convertInsightMetric,
 } from '../lib/dashboard'
@@ -15,32 +16,36 @@ function formatConvertedMoney(value, currency) {
   return value === null ? 'Conversion unavailable' : formatMoney(value, currency)
 }
 
-function movementFor(change, favorableWhenUp = true) {
+function movementFor(change, favorableWhenUp = true, comparisonLabel) {
   const numericChange = Number(change)
   if (!Number.isFinite(numericChange) || numericChange === 0) {
-    return { symbol: '→', label: numericChange === 0 ? 'No change' : 'No previous comparison', tone: 'neutral' }
+    return {
+      symbol: '→',
+      label: numericChange === 0 ? `No change compared with ${comparisonLabel}` : `Compared with ${comparisonLabel}: unavailable`,
+      tone: 'neutral',
+    }
   }
   const isUp = numericChange > 0
   return {
     symbol: isUp ? '↑' : '↓',
-    label: `${Math.abs(numericChange).toFixed(1)}% vs previous`,
+    label: `${Math.abs(numericChange).toFixed(1)}% compared with ${comparisonLabel}`,
     tone: isUp === favorableWhenUp ? 'favorable' : 'unfavorable',
   }
 }
 
-function ComparisonLine({ metric, displayCurrency }) {
+function ComparisonLine({ metric, displayCurrency, previousPeriodLabel }) {
   if (!metric) return <p className="comparison-line unavailable">Comparison unavailable</p>
   return (
     <p className="comparison-line">
-      Previous {formatConvertedMoney(metric.previous, displayCurrency)}
+      Compared with {previousPeriodLabel}: {formatConvertedMoney(metric.previous, displayCurrency)}
       <span aria-hidden="true"> · </span>
-      3-month avg {formatConvertedMoney(metric.average, displayCurrency)}
+      Recent 3-month average: {formatConvertedMoney(metric.average, displayCurrency)}
     </p>
   )
 }
 
-function Movement({ change, favorableWhenUp = true, label }) {
-  const movement = movementFor(change, favorableWhenUp)
+function Movement({ change, favorableWhenUp = true, label, comparisonLabel }) {
+  const movement = movementFor(change, favorableWhenUp, comparisonLabel)
   return (
     <span className={`movement ${movement.tone}`} aria-label={`${label}: ${movement.label}`}>
       <span aria-hidden="true">{movement.symbol}</span> {movement.label}
@@ -48,30 +53,30 @@ function Movement({ change, favorableWhenUp = true, label }) {
   )
 }
 
-function KpiCard({ label, value, displayCurrency, metric, favorableWhenUp, onClick }) {
+function KpiCard({ label, value, displayCurrency, metric, previousPeriodLabel, favorableWhenUp, onClick }) {
   return (
     <button className="dashboard-kpi" type="button" onClick={onClick}>
       <span className="dashboard-kpi-label">{label}</span>
       <strong>{formatMoney(value, displayCurrency)}</strong>
-      <Movement change={metric?.previous_change_percent} favorableWhenUp={favorableWhenUp} label={`${label} comparison`} />
-      <ComparisonLine metric={metric} displayCurrency={displayCurrency} />
+      <Movement change={metric?.previous_change_percent} favorableWhenUp={favorableWhenUp} label={`${label} comparison`} comparisonLabel={previousPeriodLabel} />
+      <ComparisonLine metric={metric} displayCurrency={displayCurrency} previousPeriodLabel={previousPeriodLabel} />
     </button>
   )
 }
 
-function SavingsKpi({ savingsRate, target }) {
-  const targetDifference = savingsRate - target
-  const tone = targetDifference >= 0 ? 'favorable' : 'unfavorable'
-  const symbol = targetDifference >= 0 ? '↑' : '↓'
-  const direction = targetDifference >= 0 ? 'above' : 'below'
+function SavingsKpi({ savingsRate, comparison, previousPeriodLabel }) {
+  const pointChange = comparison.previousPointChange
+  const hasPointChange = pointChange !== null
+  const tone = !hasPointChange ? 'neutral' : pointChange >= 0 ? 'favorable' : 'unfavorable'
+  const symbol = !hasPointChange ? '→' : pointChange >= 0 ? '↑' : '↓'
   return (
     <div className="dashboard-kpi">
       <span className="dashboard-kpi-label">Savings rate</span>
       <strong>{formatPercent(savingsRate)}</strong>
       <span className={`movement ${tone}`}>
-        <span aria-hidden="true">{symbol}</span> {Math.abs(targetDifference).toFixed(1)} pts {direction} target
+        <span aria-hidden="true">{symbol}</span> {hasPointChange ? `${Math.abs(pointChange).toFixed(1)} pts compared with ${previousPeriodLabel}` : `Compared with ${previousPeriodLabel}: unavailable`}
       </span>
-      <p className="comparison-line">Target {formatPercent(target)}</p>
+      <p className="comparison-line">Recent 3-month average: {comparison.averageRate === null ? 'Unavailable' : formatPercent(comparison.averageRate)}</p>
     </div>
   )
 }
@@ -107,11 +112,14 @@ function RankedList({ title, items, type, displayCurrency, onDrilldown }) {
 export default function DashboardWorkspace({
   insights,
   analytics,
-  filters,
+  drilldown,
+  previousPeriodLabel,
+  loadError,
   displayCurrency,
   displayRates,
   visibleTransactions,
   onOpenReview,
+  onRetry,
   onDrilldown,
   onClearDrilldown,
   transactionTableProps,
@@ -129,25 +137,39 @@ export default function DashboardWorkspace({
     [insights, displayCurrency, displayRates],
   )
   const savingsRate = calculateSavingsRate(analytics.summary)
+  const savingsComparison = useMemo(() => buildSavingsRateComparison(insights), [insights])
   const savingsTarget = Number(insights?.status?.target_savings_rate || 25)
   const hasInsights = Boolean(insights)
-  const hasDrilldown = Boolean(filters.category || filters.type)
-  const drilldownLabel = [filters.type, filters.category].filter(Boolean).join(' · ')
+  const hasDrilldown = Boolean(drilldown.category || drilldown.type)
+  const drilldownLabel = [drilldown.type, drilldown.category].filter(Boolean).join(' · ')
+
+  if (loadError) {
+    return (
+      <main className="dashboard-layout guided-dashboard">
+        <section className="dashboard-error-state" role="alert">
+          <span className="eyebrow">Dashboard unavailable</span>
+          <h2>Financial story could not be loaded</h2>
+          <p>{loadError}</p>
+          <button type="button" onClick={onRetry}>Retry</button>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="dashboard-layout guided-dashboard">
       <div className="main-grid">
-        <section className="review-banner" aria-label="Review summary">
+        <section className={`review-banner ${hasInsights && review.count === 0 ? 'review-clear' : ''}`} aria-label="Review summary">
           <div className="review-banner-count" aria-hidden="true">{hasInsights ? review.count : '!'}</div>
           <div className="review-banner-copy">
-            <span className="eyebrow">Review before relying on the totals</span>
-            <h2>{hasInsights ? (review.count ? `${review.count} transactions need a closer look` : 'No transactions need review') : 'Financial insights unavailable'}</h2>
+            <span className="eyebrow">{hasInsights && review.count === 0 ? 'Review clear' : 'Review before relying on the totals'}</span>
+            <h2>{hasInsights ? (review.count ? `${review.count} transactions need a closer look` : 'No review items for this period') : 'Financial insights unavailable'}</h2>
             <p>
               {!hasInsights
                 ? 'Review count, affected value, and Month Status will appear when insights load.'
                 : review.count
                 ? `${review.conversionAvailable ? `${formatMoney(review.affectedValue, displayCurrency)} affected` : 'Affected value conversion unavailable'}${review.reasons ? ` · ${review.reasons}` : ''}`
-                : 'The current period has no flagged transactions.'}
+                : 'Current categories are clear of deterministic review flags.'}
             </p>
           </div>
           <button type="button" className="review-action" onClick={onOpenReview}>Open Review</button>
@@ -157,8 +179,8 @@ export default function DashboardWorkspace({
           <div className="cashflow-copy">
             <span className="eyebrow">Net cash flow</span>
             <strong className={analytics.summary.net >= 0 ? 'positive' : 'negative'}>{formatMoney(analytics.summary.net, displayCurrency)}</strong>
-            <Movement change={insights?.net?.previous_change_percent} favorableWhenUp label="Net cash flow comparison" />
-            <ComparisonLine metric={convertedInsights?.net} displayCurrency={displayCurrency} />
+            <Movement change={insights?.net?.previous_change_percent} favorableWhenUp label="Net cash flow comparison" comparisonLabel={previousPeriodLabel} />
+            <ComparisonLine metric={convertedInsights?.net} displayCurrency={displayCurrency} previousPeriodLabel={previousPeriodLabel} />
           </div>
           <div className={`month-status status-${(insights?.status?.label || 'unavailable').toLowerCase().replaceAll(' ', '-')}`}>
             <span className="eyebrow">Month Status</span>
@@ -169,9 +191,9 @@ export default function DashboardWorkspace({
         </section>
 
         <section className="dashboard-kpi-grid" aria-label="Key financial metrics">
-          <KpiCard label="Income" value={analytics.summary.income} displayCurrency={displayCurrency} metric={convertedInsights?.income} favorableWhenUp onClick={() => onDrilldown({ category: '', type: 'income' })} />
-          <KpiCard label="Expenses" value={analytics.summary.expenses} displayCurrency={displayCurrency} metric={convertedInsights?.expenses} favorableWhenUp={false} onClick={() => onDrilldown({ category: '', type: 'expense' })} />
-          <SavingsKpi savingsRate={savingsRate} target={savingsTarget} />
+          <KpiCard label="Income" value={analytics.summary.income} displayCurrency={displayCurrency} metric={convertedInsights?.income} previousPeriodLabel={previousPeriodLabel} favorableWhenUp onClick={() => onDrilldown({ category: '', type: 'income' })} />
+          <KpiCard label="Expenses" value={analytics.summary.expenses} displayCurrency={displayCurrency} metric={convertedInsights?.expenses} previousPeriodLabel={previousPeriodLabel} favorableWhenUp={false} onClick={() => onDrilldown({ category: '', type: 'expense' })} />
+          <SavingsKpi savingsRate={savingsRate} comparison={savingsComparison} previousPeriodLabel={previousPeriodLabel} />
         </section>
 
         <section className="ranked-grid">

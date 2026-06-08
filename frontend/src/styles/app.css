@@ -1356,6 +1356,55 @@ h3 {
   font-weight: 800;
 }
 
+.review-banner.review-clear {
+  border-color: rgba(27, 139, 103, 0.16);
+  background: linear-gradient(135deg, rgba(245, 252, 249, 0.98), rgba(255, 255, 255, 0.96));
+}
+
+.review-banner.review-clear .review-banner-count {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.review-banner.review-clear .review-action {
+  border: 1px solid rgba(27, 139, 103, 0.2);
+  background: transparent;
+  color: var(--green);
+}
+
+.dashboard-error-state {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  min-height: 260px;
+  align-content: center;
+  padding: clamp(1.2rem, 5vw, 3rem);
+  border: 1px solid rgba(207, 74, 73, 0.18);
+  border-radius: var(--radius-xl);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-error-state h2,
+.dashboard-error-state p {
+  margin: 0;
+}
+
+.dashboard-error-state p {
+  max-width: 60ch;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.dashboard-error-state button {
+  margin-top: 0.35rem;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  background: var(--navy);
+  color: white;
+  font-weight: 800;
+}
+
 .cashflow-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
