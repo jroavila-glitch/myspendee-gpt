@@ -30,6 +30,11 @@ ROW_RE = re.compile(
     r"(?:(?P<local_sign>[+-])\s*(?P<local_amount>[\d,]+(?:\.\d+)?)|N/A)\s+"
     r"(?P<detail>.+)$"
 )
+SECTION_BOUNDARY_RE = re.compile(
+    r"^(?:\d{1,2} [A-Za-z]+ \d{4}|\(\d+ D[ií]as\)|Resumen de Cuenta|Balance |Ingresos |Retiros |"
+    r"D[ÓO]LARAPP M[ÉE]XICO|Si necesita ayuda|Fecha Tipo|Moneda|Local|Equivalente|Monto Local|\x24)",
+    re.IGNORECASE,
+)
 
 
 def _extract_text(pdf_bytes: bytes) -> str:
@@ -106,7 +111,10 @@ def _parse_blocks(section: str) -> list[str]:
             if current:
                 blocks.append(" ".join(current))
             current = [line]
-        elif current and not ROW_RE.match(" ".join(current)):
+        elif current and SECTION_BOUNDARY_RE.match(line):
+            blocks.append(" ".join(current))
+            current = []
+        elif current:
             current.append(line)
 
     if current:

@@ -163,6 +163,10 @@ def classify_transaction(
     ):
         return "expense", "Healthcare", None
 
+    for pattern, result in INCOME_RULES:
+        if re.search(pattern, normalized, re.IGNORECASE):
+            return result[0], result[1], None
+
     if is_tennis_bank and ("ROMAN JERZY SOBKOWIAK" in normalized):
         return "income", "Ro IG Tennis", None
 
@@ -189,10 +193,6 @@ def classify_transaction(
         if normalized_currency == "EUR" and threshold_amount == Decimal("110"):
             return "expense", "Gym", None
         return "expense", "Food & Drink", None
-
-    for pattern, result in INCOME_RULES:
-        if re.search(pattern, normalized, re.IGNORECASE):
-            return result[0], result[1], None
 
     for pattern, category in EXPENSE_RULES:
         if re.search(pattern, normalized, re.IGNORECASE):

@@ -55,6 +55,24 @@ class ClassificationRulesTest(TestCase):
                 )
                 self.assertEqual(("income", "Tennis Smash & Social"), (tx_type, category))
 
+    def test_named_income_rules_precede_exact_25_eur_rule(self) -> None:
+        cases = [
+            ("FILIP MAREK", "Tennis Lessons"),
+            ("CONTINI SOLUTIONS", "Perenniam Agency"),
+            ("HONOS payout", "Azulik"),
+        ]
+        for description, expected_category in cases:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("537.50"),
+                    bank_name="Revolut",
+                    amount_original=Decimal("25"),
+                    currency_original="EUR",
+                    current_type="income",
+                )
+                self.assertEqual(("income", expected_category), (tx_type, category))
+
     def test_tennis_rush_only_matches_exactly_25_eur(self) -> None:
         for amount in [Decimal("24.99"), Decimal("25.01")]:
             with self.subTest(amount=amount):

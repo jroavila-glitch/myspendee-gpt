@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from app.services.arq_parser import parse_arq_pdf
+from app.services.arq_parser import _parse_blocks, parse_arq_pdf
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "arq_text"
@@ -49,6 +49,19 @@ class ArqParserTest(TestCase):
         self.assertEqual(111.8, jose_sale["amount_original"])
         self.assertEqual(2000.0, jose_sale["local_mxn"])
         self.assertEqual("out", jose_sale["direction"])
+
+    def test_parse_blocks_preserves_wrapped_description_without_page_noise(self) -> None:
+        section = "\n".join([
+            "Jan 28 Venta USDc - 232.47 MXN - 4,000 Jose Rodrigo",
+            "Avila Neira",
+            "Si necesita ayuda contáctanos en help.com Página 2 de 3",
+            "legal footer text",
+        ])
+
+        self.assertEqual(
+            ["Jan 28 Venta USDc - 232.47 MXN - 4,000 Jose Rodrigo Avila Neira"],
+            _parse_blocks(section),
+        )
 
     def test_parses_transactions_continued_after_first_page_summary(self) -> None:
         with patch("app.services.arq_parser._extract_text", return_value=self._load_fixture("usd_arq_2026_01.txt")):
