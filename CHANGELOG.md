@@ -12,6 +12,18 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added a guided financial-clarity Dashboard with review-first status, net cash
+  flow, Month Status, prior-period arrows, recent three-month averages,
+  savings-rate comparisons, ranked income/spending, and preview-only
+  click-to-explain drilldowns
+- Added a dedicated Review workspace backed by deterministic review reasons,
+  expandable transaction context, keyboard triage, bulk actions, quick edit,
+  notes autosave, and a trusted-period completion state
+- Added the deterministic `/insights` API for comparisons, Month Status, review
+  summaries, and per-transaction review reasons
+- Split the frontend into focused Dashboard, Review, and Statements workspaces
+  with responsive global filters and hardened asynchronous/FX state handling
+
 - Added `Tennis Rush` income classification for exact EUR 25 Millennium/Revolut income and amount-aware Clube VII/Unitenis expense classification
 
 - Renamed the Vercel frontend project to `moneoapp`, deployed the Moneo identity, and retired the previous production alias

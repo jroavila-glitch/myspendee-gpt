@@ -66,6 +66,7 @@ class UploadRulesTest(TestCase):
         with (
             patch("app.services.upload.extract_transactions_from_pdf", return_value=extracted),
             patch("app.services.upload.duplicate_exists", return_value=False),
+            patch("app.services.normalization.get_banxico_rate", return_value=21.5),
         ):
             statement, inserted, skipped = process_uploaded_statement(fake_db, "EUR_ARQ Statement - 2026-03.pdf", b"pdf")
 
