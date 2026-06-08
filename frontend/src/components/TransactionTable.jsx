@@ -1,0 +1,168 @@
+import { createPortal } from 'react-dom'
+import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from '../lib/currency'
+
+const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+
+function formatShortDate(value) {
+  return shortDateFormatter.format(new Date(`${value}T00:00:00`))
+}
+
+export function getReviewReason(transaction) {
+  const notes = (transaction.notes || '').toLowerCase()
+  if (transaction.category === 'Other' && notes.includes('manual review')) return 'Needs category review'
+  if (transaction.category === 'Other' && transaction.type === 'expense') return 'Unclassified expense'
+  if (transaction.type === 'ignored') return 'Ignored transaction'
+  return null
+}
+
+function ReviewBadge({ transaction }) {
+  const reason = getReviewReason(transaction)
+  return reason ? <span className="review-badge">{reason}</span> : null
+}
+
+function TransactionMenu({ onEdit, onDelete, anchorRect, onClose }) {
+  if (!anchorRect) return null
+  const top = anchorRect.bottom + window.scrollY + 8
+  const left = anchorRect.right + window.scrollX - 184
+
+  return createPortal(
+    <>
+      <button className="menu-backdrop" aria-label="Close actions menu" onClick={onClose} />
+      <div className="menu-popover" style={{ top, left }}>
+        <button onClick={onEdit}>Edit</button>
+        <button className="danger-action" onClick={onDelete}>Delete</button>
+      </div>
+    </>,
+    document.body,
+  )
+}
+
+export default function TransactionTable({
+  title = 'Transactions',
+  meta,
+  transactions,
+  selectedIds,
+  categoryOptions,
+  category,
+  searchText,
+  searchInputRef,
+  displayCurrency,
+  displayRates,
+  notesDrafts,
+  savingNotesIds,
+  menuState,
+  emptyMessage = 'No transactions match the current filters.',
+  onCategoryChange,
+  onSearchChange,
+  onToggleSelected,
+  onNotesChange,
+  onNotesBlur,
+  onMenuOpen,
+  onMenuClose,
+  onEdit,
+  onDelete,
+}) {
+  return (
+    <section className="panel transaction-panel">
+      <div className="panel-header transaction-panel-header">
+        <div>
+          <h3>{title}</h3>
+          <p className="section-meta">{meta}</p>
+        </div>
+        <div className="transaction-filters">
+          <label>
+            <span>Category</span>
+            <select value={category} onChange={(event) => onCategoryChange(event.target.value)}>
+              <option value="">All categories</option>
+              {categoryOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+          <label className="transaction-search">
+            <span>Search</span>
+            <input ref={searchInputRef} placeholder="Merchant, note, bank..." value={searchText} onChange={(event) => onSearchChange(event.target.value)} />
+          </label>
+        </div>
+      </div>
+
+      {category || searchText.trim() ? (
+        <div className="transaction-filter-chips" aria-label="Transaction filters">
+          {category ? <button className="filter-chip" onClick={() => onCategoryChange('')}>{category} ×</button> : null}
+          {searchText.trim() ? <button className="filter-chip" onClick={() => onSearchChange('')}>Search: {searchText.trim()} ×</button> : null}
+        </div>
+      ) : null}
+
+      <div className="transaction-head transaction-grid">
+        <span></span>
+        <span>Transaction</span>
+        <span>Category</span>
+        <span>Amount</span>
+        <span>Notes</span>
+        <span></span>
+      </div>
+
+      <div className="transaction-list">
+        {transactions.map((transaction) => (
+          <div key={transaction.id} className="transaction-row transaction-grid">
+            <div className="transaction-check">
+              <input aria-label={`Select ${transaction.description}`} type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => onToggleSelected(transaction.id)} />
+            </div>
+
+            <div className="transaction-primary">
+              <strong>{transaction.description}</strong>
+              <div className="transaction-meta">
+                <span>{formatShortDate(transaction.date)}</span>
+                <span>{transaction.bank_name}</span>
+              </div>
+              <ReviewBadge transaction={transaction} />
+              {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
+            </div>
+
+            <div className="transaction-category">
+              <span className={`pill ${transaction.type}`}>{transaction.category}</span>
+            </div>
+
+            <div className={`transaction-amount ${transaction.type}`}>
+              <strong className="amount-value">{formatMoney(getDisplayAmount(transaction, displayCurrency, displayRates), displayCurrency)}</strong>
+              {getSecondaryAmountLabel(transaction, displayCurrency) ? <span className="sub-amount">{getSecondaryAmountLabel(transaction, displayCurrency)}</span> : null}
+            </div>
+
+            <div className="transaction-notes">
+              <input
+                className="notes-input"
+                value={notesDrafts[transaction.id] ?? ''}
+                placeholder="Add a note"
+                onBlur={(event) => onNotesBlur(transaction, event.target.value)}
+                onChange={(event) => onNotesChange(transaction, event.target.value)}
+              />
+              {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
+            </div>
+
+            <div className="actions-cell">
+              <button
+                aria-label={`Actions for ${transaction.description}`}
+                className="ghost-button icon-button"
+                onClick={(event) => onMenuOpen(transaction.id, event.currentTarget.getBoundingClientRect())}
+              >
+                •••
+              </button>
+              {menuState?.id === transaction.id ? (
+                <TransactionMenu
+                  anchorRect={menuState.rect}
+                  onClose={onMenuClose}
+                  onEdit={() => onEdit(transaction)}
+                  onDelete={() => onDelete(transaction.id)}
+                />
+              ) : null}
+            </div>
+          </div>
+        ))}
+
+        {transactions.length === 0 ? (
+          <div className="empty-list">
+            <p>{emptyMessage}</p>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}

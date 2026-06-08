@@ -1,14 +1,15 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import AppHeader from './components/AppHeader'
+import GlobalFilters from './components/GlobalFilters'
+import StatementsWorkspace from './components/StatementsWorkspace'
+import TransactionTable, { getReviewReason } from './components/TransactionTable'
 import { api } from './lib/api'
 import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from './lib/currency'
 
-const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
-const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const BreakdownChart = lazy(() => import('./components/BreakdownChart'))
 const PIE_COLORS = ['#1d7a6f', '#f47d38', '#d85757', '#4c6fff', '#c59a2d', '#74809b']
-const DISPLAY_CURRENCIES = ['MXN', 'EUR', 'USD']
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(1)}%`
@@ -23,31 +24,8 @@ function getCurrentMonthState() {
   return { month: String(now.getMonth() + 1), year: now.getFullYear(), dateFrom: '', dateTo: '' }
 }
 
-const MONTH_OPTIONS = [
-  { value: 'ytd', label: 'YTD' },
-  { value: 'custom', label: 'Custom range' },
-  ...Array.from({ length: 12 }, (_, index) => {
-    const month = index + 1
-    return { value: String(month), label: monthFormatter.format(new Date(2026, month - 1, 1)) }
-  }),
-]
-
 function dedupeCategories(categories) {
   return Array.from(new Set([...categories.expense, ...categories.income]))
-}
-
-function formatStatementPeriod(statement) {
-  if (!statement.period_start && !statement.period_end) return 'Unknown period'
-  if (!statement.period_start || !statement.period_end) return statement.period_start || statement.period_end
-  return `${statement.period_start} - ${statement.period_end}`
-}
-
-function getReviewReason(transaction) {
-  const notes = (transaction.notes || '').toLowerCase()
-  if (transaction.category === 'Other' && notes.includes('manual review')) return 'Needs category review'
-  if (transaction.category === 'Other' && transaction.type === 'expense') return 'Unclassified expense'
-  if (transaction.type === 'ignored') return 'Ignored transaction'
-  return null
 }
 
 function summarizeReviewItems(items) {
@@ -59,12 +37,6 @@ function summarizeReviewItems(items) {
   return Array.from(summary.entries())
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count)
-}
-
-function ReviewBadge({ transaction }) {
-  const reason = getReviewReason(transaction)
-  if (!reason) return null
-  return <span className="review-badge">{reason}</span>
 }
 
 function getRoommateLabel(transaction) {
@@ -194,23 +166,6 @@ function Modal({ title, children, onClose }) {
   )
 }
 
-function TransactionMenu({ onEdit, onDelete, anchorRect, onClose }) {
-  if (!anchorRect) return null
-  const top = anchorRect.bottom + window.scrollY + 8
-  const left = anchorRect.right + window.scrollX - 184
-
-  return createPortal(
-    <>
-      <button className="menu-backdrop" aria-label="Close actions menu" onClick={onClose} />
-      <div className="menu-popover" style={{ top, left }}>
-        <button onClick={onEdit}>Edit</button>
-        <button className="danger-action" onClick={onDelete}>Delete</button>
-      </div>
-    </>,
-    document.body,
-  )
-}
-
 function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
   const [form, setForm] = useState(
     initialValue || {
@@ -298,7 +253,6 @@ function App() {
   const [notesDrafts, setNotesDrafts] = useState({})
   const [savingNotesIds, setSavingNotesIds] = useState([])
   const [density, setDensity] = useState('comfortable')
-  const [transactionView, setTransactionView] = useState('all')
   const notesTimers = useRef({})
   const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -371,10 +325,8 @@ function App() {
   }, [transactions, displayCurrency, displayRates])
 
   const visibleTransactions = useMemo(() => {
-      const normalizedSearch = searchText.trim().toLowerCase()
-      return transactions.filter((transaction) => {
-      if (transactionView === 'review' && !getReviewReason(transaction)) return false
-      if (transactionView === 'ignored' && transaction.type !== 'ignored') return false
+    const normalizedSearch = searchText.trim().toLowerCase()
+    return transactions.filter((transaction) => {
       const haystack = [
         transaction.description,
         transaction.category,
@@ -389,21 +341,10 @@ function App() {
 
       return normalizedSearch ? haystack.includes(normalizedSearch) : true
     })
-  }, [transactions, searchText, transactionView])
+  }, [transactions, searchText])
 
-  const activeFilters = useMemo(() => {
-    const chips = []
-    if (filters.bank_name) chips.push({ key: 'bank_name', label: filters.bank_name })
-    if (filters.category) chips.push({ key: 'category', label: filters.category })
-    if (filters.type) chips.push({ key: 'type', label: filters.type })
-    if (searchText.trim()) chips.push({ key: 'search', label: `Search: ${searchText.trim()}` })
-    if (transactionView === 'review') chips.push({ key: 'transaction_view', label: 'Review mode' })
-    if (transactionView === 'ignored') chips.push({ key: 'transaction_view', label: 'Ignored mode' })
-    if (period.month === 'custom') {
-      chips.push({ key: 'custom_range', label: `${period.dateFrom || 'Start'} to ${period.dateTo || 'End'}` })
-    }
-    return chips
-  }, [filters, searchText, transactionView, period])
+  const workspaceTransactions = tab === 'review' ? visibleTransactions.filter(getReviewReason) : visibleTransactions
+
 
   async function loadAll() {
     try {
@@ -504,6 +445,12 @@ function App() {
     }
   }
 
+  function handleNotesChange(transaction, value) {
+    clearTimeout(notesTimers.current[transaction.id])
+    setNotesDrafts((current) => ({ ...current, [transaction.id]: value }))
+    notesTimers.current[transaction.id] = setTimeout(() => saveNotes(transaction, value), 900)
+  }
+
   async function handleDeleteTransaction(id) {
     await api.deleteTransaction(id)
     setMenuState(null)
@@ -551,174 +498,33 @@ function App() {
 
   return (
     <div className={`app-shell density-${density}`}>
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">MO</span>
-          <div>
-            <h1>Moneo</h1>
-            <p>Expense dashboard with flexible display currency</p>
-          </div>
-        </div>
-
-        <div className="topbar-actions">
-          <nav className="tabs">
-            <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>
-            <button className={tab === 'statements' ? 'active' : ''} onClick={() => setTab('statements')}>Statements</button>
-          </nav>
-          <button className="accent-button secondary-action" onClick={() => setShowCreateModal(true)}>New Transaction</button>
-          <label className="upload-button quiet-action">
-            {uploading ? 'Uploading...' : 'Upload PDFs'}
-            <input ref={uploadInputRef} type="file" accept="application/pdf" multiple onChange={handleUpload} />
-          </label>
-        </div>
-      </header>
+      <AppHeader
+        tab={tab}
+        uploading={uploading}
+        uploadInputRef={uploadInputRef}
+        onTabChange={setTab}
+        onCreateTransaction={() => setShowCreateModal(true)}
+        onUpload={handleUpload}
+      />
 
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div className="dashboard-stack">
-        <section className="toolbar panel">
-          <div className="toolbar-main">
-            <div className="period-pickers">
-              <label>
-                <span>Period</span>
-                <select value={period.month} onChange={(e) => handlePeriodChange(e.target.value)}>
-                  {MONTH_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Year</span>
-                <input className="year-input" type="number" value={period.year} onChange={(e) => setPeriod((current) => ({ ...current, year: Number(e.target.value) }))} />
-              </label>
-              {period.month === 'custom' ? (
-                <>
-                  <label>
-                    <span>From</span>
-                    <input
-                      className="date-input"
-                      type="date"
-                      value={period.dateFrom}
-                      onChange={(e) => setPeriod((current) => ({ ...current, dateFrom: e.target.value }))}
-                    />
-                  </label>
-                  <label>
-                    <span>To</span>
-                    <input
-                      className="date-input"
-                      type="date"
-                      value={period.dateTo}
-                      onChange={(e) => setPeriod((current) => ({ ...current, dateTo: e.target.value }))}
-                    />
-                  </label>
-                </>
-              ) : null}
-            </div>
-            <div className="toolbar-quick-actions">
-              <label className="display-currency-picker">
-                <span>Display</span>
-                <select value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value)}>
-                  {DISPLAY_CURRENCIES.map((currency) => (
-                    <option key={currency} value={currency}>{currency}</option>
-                  ))}
-                </select>
-              </label>
-              <button className="ghost-button compact-button" onClick={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}>
-                {density === 'compact' ? 'Comfortable view' : 'Compact view'}
-              </button>
-              <div className="view-toggle" role="tablist" aria-label="Transaction views">
-                <button className={transactionView === 'all' ? 'active' : ''} onClick={() => setTransactionView('all')}>All</button>
-                <button className={transactionView === 'review' ? 'active' : ''} onClick={() => setTransactionView('review')}>
-                  Review
-                  {reviewItems.length ? <span>{reviewItems.length}</span> : null}
-                </button>
-                <button className={transactionView === 'ignored' ? 'active' : ''} onClick={() => setTransactionView('ignored')}>Ignored</button>
-              </div>
-            </div>
-          </div>
-
-          {activeFilters.length ? (
-            <div className="active-filters">
-              {activeFilters.map((filter) => (
-                <button
-                  key={filter.key}
-                  className="filter-chip"
-                  onClick={() => {
-                    if (filter.key === 'search') {
-                      setSearchText('')
-                      return
-                    }
-                    if (filter.key === 'transaction_view') {
-                      setTransactionView('all')
-                      return
-                    }
-                    if (filter.key === 'custom_range') {
-                      setPeriod((current) => ({ ...current, month: 'ytd', dateFrom: '', dateTo: '' }))
-                      return
-                    }
-                    setFilters((current) => ({ ...current, [filter.key]: '' }))
-                  }}
-                >
-                  {filter.label} ×
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="toolbar-copy">Filter by bank, category, type, or merchant search.</p>
-          )}
-        </section>
+        <GlobalFilters
+          period={period}
+          filters={filters}
+          banks={banks}
+          displayCurrency={displayCurrency}
+          density={density}
+          onPeriodChange={handlePeriodChange}
+          onPeriodUpdate={(updates) => setPeriod((current) => ({ ...current, ...updates }))}
+          onFilterChange={(key, value) => setFilters((current) => ({ ...current, [key]: value }))}
+          onDisplayCurrencyChange={setDisplayCurrency}
+          onDensityToggle={() => setDensity((current) => current === 'compact' ? 'comfortable' : 'compact')}
+        />
 
         {tab === 'dashboard' ? (
           <main className="dashboard-layout">
-            <aside className="panel sidebar-panel">
-              <div className="panel-header">
-                <h3>Filters</h3>
-                {activeFilters.length ? (
-                  <button
-                    className="ghost-button compact-button"
-                    onClick={() => {
-                      setFilters({ bank_name: '', category: '', type: '' })
-                      setSearchText('')
-                      setTransactionView('all')
-                      setPeriod((current) => current.month === 'custom' ? { ...current, month: 'ytd', dateFrom: '', dateTo: '' } : current)
-                    }}
-                  >
-                    Reset
-                  </button>
-                ) : null}
-              </div>
-
-              <div className="sidebar-fields">
-                <label>
-                  <span>Bank</span>
-                  <select value={filters.bank_name} onChange={(e) => setFilters((current) => ({ ...current, bank_name: e.target.value }))}>
-                    <option value="">All banks</option>
-                    {banks.map((bank) => <option key={bank}>{bank}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Type</span>
-                  <select value={filters.type} onChange={(e) => setFilters((current) => ({ ...current, type: e.target.value }))}>
-                    <option value="">All types</option>
-                    <option value="income">Income</option>
-                    <option value="expense">Expense</option>
-                    <option value="ignored">Ignored</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Category</span>
-                  <select value={filters.category} onChange={(e) => setFilters((current) => ({ ...current, category: e.target.value }))}>
-                    <option value="">All categories</option>
-                    {categoryOptions.map((category) => <option key={category}>{category}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Search</span>
-                  <input ref={searchInputRef} placeholder="Merchant, note, bank..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-                </label>
-              </div>
-            </aside>
-
             <div className="main-grid">
               <section className="insight-strip">
                 <div className="insight-card">
@@ -754,31 +560,14 @@ function App() {
                   </div>
 
                   <div className="roommate-summary">
-                    <div className="roommate-metric">
-                      <span>Sebastian</span>
-                      <strong>{formatMoney(roommateSnapshot.totals.Sebastian, displayCurrency)}</strong>
-                    </div>
-                    <div className="roommate-metric">
-                      <span>Paul</span>
-                      <strong>{formatMoney(roommateSnapshot.totals.Paul, displayCurrency)}</strong>
-                    </div>
-                    <div className="roommate-metric">
-                      <span>Rent Paid</span>
-                      <strong>{formatMoney(roommateSnapshot.totals.Rent, displayCurrency)}</strong>
-                    </div>
-                    <div className="roommate-metric emphasis">
-                      <span>Net After Roommates</span>
-                      <strong>{formatMoney(roommateSnapshot.netRent, displayCurrency)}</strong>
-                    </div>
+                    <div className="roommate-metric"><span>Sebastian</span><strong>{formatMoney(roommateSnapshot.totals.Sebastian, displayCurrency)}</strong></div>
+                    <div className="roommate-metric"><span>Paul</span><strong>{formatMoney(roommateSnapshot.totals.Paul, displayCurrency)}</strong></div>
+                    <div className="roommate-metric"><span>Rent Paid</span><strong>{formatMoney(roommateSnapshot.totals.Rent, displayCurrency)}</strong></div>
+                    <div className="roommate-metric emphasis"><span>Net After Roommates</span><strong>{formatMoney(roommateSnapshot.netRent, displayCurrency)}</strong></div>
                   </div>
 
                   <div className="roommate-table">
-                    <div className="roommate-head">
-                      <span>Date</span>
-                      <span>Line Item</span>
-                      <span>Group</span>
-                      <span>Amount</span>
-                    </div>
+                    <div className="roommate-head"><span>Date</span><span>Line Item</span><span>Group</span><span>Amount</span></div>
                     {roommateSnapshot.entries.map((item) => (
                       <div key={item.id} className="roommate-row">
                         <span>{formatShortDate(item.date)}</span>
@@ -795,169 +584,65 @@ function App() {
               ) : null}
 
               <section className="breakdown-grid">
-                <BreakdownSection
-                  title="Income Breakdown"
-                  data={analytics.breakdown.income}
-                  tone="income"
-                  displayCurrency={displayCurrency}
-                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-                />
-                <BreakdownSection
-                  title="Expense Breakdown"
-                  data={analytics.breakdown.expenses}
-                  tone="expense"
-                  displayCurrency={displayCurrency}
-                  onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))}
-                />
+                <BreakdownSection title="Income Breakdown" data={analytics.breakdown.income} tone="income" displayCurrency={displayCurrency} onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))} />
+                <BreakdownSection title="Expense Breakdown" data={analytics.breakdown.expenses} tone="expense" displayCurrency={displayCurrency} onSelectCategory={(item) => setFilters((current) => ({ ...current, category: item.category, type: item.type }))} />
               </section>
 
-              <section className="panel transaction-panel">
-                <div className="panel-header">
-                  <div>
-                    <h3>Transactions</h3>
-                    <p className="section-meta">
-                      {transactionView === 'review'
-                        ? `${visibleTransactions.length} items in review`
-                        : visibleTransactions.length === transactions.length
-                          ? `${transactions.length} transactions`
-                          : `${visibleTransactions.length} of ${transactions.length} shown`}
-                    </p>
-                  </div>
-                  {transactionView !== 'all' ? (
-                    <button className="ghost-button compact-button" onClick={() => setTransactionView('all')}>
-                      Exit {transactionView}
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="transaction-head transaction-grid">
-                  <span></span>
-                  <span>Transaction</span>
-                  <span>Category</span>
-                  <span>Amount</span>
-                  <span>Notes</span>
-                  <span></span>
-                </div>
-
-                <div className="transaction-list">
-                  {visibleTransactions.map((transaction) => (
-                    <div key={transaction.id} className="transaction-row transaction-grid">
-                    <div className="transaction-check">
-                        <input aria-label={`Select ${transaction.description}`} type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => toggleSelected(transaction.id)} />
-                      </div>
-
-                      <div className="transaction-primary">
-                        <strong>{transaction.description}</strong>
-                        <div className="transaction-meta">
-                          <span>{formatShortDate(transaction.date)}</span>
-                          <span>{transaction.bank_name}</span>
-                        </div>
-                        <ReviewBadge transaction={transaction} />
-                        {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
-                      </div>
-
-                      <div className="transaction-category">
-                        <span className={`pill ${transaction.type}`}>{transaction.category}</span>
-                      </div>
-
-                      <div className={`transaction-amount ${transaction.type}`}>
-                        <strong className="amount-value">{formatMoney(getDisplayAmount(transaction, displayCurrency, displayRates), displayCurrency)}</strong>
-                        {getSecondaryAmountLabel(transaction, displayCurrency) ? <span className="sub-amount">{getSecondaryAmountLabel(transaction, displayCurrency)}</span> : null}
-                      </div>
-
-                      <div className="transaction-notes">
-                        <input
-                          className="notes-input"
-                          value={notesDrafts[transaction.id] ?? ''}
-                          placeholder="Add a note"
-                          onBlur={(event) => saveNotes(transaction, event.target.value)}
-                          onChange={(event) => {
-                            clearTimeout(notesTimers.current[transaction.id])
-                            const value = event.target.value
-                            setNotesDrafts((current) => ({ ...current, [transaction.id]: value }))
-                            notesTimers.current[transaction.id] = setTimeout(() => saveNotes(transaction, value), 900)
-                          }}
-                        />
-                        {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
-                      </div>
-
-                      <div className="actions-cell">
-                        <button
-                          aria-label={`Actions for ${transaction.description}`}
-                          className="ghost-button icon-button"
-                          onClick={(event) => setMenuState({ id: transaction.id, rect: event.currentTarget.getBoundingClientRect() })}
-                        >
-                          •••
-                        </button>
-                        {menuState?.id === transaction.id ? (
-                          <TransactionMenu
-                            anchorRect={menuState.rect}
-                            onClose={() => setMenuState(null)}
-                            onEdit={() => {
-                              setEditingTransaction(transaction)
-                              setMenuState(null)
-                            }}
-                            onDelete={() => handleDeleteTransaction(transaction.id)}
-                          />
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-
-                  {visibleTransactions.length === 0 ? (
-                    <div className="empty-list">
-                      <p>No transactions match the current filters.</p>
-                    </div>
-                  ) : null}
-                </div>
-              </section>
+              <TransactionTable
+                meta={visibleTransactions.length === transactions.length ? `${transactions.length} transactions` : `${visibleTransactions.length} of ${transactions.length} shown`}
+                transactions={visibleTransactions}
+                selectedIds={selectedIds}
+                categoryOptions={categoryOptions}
+                category={filters.category}
+                searchText={searchText}
+                searchInputRef={searchInputRef}
+                displayCurrency={displayCurrency}
+                displayRates={displayRates}
+                notesDrafts={notesDrafts}
+                savingNotesIds={savingNotesIds}
+                menuState={menuState}
+                onCategoryChange={(value) => setFilters((current) => ({ ...current, category: value }))}
+                onSearchChange={setSearchText}
+                onToggleSelected={toggleSelected}
+                onNotesChange={handleNotesChange}
+                onNotesBlur={saveNotes}
+                onMenuOpen={(id, rect) => setMenuState({ id, rect })}
+                onMenuClose={() => setMenuState(null)}
+                onEdit={(transaction) => { setEditingTransaction(transaction); setMenuState(null) }}
+                onDelete={handleDeleteTransaction}
+              />
             </div>
+          </main>
+        ) : tab === 'review' ? (
+          <main className="workspace-main">
+            <TransactionTable
+              title="Review Transactions"
+              meta={`${workspaceTransactions.length} items need review`}
+              transactions={workspaceTransactions}
+              selectedIds={selectedIds}
+              categoryOptions={categoryOptions}
+              category={filters.category}
+              searchText={searchText}
+              searchInputRef={searchInputRef}
+              displayCurrency={displayCurrency}
+              displayRates={displayRates}
+              notesDrafts={notesDrafts}
+              savingNotesIds={savingNotesIds}
+              menuState={menuState}
+              emptyMessage="No transactions need review for the current filters."
+              onCategoryChange={(value) => setFilters((current) => ({ ...current, category: value }))}
+              onSearchChange={setSearchText}
+              onToggleSelected={toggleSelected}
+              onNotesChange={handleNotesChange}
+              onNotesBlur={saveNotes}
+              onMenuOpen={(id, rect) => setMenuState({ id, rect })}
+              onMenuClose={() => setMenuState(null)}
+              onEdit={(transaction) => { setEditingTransaction(transaction); setMenuState(null) }}
+              onDelete={handleDeleteTransaction}
+            />
           </main>
         ) : (
-          <main className="panel statements-panel">
-              <div className="panel-header">
-                <div>
-                  <h3>Uploaded Statements</h3>
-                  <p className="section-meta">{statements.length} statements available</p>
-                </div>
-              </div>
-
-            <div className="statement-list">
-              {statements.map((statement) => (
-                <article key={statement.id} className="statement-card">
-                  <div className="statement-main">
-                    <strong>{statement.filename}</strong>
-                    <span>{statement.bank_name}</span>
-                    <span>{formatStatementPeriod(statement)}</span>
-                  </div>
-                  <div className="statement-metrics">
-                    <div>
-                      <span>Transactions</span>
-                      <strong>{statement.transaction_count}</strong>
-                    </div>
-                    <div>
-                      <span>Ignored</span>
-                      <strong>{statement.ignored_count}</strong>
-                    </div>
-                    <div>
-                      <span>Uploaded</span>
-                      <strong>{dateTimeFormatter.format(new Date(statement.uploaded_at))}</strong>
-                    </div>
-                  </div>
-                  <div className="statement-actions">
-                    <button className="ghost-button compact-button" onClick={() => handleViewStatement(statement)}>View period</button>
-                    <button className="ghost-button danger" onClick={() => handleStatementDelete(statement.id)}>Delete</button>
-                  </div>
-                </article>
-              ))}
-
-              {statements.length === 0 ? (
-                <div className="empty-panel">
-                  <p>No statements uploaded yet.</p>
-                </div>
-              ) : null}
-            </div>
-          </main>
+          <StatementsWorkspace statements={statements} onViewStatement={handleViewStatement} onDeleteStatement={handleStatementDelete} />
         )}
       </div>
 

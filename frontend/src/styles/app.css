@@ -323,7 +323,6 @@ h3 {
 }
 
 .period-pickers span,
-.sidebar-fields span,
 .form-grid span {
   display: block;
   margin-bottom: 0.24rem;
@@ -366,21 +365,46 @@ h3 {
   font-size: 0.82rem;
 }
 
-.dashboard-layout {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 0.9rem;
-  align-items: start;
+.dashboard-layout,
+.workspace-main {
+  display: block;
 }
 
-.sidebar-panel {
-  position: sticky;
-  top: 1rem;
+.transaction-panel-header {
+  align-items: end;
 }
 
-.sidebar-fields {
-  display: grid;
-  gap: 0.72rem;
+.transaction-filters {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.transaction-filters label {
+  min-width: 170px;
+}
+
+.transaction-filters .transaction-search {
+  min-width: min(300px, 100%);
+}
+
+.transaction-filter-chips {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: -0.15rem 0 0.75rem;
+}
+
+.transaction-filters span {
+  display: block;
+  margin-bottom: 0.24rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .ghost-button {
@@ -1309,10 +1333,6 @@ h3 {
     justify-content: flex-start;
   }
 
-  .sidebar-panel {
-    position: static;
-  }
-
   .analytics-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1427,6 +1447,7 @@ h3 {
   .topbar-actions,
   .period-pickers,
   .active-filters,
+  .transaction-filters,
   .bulk-bar {
     width: 100%;
   }
@@ -1442,7 +1463,9 @@ h3 {
     flex: 1 1 140px;
   }
 
-  .period-pickers label {
+  .period-pickers label,
+  .transaction-filters label,
+  .transaction-filters .transaction-search {
     flex: 1 1 100%;
   }
 
