@@ -7,9 +7,20 @@ export function calculateSavingsRate({ income, net }) {
 export function buildDisplayAnalytics(transactions, displayCurrency, displayRates) {
   const summary = { income: 0, expenses: 0, net: 0 }
   const grouped = new Map()
+  const hasFallbackRate = displayCurrency === 'MXN' || Number(displayRates[displayCurrency]) > 0
+  let conversionAvailable = true
   for (const transaction of transactions) {
     if (transaction.type === 'ignored') continue
-    const amount = getDisplayAmount(transaction, displayCurrency, displayRates)
+    const originalCurrency = (transaction.currency_original || 'MXN').toUpperCase()
+    const hasOriginalAmount = transaction.amount_original != null && Number.isFinite(Number(transaction.amount_original))
+    const canUseOriginal = originalCurrency === displayCurrency && hasOriginalAmount
+    const amount = hasFallbackRate || canUseOriginal
+      ? getDisplayAmount(transaction, displayCurrency, displayRates)
+      : null
+    if (amount === null) {
+      conversionAvailable = false
+      continue
+    }
     if (transaction.type === 'income') summary.income += amount
     if (transaction.type === 'expense') summary.expenses += amount
     const key = `${transaction.type}::${transaction.category}`
@@ -30,6 +41,7 @@ export function buildDisplayAnalytics(transactions, displayCurrency, displayRate
     .map((item) => ({ ...item, total: Number(item.total.toFixed(2)) }))
     .sort((a, b) => b.total - a.total)
   return {
+    conversionAvailable,
     summary,
     breakdown: {
       income: items.filter((item) => item.type === 'income'),
@@ -55,6 +67,18 @@ export function filterTransactionsByDrilldown(transactions, drilldown) {
     if (drilldown.type && transaction.type !== drilldown.type) return false
     return true
   })
+}
+
+export function joinReviewItems(transactions, reviewItems) {
+  const transactionsById = new Map(transactions.map((transaction) => [String(transaction.id), transaction]))
+  return reviewItems.flatMap((item) => {
+    const transaction = transactionsById.get(String(item.transaction_id))
+    return transaction ? [{ ...transaction, review_reasons: item.reasons || [] }] : []
+  })
+}
+
+export function shouldApplyRequestVersion(requestVersion, latestVersion, isMounted) {
+  return isMounted && requestVersion === latestVersion
 }
 
 function nullableSavingsRate(income, net) {

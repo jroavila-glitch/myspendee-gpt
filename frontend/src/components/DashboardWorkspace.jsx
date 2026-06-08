@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import TransactionTable from './TransactionTable'
 import {
   buildReviewBannerSummary,
   buildSavingsRateComparison,
@@ -8,12 +7,18 @@ import {
 } from '../lib/dashboard'
 import { formatMoney } from '../lib/currency'
 
+const previewDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short' })
+
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(1)}%`
 }
 
 function formatConvertedMoney(value, currency) {
   return value === null ? 'Conversion unavailable' : formatMoney(value, currency)
+}
+
+function formatPreviewDate(value) {
+  return previewDateFormatter.format(new Date(`${value}T00:00:00`))
 }
 
 function movementFor(change, favorableWhenUp = true, comparisonLabel) {
@@ -53,18 +58,18 @@ function Movement({ change, favorableWhenUp = true, label, comparisonLabel }) {
   )
 }
 
-function KpiCard({ label, value, displayCurrency, metric, previousPeriodLabel, favorableWhenUp, onClick }) {
+function KpiCard({ label, value, currentAvailable, displayCurrency, metric, previousPeriodLabel, favorableWhenUp, onClick }) {
   return (
     <button className="dashboard-kpi" type="button" onClick={onClick}>
       <span className="dashboard-kpi-label">{label}</span>
-      <strong>{formatMoney(value, displayCurrency)}</strong>
+      <strong>{currentAvailable ? formatMoney(value, displayCurrency) : 'Conversion unavailable'}</strong>
       <Movement change={metric?.previous_change_percent} favorableWhenUp={favorableWhenUp} label={`${label} comparison`} comparisonLabel={previousPeriodLabel} />
       <ComparisonLine metric={metric} displayCurrency={displayCurrency} previousPeriodLabel={previousPeriodLabel} />
     </button>
   )
 }
 
-function SavingsKpi({ savingsRate, comparison, previousPeriodLabel }) {
+function SavingsKpi({ savingsRate, comparison, previousPeriodLabel, currentAvailable }) {
   const pointChange = comparison.previousPointChange
   const hasPointChange = pointChange !== null
   const tone = !hasPointChange ? 'neutral' : pointChange >= 0 ? 'favorable' : 'unfavorable'
@@ -72,7 +77,7 @@ function SavingsKpi({ savingsRate, comparison, previousPeriodLabel }) {
   return (
     <div className="dashboard-kpi">
       <span className="dashboard-kpi-label">Savings rate</span>
-      <strong>{formatPercent(savingsRate)}</strong>
+      <strong>{currentAvailable ? formatPercent(savingsRate) : 'Unavailable'}</strong>
       <span className={`movement ${tone}`}>
         <span aria-hidden="true">{symbol}</span> {hasPointChange ? `${Math.abs(pointChange).toFixed(1)} pts compared with ${previousPeriodLabel}` : `Compared with ${previousPeriodLabel}: unavailable`}
       </span>
@@ -81,7 +86,7 @@ function SavingsKpi({ savingsRate, comparison, previousPeriodLabel }) {
   )
 }
 
-function RankedList({ title, items, type, displayCurrency, onDrilldown }) {
+function RankedList({ title, items, type, displayCurrency, conversionAvailable, onDrilldown }) {
   const max = Number(items[0]?.total || 0)
   return (
     <section className="panel ranked-panel">
@@ -91,7 +96,9 @@ function RankedList({ title, items, type, displayCurrency, onDrilldown }) {
           <p className="section-meta">Select a category to explain the total.</p>
         </div>
       </div>
-      {items.length ? (
+      {!conversionAvailable ? (
+        <div className="empty-panel"><p>Display-currency conversion unavailable.</p></div>
+      ) : items.length ? (
         <div className="ranked-list">
           {items.slice(0, 8).map((item, index) => (
             <button key={`${type}-${item.category}`} className="ranked-row" type="button" onClick={() => onDrilldown({ category: item.category, type })}>
@@ -109,6 +116,36 @@ function RankedList({ title, items, type, displayCurrency, onDrilldown }) {
   )
 }
 
+function RecentTransactionsPreview({ transactions, displayCurrency, displayRates }) {
+  return (
+    <section className="panel recent-transactions-preview">
+      <div className="panel-header">
+        <div>
+          <h3>Recent transactions</h3>
+          <p className="section-meta">{Math.min(transactions.length, 8)} of {transactions.length} shown · read only</p>
+        </div>
+      </div>
+      <div className="preview-transaction-list">
+        {transactions.slice(0, 8).map((transaction) => {
+          const amount = convertInsightMetric(transaction.amount_mxn, displayCurrency, displayRates)
+          return (
+            <div key={transaction.id} className="preview-transaction-row">
+              <span className="preview-date">{formatPreviewDate(transaction.date)}</span>
+              <span className="preview-transaction-copy">
+                <strong>{transaction.description}</strong>
+                <small>{transaction.bank_name || 'No bank'} · {transaction.category}</small>
+              </span>
+              <span className={`pill ${transaction.type}`}>{transaction.type}</span>
+              <strong className={`preview-amount ${transaction.type}`}>{formatConvertedMoney(amount, displayCurrency)}</strong>
+            </div>
+          )
+        })}
+        {transactions.length === 0 ? <div className="empty-list"><p>No transactions match this explanation.</p></div> : null}
+      </div>
+    </section>
+  )
+}
+
 export default function DashboardWorkspace({
   insights,
   analytics,
@@ -122,7 +159,6 @@ export default function DashboardWorkspace({
   onRetry,
   onDrilldown,
   onClearDrilldown,
-  transactionTableProps,
 }) {
   const convertedInsights = useMemo(() => {
     if (!insights) return null
@@ -142,6 +178,7 @@ export default function DashboardWorkspace({
   const hasInsights = Boolean(insights)
   const hasDrilldown = Boolean(drilldown.category || drilldown.type)
   const drilldownLabel = [drilldown.type, drilldown.category].filter(Boolean).join(' · ')
+  const currentAvailable = analytics.conversionAvailable
 
   if (loadError) {
     return (
@@ -178,7 +215,7 @@ export default function DashboardWorkspace({
         <section className="cashflow-hero">
           <div className="cashflow-copy">
             <span className="eyebrow">Net cash flow</span>
-            <strong className={analytics.summary.net >= 0 ? 'positive' : 'negative'}>{formatMoney(analytics.summary.net, displayCurrency)}</strong>
+            <strong className={analytics.summary.net >= 0 ? 'positive' : 'negative'}>{currentAvailable ? formatMoney(analytics.summary.net, displayCurrency) : 'Conversion unavailable'}</strong>
             <Movement change={insights?.net?.previous_change_percent} favorableWhenUp label="Net cash flow comparison" comparisonLabel={previousPeriodLabel} />
             <ComparisonLine metric={convertedInsights?.net} displayCurrency={displayCurrency} previousPeriodLabel={previousPeriodLabel} />
           </div>
@@ -191,14 +228,14 @@ export default function DashboardWorkspace({
         </section>
 
         <section className="dashboard-kpi-grid" aria-label="Key financial metrics">
-          <KpiCard label="Income" value={analytics.summary.income} displayCurrency={displayCurrency} metric={convertedInsights?.income} previousPeriodLabel={previousPeriodLabel} favorableWhenUp onClick={() => onDrilldown({ category: '', type: 'income' })} />
-          <KpiCard label="Expenses" value={analytics.summary.expenses} displayCurrency={displayCurrency} metric={convertedInsights?.expenses} previousPeriodLabel={previousPeriodLabel} favorableWhenUp={false} onClick={() => onDrilldown({ category: '', type: 'expense' })} />
-          <SavingsKpi savingsRate={savingsRate} comparison={savingsComparison} previousPeriodLabel={previousPeriodLabel} />
+          <KpiCard label="Income" value={analytics.summary.income} currentAvailable={currentAvailable} displayCurrency={displayCurrency} metric={convertedInsights?.income} previousPeriodLabel={previousPeriodLabel} favorableWhenUp onClick={() => onDrilldown({ category: '', type: 'income' })} />
+          <KpiCard label="Expenses" value={analytics.summary.expenses} currentAvailable={currentAvailable} displayCurrency={displayCurrency} metric={convertedInsights?.expenses} previousPeriodLabel={previousPeriodLabel} favorableWhenUp={false} onClick={() => onDrilldown({ category: '', type: 'expense' })} />
+          <SavingsKpi savingsRate={savingsRate} comparison={savingsComparison} previousPeriodLabel={previousPeriodLabel} currentAvailable={currentAvailable} />
         </section>
 
         <section className="ranked-grid">
-          <RankedList title="Top spending" items={analytics.breakdown.expenses} type="expense" displayCurrency={displayCurrency} onDrilldown={onDrilldown} />
-          <RankedList title="Top income" items={analytics.breakdown.income} type="income" displayCurrency={displayCurrency} onDrilldown={onDrilldown} />
+          <RankedList title="Top spending" items={analytics.breakdown.expenses} type="expense" displayCurrency={displayCurrency} conversionAvailable={currentAvailable} onDrilldown={onDrilldown} />
+          <RankedList title="Top income" items={analytics.breakdown.income} type="income" displayCurrency={displayCurrency} conversionAvailable={currentAvailable} onDrilldown={onDrilldown} />
         </section>
 
         {hasDrilldown ? (
@@ -209,14 +246,7 @@ export default function DashboardWorkspace({
           </section>
         ) : null}
 
-        <div className="recent-transactions-preview">
-          <TransactionTable
-            {...transactionTableProps}
-            title="Recent transactions"
-            meta={`${Math.min(visibleTransactions.length, 8)} of ${visibleTransactions.length} shown`}
-            transactions={visibleTransactions.slice(0, 8)}
-          />
-        </div>
+        <RecentTransactionsPreview transactions={visibleTransactions} displayCurrency={displayCurrency} displayRates={displayRates} />
       </div>
     </main>
   )

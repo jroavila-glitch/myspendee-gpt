@@ -1629,12 +1629,53 @@ h3 {
   font-size: 0.72rem;
 }
 
-.recent-transactions-preview .transaction-list {
-  max-height: 390px;
+.preview-transaction-list {
+  display: grid;
 }
 
-.recent-transactions-preview .transaction-panel {
-  box-shadow: none;
+.preview-transaction-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto minmax(150px, auto);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.68rem 0.1rem;
+  border-top: 1px solid rgba(34, 41, 74, 0.07);
+}
+
+.preview-date,
+.preview-transaction-copy small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.preview-transaction-copy {
+  min-width: 0;
+}
+
+.preview-transaction-copy strong,
+.preview-transaction-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-transaction-copy strong {
+  font-size: 0.84rem;
+}
+
+.preview-transaction-copy small {
+  margin-top: 0.15rem;
+}
+
+.preview-amount {
+  justify-self: end;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-amount.income {
+  color: var(--green);
 }
 
 button:focus-visible,
@@ -1718,6 +1759,19 @@ textarea:focus-visible {
   .transaction-head,
   .transaction-row {
     grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .preview-transaction-row {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+  }
+
+  .preview-transaction-row .pill {
+    display: none;
+  }
+
+  .preview-amount {
+    grid-column: 2 / -1;
+    justify-self: start;
   }
 
   .transaction-head span:nth-child(n + 3),

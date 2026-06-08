@@ -9,7 +9,9 @@ import {
   calculateSavingsRate,
   convertInsightMetric,
   filterTransactionsByDrilldown,
+  joinReviewItems,
   mergeDrilldownFilters,
+  shouldApplyRequestVersion,
 } from '../src/lib/dashboard.js'
 
 const rates = { MXN: 1, EUR: 20, USD: 18 }
@@ -22,6 +24,7 @@ test('calculates income expenses net and savings rate', () => {
   ]
   const analytics = buildDisplayAnalytics(transactions, 'MXN', rates)
   assert.deepEqual(analytics.summary, { income: 1000, expenses: 250, net: 750 })
+  assert.equal(analytics.conversionAvailable, true)
   assert.equal(calculateSavingsRate(analytics.summary), 75)
 })
 
@@ -40,6 +43,15 @@ test('returns null when a requested display rate is unavailable', () => {
   assert.equal(convertInsightMetric(400, 'EUR', { MXN: 1 }), null)
   assert.equal(convertInsightMetric(400, 'EUR', { MXN: 1, EUR: 0 }), null)
   assert.equal(convertInsightMetric('400', 'MXN', { MXN: 1 }), 400)
+})
+
+test('marks display analytics unavailable instead of using fake FX rates', () => {
+  const analytics = buildDisplayAnalytics([
+    { type: 'expense', category: 'Food', amount_mxn: 200, currency_original: 'MXN' },
+  ], 'EUR', { MXN: 1 })
+
+  assert.equal(analytics.conversionAvailable, false)
+  assert.deepEqual(analytics.summary, { income: 0, expenses: 0, net: 0 })
 })
 
 test('normalizes display summary values to two decimal places', () => {
@@ -131,4 +143,25 @@ test('labels previous comparison basis clearly', () => {
   assert.equal(buildPeriodComparisonLabel({ year: 2026, month: '5' }), 'April 2026')
   assert.equal(buildPeriodComparisonLabel({ year: 2026, month: 'custom' }), 'previous equal period')
   assert.equal(buildPeriodComparisonLabel({ year: 2026, month: 'ytd' }), '2025 YTD')
+})
+
+test('joins review items to loaded transactions by transaction ID and keeps insight reasons', () => {
+  const transactions = [
+    { id: 'a', description: 'Coffee' },
+    { id: 'b', description: 'Transfer' },
+  ]
+  const reviewItems = [
+    { transaction_id: 'b', reasons: ['Missing FX', 'Unclassified'] },
+    { transaction_id: 'missing', reasons: ['Higher than usual'] },
+  ]
+
+  assert.deepEqual(joinReviewItems(transactions, reviewItems), [
+    { id: 'b', description: 'Transfer', review_reasons: ['Missing FX', 'Unclassified'] },
+  ])
+})
+
+test('only applies the latest mounted request version', () => {
+  assert.equal(shouldApplyRequestVersion(4, 4, true), true)
+  assert.equal(shouldApplyRequestVersion(3, 4, true), false)
+  assert.equal(shouldApplyRequestVersion(4, 4, false), false)
 })

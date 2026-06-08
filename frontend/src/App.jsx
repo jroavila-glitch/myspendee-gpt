@@ -4,14 +4,16 @@ import AppHeader from './components/AppHeader'
 import DashboardWorkspace from './components/DashboardWorkspace'
 import GlobalFilters from './components/GlobalFilters'
 import StatementsWorkspace from './components/StatementsWorkspace'
-import TransactionTable, { getReviewReason } from './components/TransactionTable'
+import TransactionTable from './components/TransactionTable'
 import { api } from './lib/api'
 import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
   buildPeriodComparisonLabel,
   filterTransactionsByDrilldown,
+  joinReviewItems,
   mergeDrilldownFilters,
+  shouldApplyRequestVersion,
 } from './lib/dashboard'
 
 function getCurrentMonthState() {
@@ -110,7 +112,7 @@ function App() {
   const [dashboardDrilldown, setDashboardDrilldown] = useState({ category: '', type: '' })
   const [reviewCategory, setReviewCategory] = useState('')
   const [displayCurrency, setDisplayCurrency] = useState('MXN')
-  const [displayRates, setDisplayRates] = useState({ MXN: 1, EUR: 21.5, USD: 17.9 })
+  const [displayRates, setDisplayRates] = useState({ MXN: 1 })
   const [searchText, setSearchText] = useState('')
   const [transactions, setTransactions] = useState([])
   const [insights, setInsights] = useState(null)
@@ -137,6 +139,8 @@ function App() {
   const notesLatestDrafts = useRef({})
   const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
+  const loadVersionRef = useRef(0)
+  const mountedRef = useRef(true)
 
   const queryParams = useMemo(() => {
     const params = {
@@ -174,13 +178,8 @@ function App() {
 
   const categoryOptions = useMemo(() => dedupeCategories(categories), [categories])
   const reviewItems = useMemo(
-    () => transactions
-      .map((transaction) => {
-        const reviewReason = getReviewReason(transaction)
-        return reviewReason ? { ...transaction, reviewReason } : null
-      })
-      .filter(Boolean),
-    [transactions],
+    () => joinReviewItems(transactions, insights?.review_items || []),
+    [transactions, insights],
   )
   const analytics = useMemo(
     () => buildDisplayAnalytics(transactions, displayCurrency, displayRates),
@@ -207,52 +206,86 @@ function App() {
   }, [transactions, searchText])
 
   const previewTransactions = useMemo(
-    () => filterTransactionsByDrilldown(visibleTransactions, dashboardDrilldown),
-    [visibleTransactions, dashboardDrilldown],
+    () => filterTransactionsByDrilldown(transactions, dashboardDrilldown),
+    [transactions, dashboardDrilldown],
   )
   const workspaceTransactions = tab === 'review'
-    ? visibleTransactions.filter((transaction) => !reviewCategory || transaction.category === reviewCategory).filter(getReviewReason)
+    ? reviewItems.filter((transaction) => {
+      if (reviewCategory && transaction.category !== reviewCategory) return false
+      return visibleTransactions.some((visible) => visible.id === transaction.id)
+    })
     : visibleTransactions
   const previousPeriodLabel = useMemo(() => buildPeriodComparisonLabel(period), [period])
+  const workflowDisplayCurrency = displayCurrency === 'MXN' || Number(displayRates[displayCurrency]) > 0
+    ? displayCurrency
+    : 'MXN'
 
 
   async function loadAll() {
-    try {
+    const requestVersion = loadVersionRef.current + 1
+    loadVersionRef.current = requestVersion
+    const canApply = () => shouldApplyRequestVersion(requestVersion, loadVersionRef.current, mountedRef.current)
+    if (canApply()) {
       setError('')
       setDashboardError('')
-      const [transactionsRes, insightsRes, statementsRes, banksRes, categoriesRes] = await Promise.all([
+    }
+
+    const metadataPromise = Promise.allSettled([
+      api.statements(),
+      api.banks(),
+      api.categories(),
+      api.fxRates(),
+    ])
+
+    try {
+      const [transactionsRes, insightsRes] = await Promise.all([
         api.listTransactions(queryParams),
         api.insights(insightsQueryParams),
-        api.statements(),
-        api.banks(),
-        api.categories(),
       ])
-      let fxRatesRes = {}
-      try {
-        fxRatesRes = await api.fxRates()
-      } catch {
-        fxRatesRes = {}
-      }
+      if (!canApply()) return
       setTransactions(transactionsRes)
       setInsights(insightsRes)
-      setStatements(statementsRes)
-      setBanks(banksRes)
-      setCategories(categoriesRes)
-      setDisplayRates({
-        MXN: 1,
-        EUR: Number(fxRatesRes.EUR || 21.5),
-        USD: Number(fxRatesRes.USD || 17.9),
-      })
     } catch (err) {
+      if (!canApply()) return
       setTransactions([])
       setInsights(null)
       setDashboardError(err.message)
     }
+
+    const metadataResults = await metadataPromise
+    if (!canApply()) return
+    const [statementsResult, banksResult, categoriesResult, fxRatesResult] = metadataResults
+    const nonfatalErrors = []
+    if (statementsResult.status === 'fulfilled') setStatements(statementsResult.value)
+    else nonfatalErrors.push(`Statements: ${statementsResult.reason.message}`)
+    if (banksResult.status === 'fulfilled') setBanks(banksResult.value)
+    else nonfatalErrors.push(`Banks: ${banksResult.reason.message}`)
+    if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value)
+    else nonfatalErrors.push(`Categories: ${categoriesResult.reason.message}`)
+    if (fxRatesResult.status === 'fulfilled') {
+      setDisplayRates((current) => ({
+        ...current,
+        MXN: 1,
+        ...(Number(fxRatesResult.value.EUR) > 0 ? { EUR: Number(fxRatesResult.value.EUR) } : {}),
+        ...(Number(fxRatesResult.value.USD) > 0 ? { USD: Number(fxRatesResult.value.USD) } : {}),
+      }))
+    } else {
+      nonfatalErrors.push(`Exchange rates: ${fxRatesResult.reason.message}`)
+    }
+    setError(nonfatalErrors.join(' · '))
   }
 
   useEffect(() => {
     loadAll()
   }, [queryParams, insightsQueryParams])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      loadVersionRef.current += 1
+    }
+  }, [])
 
   useEffect(() => {
     setNotesDrafts(Object.fromEntries(transactions.map((transaction) => {
@@ -470,40 +503,19 @@ function App() {
             onOpenReview={() => setTab('review')}
             onDrilldown={handleDashboardDrilldown}
             onClearDrilldown={clearDashboardDrilldown}
-            transactionTableProps={{
-              selectedIds,
-              categoryOptions,
-              category: dashboardDrilldown.category,
-              searchText,
-              searchInputRef,
-              displayCurrency,
-              displayRates,
-              notesDrafts,
-              savingNotesIds,
-              menuState,
-              onCategoryChange: (value) => setDashboardDrilldown((current) => ({ ...current, category: value })),
-              onSearchChange: setSearchText,
-              onToggleSelected: toggleSelected,
-              onNotesChange: handleNotesChange,
-              onNotesBlur: handleNotesBlur,
-              onMenuOpen: (id, trigger) => setMenuState({ id, trigger, rect: trigger.getBoundingClientRect() }),
-              onMenuClose: closeTransactionMenu,
-              onEdit: (transaction) => { setEditingTransaction(transaction); setMenuState(null) },
-              onDelete: handleDeleteTransaction,
-            }}
           />
         ) : tab === 'review' ? (
           <main className="workspace-main">
             <TransactionTable
               title="Review Transactions"
-              meta={`${workspaceTransactions.length} items need review`}
+              meta={`${workspaceTransactions.length} items need review${workspaceTransactions.length ? ` · ${Array.from(new Set(workspaceTransactions.flatMap((item) => item.review_reasons))).join(' · ')}` : ''}${workflowDisplayCurrency !== displayCurrency ? ` · ${displayCurrency} unavailable, amounts shown in MXN` : ''}`}
               transactions={workspaceTransactions}
               selectedIds={selectedIds}
               categoryOptions={categoryOptions}
               category={reviewCategory}
               searchText={searchText}
               searchInputRef={searchInputRef}
-              displayCurrency={displayCurrency}
+              displayCurrency={workflowDisplayCurrency}
               displayRates={displayRates}
               notesDrafts={notesDrafts}
               savingNotesIds={savingNotesIds}
