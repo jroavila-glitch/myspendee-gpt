@@ -167,15 +167,18 @@ def classify_transaction(
         return "income", "Ro IG Tennis", None
 
     if (
+        "TRF MB WAY DE KIRAH HITCHCOCK" in normalized
+        or "CAROLINA FREDERICA J GIMENEZ ALBARRAN" in normalized
+    ):
+        return "income", "Tennis Smash & Social", None
+
+    if (
         is_tennis_bank
         and normalized_currency == "EUR"
         and threshold_amount == Decimal("25")
         and (current_type == "income" or looks_like_person_transfer_income)
     ):
         return "income", "Tennis Rush", None
-
-    if "TRF MB WAY DE KIRAH HITCHCOCK" in normalized:
-        return "income", "Tennis Smash & Social", None
 
     if is_tennis_bank and (current_type == "income" or looks_like_person_transfer_income):
         if threshold_amount <= Decimal("30"):

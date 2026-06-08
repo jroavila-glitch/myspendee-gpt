@@ -39,6 +39,22 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("income", "Ro IG Tennis"), (tx_type, category))
 
+    def test_named_smash_and_social_rules_precede_exact_25_eur_rule(self) -> None:
+        for description in [
+            "TRF MB WAY DE KIRAH HITCHCOCK",
+            "TRF. P/ CAROLINA FREDERICA J GIMENEZ ALBARRAN",
+        ]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("537.50"),
+                    bank_name="Millennium",
+                    amount_original=Decimal("25"),
+                    currency_original="EUR",
+                    current_type="income",
+                )
+                self.assertEqual(("income", "Tennis Smash & Social"), (tx_type, category))
+
     def test_tennis_rush_only_matches_exactly_25_eur(self) -> None:
         for amount in [Decimal("24.99"), Decimal("25.01")]:
             with self.subTest(amount=amount):
