@@ -163,6 +163,9 @@ def classify_transaction(
     ):
         return "expense", "Healthcare", None
 
+    if is_tennis_bank and ("ROMAN JERZY SOBKOWIAK" in normalized):
+        return "income", "Ro IG Tennis", None
+
     if (
         is_tennis_bank
         and normalized_currency == "EUR"
@@ -170,9 +173,6 @@ def classify_transaction(
         and (current_type == "income" or looks_like_person_transfer_income)
     ):
         return "income", "Tennis Rush", None
-
-    if is_tennis_bank and ("ROMAN JERZY SOBKOWIAK" in normalized):
-        return "income", "Ro IG Tennis", None
 
     if "TRF MB WAY DE KIRAH HITCHCOCK" in normalized:
         return "income", "Tennis Smash & Social", None
