@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import AppHeader from './components/AppHeader'
 import DashboardWorkspace from './components/DashboardWorkspace'
 import GlobalFilters from './components/GlobalFilters'
+import ReviewWorkspace from './components/ReviewWorkspace'
 import StatementsWorkspace from './components/StatementsWorkspace'
-import TransactionTable from './components/TransactionTable'
 import { api } from './lib/api'
 import {
   buildDisplayAnalytics,
@@ -111,10 +111,8 @@ function App() {
   const [period, setPeriod] = useState(getCurrentMonthState)
   const [filters, setFilters] = useState({ bank_name: '', type: '' })
   const [dashboardDrilldown, setDashboardDrilldown] = useState({ category: '', type: '' })
-  const [reviewCategory, setReviewCategory] = useState('')
   const [displayCurrency, setDisplayCurrency] = useState('MXN')
   const [displayRates, setDisplayRates] = useState({ MXN: 1 })
-  const [searchText, setSearchText] = useState('')
   const [transactions, setTransactions] = useState([])
   const [insights, setInsights] = useState(null)
   const [statements, setStatements] = useState([])
@@ -123,7 +121,6 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkType, setBulkType] = useState('')
-  const [menuState, setMenuState] = useState(null)
   const [editingTransaction, setEditingTransaction] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -138,7 +135,6 @@ function App() {
   const notesRequestedValues = useRef({})
   const notesPersistedValues = useRef({})
   const notesLatestDrafts = useRef({})
-  const searchInputRef = useRef(null)
   const uploadInputRef = useRef(null)
   const loadVersionRef = useRef(0)
   const mountedRef = useRef(true)
@@ -187,35 +183,10 @@ function App() {
     [transactions, displayCurrency, displayRates],
   )
 
-  const visibleTransactions = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase()
-    return transactions.filter((transaction) => {
-      const haystack = [
-        transaction.description,
-        transaction.category,
-        transaction.type,
-        transaction.bank_name,
-        transaction.notes,
-        transaction.original_amount_display,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return normalizedSearch ? haystack.includes(normalizedSearch) : true
-    })
-  }, [transactions, searchText])
-
   const previewTransactions = useMemo(
     () => filterTransactionsByDrilldown(transactions, dashboardDrilldown),
     [transactions, dashboardDrilldown],
   )
-  const workspaceTransactions = tab === 'review'
-    ? reviewItems.filter((transaction) => {
-      if (reviewCategory && transaction.category !== reviewCategory) return false
-      return visibleTransactions.some((visible) => visible.id === transaction.id)
-    })
-    : visibleTransactions
   const previousPeriodLabel = useMemo(() => buildPeriodComparisonLabel(period), [period])
   const workflowDisplayCurrency = displayCurrency === 'MXN' || Number(displayRates[displayCurrency]) > 0
     ? displayCurrency
@@ -285,6 +256,12 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (tab !== 'review') return
+    const reviewIds = new Set(reviewItems.map((item) => item.id))
+    setSelectedIds((current) => current.filter((id) => reviewIds.has(id)))
+  }, [reviewItems, tab])
+
+  useEffect(() => {
     setNotesDrafts(Object.fromEntries(transactions.map((transaction) => {
       const persistedNotes = transaction.notes || ''
       notesPersistedValues.current[transaction.id] = persistedNotes
@@ -297,28 +274,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!menuState) return undefined
-
-    function handleMenuEscape(event) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        closeTransactionMenu(true)
-      }
-    }
-
-    window.addEventListener('keydown', handleMenuEscape)
-    return () => window.removeEventListener('keydown', handleMenuEscape)
-  }, [menuState])
-
-  useEffect(() => {
     function handleShortcuts(event) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
       const target = event.target
       if (target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
-      if (event.key === '/') {
-        event.preventDefault()
-        searchInputRef.current?.focus()
-      }
       if (event.key.toLowerCase() === 'n') {
         event.preventDefault()
         setShowCreateModal(true)
@@ -406,18 +365,6 @@ function App() {
     saveNotes(transaction, value)
   }
 
-  function closeTransactionMenu(restoreFocus = false) {
-    const trigger = menuState?.trigger
-    setMenuState(null)
-    if (restoreFocus) requestAnimationFrame(() => trigger?.focus())
-  }
-
-  async function handleDeleteTransaction(id) {
-    await api.deleteTransaction(id)
-    setMenuState(null)
-    await loadAll()
-  }
-
   async function handleBulkApply() {
     await api.bulkUpdate({ ids: selectedIds, category: bulkCategory || null, type: bulkType || null })
     setSelectedIds([])
@@ -502,33 +449,18 @@ function App() {
             onClearDrilldown={clearDashboardDrilldown}
           />
         ) : tab === 'review' ? (
-          <main className="workspace-main">
-            <TransactionTable
-              title="Review Transactions"
-              meta={`${workspaceTransactions.length} items need review${workspaceTransactions.length ? ` · ${Array.from(new Set(workspaceTransactions.flatMap((item) => item.review_reasons))).join(' · ')}` : ''}${workflowDisplayCurrency !== displayCurrency ? ` · ${displayCurrency} unavailable, amounts shown in MXN` : ''}`}
-              transactions={workspaceTransactions}
-              selectedIds={selectedIds}
-              categoryOptions={categoryOptions}
-              category={reviewCategory}
-              searchText={searchText}
-              searchInputRef={searchInputRef}
-              displayCurrency={workflowDisplayCurrency}
-              displayRates={displayRates}
-              notesDrafts={notesDrafts}
-              savingNotesIds={savingNotesIds}
-              menuState={menuState}
-              emptyMessage="No transactions need review for the current filters."
-              onCategoryChange={setReviewCategory}
-              onSearchChange={setSearchText}
-              onToggleSelected={toggleSelected}
-              onNotesChange={handleNotesChange}
-              onNotesBlur={handleNotesBlur}
-              onMenuOpen={(id, trigger) => setMenuState({ id, trigger, rect: trigger.getBoundingClientRect() })}
-              onMenuClose={closeTransactionMenu}
-              onEdit={(transaction) => { setEditingTransaction(transaction); setMenuState(null) }}
-              onDelete={handleDeleteTransaction}
-            />
-          </main>
+          <ReviewWorkspace
+            transactions={reviewItems}
+            selectedIds={selectedIds}
+            displayCurrency={workflowDisplayCurrency}
+            displayRates={displayRates}
+            notesDrafts={notesDrafts}
+            savingNotesIds={savingNotesIds}
+            onToggleSelected={toggleSelected}
+            onEdit={setEditingTransaction}
+            onNotesChange={handleNotesChange}
+            onNotesBlur={handleNotesBlur}
+          />
         ) : (
           <StatementsWorkspace statements={statements} onViewStatement={handleViewStatement} onDeleteStatement={handleStatementDelete} />
         )}
