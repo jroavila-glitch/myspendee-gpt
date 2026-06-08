@@ -22,9 +22,11 @@ from app.schemas.common import (
     TransactionUpdate,
     UploadResult,
 )
+from app.schemas.insights import InsightsResponse
 from app.services.transactions import create_transaction, delete_statement, get_breakdown, get_summary, serialize_transaction, update_transaction
 from app.services.transactions import apply_transaction_filters
 from app.services.fx_rates import get_display_rates
+from app.services.insights import get_insights
 from app.services.upload import process_uploaded_statement
 
 settings = get_settings()
@@ -136,6 +138,30 @@ def breakdown(
     db: Session = Depends(get_db),
 ) -> BreakdownResponse:
     return get_breakdown(db, month, year, date_from=date_from, date_to=date_to, bank_name=bank_name, category=category, type=type)
+
+
+@app.get("/insights", response_model=InsightsResponse)
+def insights(
+    month: int | None = Query(default=None),
+    year: int = Query(...),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    bank_name: str | None = None,
+    type: str | None = None,
+    db: Session = Depends(get_db),
+) -> InsightsResponse:
+    try:
+        return get_insights(
+            db,
+            month=month,
+            year=year,
+            date_from=date_from,
+            date_to=date_to,
+            bank_name=bank_name,
+            type=type,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/transactions", response_model=TransactionRead)

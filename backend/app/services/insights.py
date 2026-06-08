@@ -1,8 +1,219 @@
 import calendar
+from collections import Counter
 from datetime import date, timedelta
 from decimal import Decimal
 
-from app.schemas.insights import MonthStatusRead
+from sqlalchemy import case, func, select
+from sqlalchemy.orm import Session
+
+from app.models import Transaction
+from app.schemas.insights import (
+    InsightsResponse,
+    MetricComparison,
+    MonthStatusRead,
+    ReviewItemInsight,
+    ReviewReasonSummary,
+)
+from app.services.transactions import apply_transaction_filters
+
+
+ZERO = Decimal("0")
+
+
+def get_insights(
+    db: Session,
+    *,
+    month: int | None,
+    year: int,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    bank_name: str | None = None,
+    type: str | None = None,
+) -> InsightsResponse:
+    current_period, previous_period = resolve_comparison_period(
+        year=year,
+        month=month,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    average_period = _recent_complete_months(current_period[0])
+
+    current_income, current_expenses = _period_totals(
+        db,
+        period=current_period,
+        bank_name=bank_name,
+        type=type,
+    )
+    previous_income, previous_expenses = _period_totals(
+        db,
+        period=previous_period,
+        bank_name=bank_name,
+        type=type,
+    )
+    average_income_total, average_expenses_total = _period_totals(
+        db,
+        period=average_period,
+        bank_name=bank_name,
+        type=type,
+    )
+    average_income = average_income_total / Decimal("3")
+    average_expenses = average_expenses_total / Decimal("3")
+
+    category_averages = _category_averages(
+        db,
+        period=average_period,
+        bank_name=bank_name,
+        type=type,
+    )
+    current_transactions = _current_transactions(
+        db,
+        period=current_period,
+        bank_name=bank_name,
+        type=type,
+    )
+    review_items: list[ReviewItemInsight] = []
+    review_amount = ZERO
+    reason_counts: Counter[str] = Counter()
+    for transaction in current_transactions:
+        reasons = review_reasons_for_transaction(
+            category=transaction.category,
+            tx_type=transaction.type,
+            notes=transaction.notes,
+            amount_mxn=transaction.amount_mxn,
+            category_average=category_averages.get(transaction.category),
+            currency_original=transaction.currency_original,
+            amount_original=transaction.amount_original,
+            exchange_rate_used=transaction.exchange_rate_used,
+        )
+        if not reasons:
+            continue
+        review_items.append(
+            ReviewItemInsight(transaction_id=transaction.id, reasons=reasons)
+        )
+        review_amount += transaction.amount_mxn
+        reason_counts.update(reasons)
+
+    current_net = current_income - current_expenses
+    previous_net = previous_income - previous_expenses
+    average_net = average_income - average_expenses
+    return InsightsResponse(
+        income=_metric(current_income, previous_income, average_income),
+        expenses=_metric(current_expenses, previous_expenses, average_expenses),
+        net=_metric(current_net, previous_net, average_net),
+        status=calculate_month_status(
+            income=current_income,
+            expenses=current_expenses,
+            average_expenses=average_expenses,
+            review_count=len(review_items),
+            review_amount=review_amount,
+        ),
+        review_count=len(review_items),
+        review_amount_mxn=review_amount,
+        review_reasons=[
+            ReviewReasonSummary(label=label, count=count)
+            for label, count in sorted(
+                reason_counts.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+        ],
+        review_items=review_items,
+    )
+
+
+def _period_totals(
+    db: Session,
+    *,
+    period: tuple[date, date],
+    bank_name: str | None,
+    type: str | None,
+) -> tuple[Decimal, Decimal]:
+    stmt = select(
+        func.coalesce(
+            func.sum(case((Transaction.type == "income", Transaction.amount_mxn), else_=0)),
+            0,
+        ),
+        func.coalesce(
+            func.sum(case((Transaction.type == "expense", Transaction.amount_mxn), else_=0)),
+            0,
+        ),
+    ).where(Transaction.type != "ignored")
+    stmt = apply_transaction_filters(
+        stmt,
+        month=None,
+        year=period[0].year,
+        date_from=period[0],
+        date_to=period[1],
+        bank_name=bank_name,
+        type=type,
+    )
+    income, expenses = db.execute(stmt).one()
+    return Decimal(income), Decimal(expenses)
+
+
+def _current_transactions(
+    db: Session,
+    *,
+    period: tuple[date, date],
+    bank_name: str | None,
+    type: str | None,
+) -> list[Transaction]:
+    stmt = apply_transaction_filters(
+        select(Transaction).where(Transaction.type != "ignored"),
+        month=None,
+        year=period[0].year,
+        date_from=period[0],
+        date_to=period[1],
+        bank_name=bank_name,
+        type=type,
+    ).order_by(Transaction.date.asc(), Transaction.created_at.asc())
+    return list(db.scalars(stmt).all())
+
+
+def _category_averages(
+    db: Session,
+    *,
+    period: tuple[date, date],
+    bank_name: str | None,
+    type: str | None,
+) -> dict[str, Decimal]:
+    stmt = (
+        select(Transaction.category, func.avg(Transaction.amount_mxn))
+        .where(Transaction.type != "ignored")
+        .group_by(Transaction.category)
+    )
+    stmt = apply_transaction_filters(
+        stmt,
+        month=None,
+        year=period[0].year,
+        date_from=period[0],
+        date_to=period[1],
+        bank_name=bank_name,
+        type=type,
+    )
+    return {category: Decimal(average) for category, average in db.execute(stmt).all()}
+
+
+def _metric(current: Decimal, previous: Decimal, average: Decimal) -> MetricComparison:
+    return MetricComparison(
+        current=current,
+        previous=previous,
+        average=average,
+        previous_change_percent=calculate_percent_change(current, previous),
+    )
+
+
+def _recent_complete_months(current_start: date) -> tuple[date, date]:
+    try:
+        end = current_start.replace(day=1) - timedelta(days=1)
+        start_month = end.month - 2
+        start_year = end.year
+        if start_month <= 0:
+            start_month += 12
+            start_year -= 1
+        start = date(start_year, start_month, 1)
+    except (OverflowError, ValueError) as error:
+        raise ValueError("recent monthly average period underflow") from error
+    return start, end
 
 
 def resolve_comparison_period(

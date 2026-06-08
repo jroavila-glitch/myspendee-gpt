@@ -3,16 +3,166 @@ from decimal import Decimal
 from unittest import TestCase
 from uuid import uuid4
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
+from app.db import Base
+from app.models import Transaction
 from app.schemas.insights import ReviewItemInsight
 from app.services.insights import (
     calculate_month_status,
     calculate_percent_change,
+    get_insights,
     review_reasons_for_transaction,
     resolve_comparison_period,
 )
 
 
 class InsightsTest(TestCase):
+    def setUp(self) -> None:
+        self.engine = create_engine("sqlite+pysqlite:///:memory:")
+        Base.metadata.create_all(self.engine)
+        self.db = Session(self.engine)
+
+    def tearDown(self) -> None:
+        self.db.close()
+        self.engine.dispose()
+
+    def add_transaction(
+        self,
+        *,
+        tx_date: date,
+        description: str,
+        amount_mxn: str,
+        category: str,
+        tx_type: str,
+        bank_name: str = "Primary Bank",
+        notes: str | None = None,
+    ) -> Transaction:
+        transaction = Transaction(
+            date=tx_date,
+            description=description,
+            amount_original=Decimal(amount_mxn),
+            currency_original="MXN",
+            amount_mxn=Decimal(amount_mxn),
+            exchange_rate_used=Decimal("1"),
+            category=category,
+            type=tx_type,
+            bank_name=bank_name,
+            month=tx_date.month,
+            year=tx_date.year,
+            manually_added=False,
+            notes=notes,
+        )
+        self.db.add(transaction)
+        self.db.flush()
+        return transaction
+
+    def seed_insight_periods(self) -> Transaction:
+        for month, income, expenses in [
+            (2, "650", "400"),
+            (3, "800", "500"),
+            (4, "800", "600"),
+        ]:
+            self.add_transaction(
+                tx_date=date(2026, month, 5),
+                description=f"Income {month}",
+                amount_mxn=income,
+                category="Salary",
+                tx_type="income",
+            )
+            self.add_transaction(
+                tx_date=date(2026, month, 10),
+                description=f"Expense {month}",
+                amount_mxn=expenses,
+                category="Food & Drink",
+                tx_type="expense",
+            )
+
+        self.add_transaction(
+            tx_date=date(2026, 5, 5),
+            description="Income May",
+            amount_mxn="1000",
+            category="Salary",
+            tx_type="income",
+        )
+        self.add_transaction(
+            tx_date=date(2026, 5, 10),
+            description="Expense May",
+            amount_mxn="530",
+            category="Food & Drink",
+            tx_type="expense",
+        )
+        review_transaction = self.add_transaction(
+            tx_date=date(2026, 5, 15),
+            description="Review May",
+            amount_mxn="20",
+            category="Other",
+            tx_type="expense",
+        )
+        self.add_transaction(
+            tx_date=date(2026, 4, 20),
+            description="Old review",
+            amount_mxn="10",
+            category="Travel",
+            tx_type="expense",
+            notes="Manual review needed",
+        )
+        self.add_transaction(
+            tx_date=date(2026, 5, 20),
+            description="Other bank income",
+            amount_mxn="9999",
+            category="Salary",
+            tx_type="income",
+            bank_name="Other Bank",
+        )
+        self.db.commit()
+        return review_transaction
+
+    def test_get_insights_applies_filters_and_builds_comparisons_and_reviews(self) -> None:
+        review_transaction = self.seed_insight_periods()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type=None,
+        )
+
+        self.assertEqual(Decimal("1000"), response.income.current)
+        self.assertEqual(Decimal("800"), response.income.previous)
+        self.assertEqual(Decimal("750"), response.income.average)
+        self.assertEqual(Decimal("550"), response.expenses.current)
+        self.assertEqual(Decimal("610"), response.expenses.previous)
+        self.assertEqual(Decimal("503.3333333333333333333333333"), response.expenses.average)
+        self.assertEqual("Healthy", response.status.label)
+        self.assertEqual(1, response.review_count)
+        self.assertEqual(Decimal("20"), response.review_amount_mxn)
+        self.assertEqual(["Unclassified"], response.review_items[0].reasons)
+        self.assertEqual(review_transaction.id, response.review_items[0].transaction_id)
+
+    def test_get_insights_applies_activity_type_to_all_windows(self) -> None:
+        self.seed_insight_periods()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type="income",
+        )
+
+        self.assertEqual(Decimal("1000"), response.income.current)
+        self.assertEqual(Decimal("800"), response.income.previous)
+        self.assertEqual(Decimal("750"), response.income.average)
+        self.assertEqual(Decimal("0"), response.expenses.current)
+        self.assertEqual(0, response.review_count)
+
     def test_previous_month_preserves_full_month_bounds(self) -> None:
         current, previous = resolve_comparison_period(
             year=2026, month=5, date_from=None, date_to=None
