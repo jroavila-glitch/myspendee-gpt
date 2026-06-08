@@ -553,9 +553,9 @@ function App() {
     <div className={`app-shell density-${density}`}>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">MY</span>
+          <span className="brand-mark">MO</span>
           <div>
-            <h1>MySpendee GPT</h1>
+            <h1>Moneo</h1>
             <p>Expense dashboard with flexible display currency</p>
           </div>
         </div>

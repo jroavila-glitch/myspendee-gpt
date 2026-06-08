@@ -56,7 +56,6 @@ EXPENSE_RULES = [
     (r"PAYU \*GOOGLE CLOUD|ELEVENLABS|GOOGLE WORKSPACE|GOOGLE \*WORKSPACE|CLAUDE\.AI|ANTHROPIC", "IG Ro Project"),
     (r"HIGHLEVEL AGENCY SUB|CALENDLY|PADDLE\.NET\* ELFSIGHT|ELFSIGHT", "Perenniam Agency"),
     (r"NETFLIX|CINEMA|UCI CINEMAS|H[BE][A-Z]*\.?HBOMAX\.COM|HBOMAX\.COM", "Entertainment"),
-    (r"CLUB7|CLUBE VII", "Gym"),
     (r"CONTA PACOTE PROGRAMA PRESTIGE|IVA POR INTERESES|IVA INTERES|INTERES EXENTO|INTERES GRAVABLE|INTERESES|INTERES|IMPOSTO SELO|COMISION", "Bills/Fees"),
     (r"ALGARVEKNOWHOW", "Visa Portugal"),
     (r"FUNDEDNEXT", "Other"),
@@ -164,6 +163,14 @@ def classify_transaction(
     ):
         return "expense", "Healthcare", None
 
+    if (
+        is_tennis_bank
+        and normalized_currency == "EUR"
+        and threshold_amount == Decimal("25")
+        and (current_type == "income" or looks_like_person_transfer_income)
+    ):
+        return "income", "Tennis Rush", None
+
     if is_tennis_bank and ("ROMAN JERZY SOBKOWIAK" in normalized):
         return "income", "Ro IG Tennis", None
 
@@ -174,6 +181,11 @@ def classify_transaction(
         if threshold_amount <= Decimal("30"):
             return "income", "Tennis Smash & Social", None
         return "income", "Tennis Lessons", None
+
+    if re.search(r"CLUB\s*7|CLUBE\s+VII|UNITENIS", normalized, re.IGNORECASE):
+        if normalized_currency == "EUR" and threshold_amount == Decimal("110"):
+            return "expense", "Gym", None
+        return "expense", "Food & Drink", None
 
     for pattern, result in INCOME_RULES:
         if re.search(pattern, normalized, re.IGNORECASE):

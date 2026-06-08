@@ -50,6 +50,20 @@ class ArqParserTest(TestCase):
         self.assertEqual(2000.0, jose_sale["local_mxn"])
         self.assertEqual("out", jose_sale["direction"])
 
+    def test_parses_transactions_continued_after_first_page_summary(self) -> None:
+        with patch("app.services.arq_parser._extract_text", return_value=self._load_fixture("usd_arq_2026_01.txt")):
+            parsed = parse_arq_pdf(b"stub")
+
+        assert parsed is not None
+        continued_sale = next(
+            item
+            for item in parsed["transactions"]
+            if item["date"] == "2026-01-28" and "Jose Rodrigo Avila Neira" in item["notes"]
+        )
+        self.assertEqual(232.47, continued_sale["amount_original"])
+        self.assertEqual(4000.0, continued_sale["local_mxn"])
+        self.assertEqual("Jose Rodrigo Avila Neira", continued_sale["notes"])
+
     def test_parses_new_digital_usd_arq_statement_layout(self) -> None:
         with patch("app.services.arq_parser._extract_text", return_value=self._load_fixture("usd_arq_2026_05_digital.txt")):
             parsed = parse_arq_pdf(b"stub")

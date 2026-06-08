@@ -15,6 +15,56 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("income", "Azulik"), (tx_type, category))
 
+    def test_exact_25_eur_income_from_tennis_banks_is_tennis_rush(self) -> None:
+        for bank_name in ["Millennium", "Revolut"]:
+            with self.subTest(bank_name=bank_name):
+                tx_type, category, _ = classify_transaction(
+                    description="Transfer from tennis player",
+                    amount_mxn=Decimal("537.50"),
+                    bank_name=bank_name,
+                    amount_original=Decimal("25"),
+                    currency_original="EUR",
+                    current_type="income",
+                )
+                self.assertEqual(("income", "Tennis Rush"), (tx_type, category))
+
+    def test_tennis_rush_only_matches_exactly_25_eur(self) -> None:
+        for amount in [Decimal("24.99"), Decimal("25.01")]:
+            with self.subTest(amount=amount):
+                tx_type, category, _ = classify_transaction(
+                    description="Transfer from tennis player",
+                    amount_mxn=Decimal("537.50"),
+                    bank_name="Revolut",
+                    amount_original=amount,
+                    currency_original="EUR",
+                    current_type="income",
+                )
+                self.assertEqual(("income", "Tennis Smash & Social"), (tx_type, category))
+
+    def test_clube_vii_variants_are_food_unless_exactly_110_eur(self) -> None:
+        for description in ["CLUBE VII LISBOA PT", "UNITENIS LISBOA PT", "CLUBE VII", "Club7"]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("107.50"),
+                    bank_name="Millennium",
+                    amount_original=Decimal("5"),
+                    currency_original="EUR",
+                    current_type="expense",
+                )
+                self.assertEqual(("expense", "Food & Drink"), (tx_type, category))
+
+    def test_clube_vii_exactly_110_eur_is_gym(self) -> None:
+        tx_type, category, _ = classify_transaction(
+            description="CLUBE VII LISBOA PT",
+            amount_mxn=Decimal("2365"),
+            bank_name="Millennium",
+            amount_original=Decimal("110"),
+            currency_original="EUR",
+            current_type="expense",
+        )
+        self.assertEqual(("expense", "Gym"), (tx_type, category))
+
     def test_kirah_hitchcock_is_tennis_smash_and_social(self) -> None:
         tx_type, category, _ = classify_transaction(
             description="TRF MB WAY DE KIRAH HITCHCOCK",

@@ -85,7 +85,8 @@ Additional ignore behavior:
 - `Implemented`: `C COMBINATOR MEXICO` / `HONOS` -> `Azulik`
 - `Implemented`: For Millennium and Revolut:
   - `Transfer from ROMAN JERZY SOBKOWIAK` -> `Ro IG Tennis`
-  - income `<= 30 EUR` -> `Tennis Smash & Social`
+  - income exactly `25 EUR` -> `Tennis Rush`
+  - other income `<= 30 EUR` -> `Tennis Smash & Social`
   - income `> 30 EUR` -> `Tennis Lessons`
 - `Implemented`: `TRF MB WAY DE KIRAH HITCHCOCK` -> `Tennis Smash & Social`
 - `Implemented`: `TRF. P/ CAROLINA FREDERICA J GIMENEZ ALBARRAN` -> `Tennis Smash & Social`
@@ -105,7 +106,7 @@ Additional ignore behavior:
 - `Implemented`: `PAYU *GOOGLE CLOUD`, `ELEVENLABS`, `GOOGLE WORKSPACE`, `CLAUDE.AI`, `ANTHROPIC` -> `IG Ro Project`
 - `Implemented`: `HIGHLEVEL AGENCY SUB`, `CALENDLY`, `PADDLE.NET* ELFSIGHT`, `ELFSIGHT` -> `Perenniam Agency`
 - `Implemented`: `NETFLIX`, `CINEMA`, `UCI CINEMAS`, `HBOMAX.COM` and variants -> `Entertainment`
-- `Implemented`: `CLUB7`, `CLUBE VII` -> `Gym`
+- `Implemented`: `CLUBE VII LISBOA PT`, `UNITENIS LISBOA PT`, `CLUBE VII`, `Club7`, and similar variants -> `Gym` only when the original amount is exactly `110 EUR`; all other amounts -> `Food & Drink`
 - `Implemented`: `IVA POR INTERESES`, `IVA INTERES`, `INTERES EXENTO`, `INTERES GRAVABLE`, `INTERESES`, `INTERES`, `IMPOSTO SELO`, `COMISION`, `CONTA PACOTE PROGRAMA PRESTIGE` -> `Bills/Fees`
 - `Implemented`: `Compra EURc comisión` on ARQ is an expense in `Bills/Fees`
 - `Implemented`: `Compra USDc comisión` on ARQ is an expense in `Bills/Fees`
@@ -160,6 +161,7 @@ Additional ignore behavior:
 ### ARQ / DolarApp
 
 - `Implemented`: Deterministic text parser for ARQ statements
+- `Implemented`: ARQ transactions continued on later PDF pages are parsed after first-page summaries and footers
 - `Implemented`: Foreign account-currency values are not copied directly into `amount_mxn`
 - `Implemented`: `Conversión USDc a EURc` and similar conversions are ignored
 - `Implemented`: Roommate transfers should be ignored from P&L

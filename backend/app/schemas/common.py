@@ -10,6 +10,7 @@ from pydantic.config import ConfigDict
 
 INCOME_CATEGORIES = [
     "Tennis Lessons",
+    "Tennis Rush",
     "Perenniam Agency",
     "Ro IG Tennis",
     "Tennis Smash & Social",

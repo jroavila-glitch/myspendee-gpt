@@ -2,7 +2,7 @@
 
 ## Production Surfaces
 
-- Frontend: Vercel
+- Frontend: Vercel (`https://moneoapp.vercel.app`)
 - Backend: Railway
 - Database: Railway PostgreSQL
 
