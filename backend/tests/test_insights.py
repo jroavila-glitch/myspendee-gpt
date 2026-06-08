@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import Base
 from app.models import Transaction
 from app.schemas.insights import ReviewItemInsight
+from app.services import insights as insights_service
 from app.services.insights import (
     calculate_month_status,
     calculate_percent_change,
@@ -38,14 +39,17 @@ class InsightsTest(TestCase):
         tx_type: str,
         bank_name: str = "Primary Bank",
         notes: str | None = None,
+        currency_original: str = "MXN",
+        amount_original: str | None = None,
+        exchange_rate_used: str | None = "1",
     ) -> Transaction:
         transaction = Transaction(
             date=tx_date,
             description=description,
-            amount_original=Decimal(amount_mxn),
-            currency_original="MXN",
+            amount_original=Decimal(amount_original) if amount_original is not None else None,
+            currency_original=currency_original,
             amount_mxn=Decimal(amount_mxn),
-            exchange_rate_used=Decimal("1"),
+            exchange_rate_used=Decimal(exchange_rate_used) if exchange_rate_used is not None else None,
             category=category,
             type=tx_type,
             bank_name=bank_name,
@@ -143,6 +147,188 @@ class InsightsTest(TestCase):
         self.assertEqual(Decimal("20"), response.review_amount_mxn)
         self.assertEqual(["Unclassified"], response.review_items[0].reasons)
         self.assertEqual(review_transaction.id, response.review_items[0].transaction_id)
+
+    def test_get_insights_keys_category_averages_by_category_and_type(self) -> None:
+        for month in [2, 3, 4]:
+            self.add_transaction(
+                tx_date=date(2026, month, 2),
+                description=f"Other income baseline {month}",
+                amount_mxn="1000",
+                category="Other",
+                tx_type="income",
+            )
+            self.add_transaction(
+                tx_date=date(2026, month, 3),
+                description=f"Other expense baseline {month}",
+                amount_mxn="50",
+                category="Other",
+                tx_type="expense",
+            )
+        review_transaction = self.add_transaction(
+            tx_date=date(2026, 5, 4),
+            description="Other expense current",
+            amount_mxn="120",
+            category="Other",
+            tx_type="expense",
+        )
+        self.db.commit()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type=None,
+        )
+
+        self.assertEqual(1, response.review_count)
+        self.assertEqual(review_transaction.id, response.review_items[0].transaction_id)
+        self.assertEqual(
+            ["Unclassified", "Higher than usual"],
+            response.review_items[0].reasons,
+        )
+
+    def test_get_insights_aggregates_multiple_reasons_with_deterministic_ties(self) -> None:
+        for month in [2, 3, 4]:
+            self.add_transaction(
+                tx_date=date(2026, month, 3),
+                description=f"Food baseline {month}",
+                amount_mxn="50",
+                category="Food & Drink",
+                tx_type="expense",
+            )
+            self.add_transaction(
+                tx_date=date(2026, month, 4),
+                description=f"Travel baseline {month}",
+                amount_mxn="80",
+                category="Travel",
+                tx_type="expense",
+            )
+        first = self.add_transaction(
+            tx_date=date(2026, 5, 3),
+            description="Other missing fx",
+            amount_mxn="100",
+            category="Other",
+            tx_type="expense",
+            currency_original="EUR",
+            amount_original=None,
+            exchange_rate_used=None,
+        )
+        second = self.add_transaction(
+            tx_date=date(2026, 5, 4),
+            description="Food spike",
+            amount_mxn="100",
+            category="Food & Drink",
+            tx_type="expense",
+        )
+        third = self.add_transaction(
+            tx_date=date(2026, 5, 5),
+            description="Travel manual missing fx spike",
+            amount_mxn="160",
+            category="Travel",
+            tx_type="expense",
+            notes="Manual review needed",
+            currency_original="EUR",
+            amount_original=None,
+            exchange_rate_used=None,
+        )
+        self.db.commit()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type=None,
+        )
+
+        self.assertEqual(3, response.review_count)
+        self.assertEqual(
+            [
+                (first.id, ["Unclassified", "Missing FX"]),
+                (second.id, ["Higher than usual"]),
+                (third.id, ["Unclassified", "Missing FX", "Higher than usual"]),
+            ],
+            [(item.transaction_id, item.reasons) for item in response.review_items],
+        )
+        self.assertEqual(
+            [("Higher than usual", 2), ("Missing FX", 2), ("Unclassified", 2)],
+            [(item.label, item.count) for item in response.review_reasons],
+        )
+
+    def test_period_filter_uses_month_year_for_complete_calendar_month(self) -> None:
+        calls: list[dict] = []
+
+        def fake_apply(stmt, **kwargs):
+            calls.append(kwargs)
+            return stmt
+
+        original = insights_service.apply_transaction_filters
+        insights_service.apply_transaction_filters = fake_apply
+        try:
+            marker = object()
+            self.assertIs(
+                marker,
+                insights_service._apply_period_filter(
+                    marker,
+                    period=(date(2026, 5, 1), date(2026, 5, 31)),
+                    bank_name="Primary Bank",
+                    type="income",
+                ),
+            )
+        finally:
+            insights_service.apply_transaction_filters = original
+
+        self.assertEqual(
+            [
+                {
+                    "month": 5,
+                    "year": 2026,
+                    "date_from": None,
+                    "date_to": None,
+                    "bank_name": "Primary Bank",
+                    "type": "income",
+                }
+            ],
+            calls,
+        )
+
+    def test_period_filter_keeps_date_bounds_for_custom_ranges(self) -> None:
+        calls: list[dict] = []
+
+        def fake_apply(stmt, **kwargs):
+            calls.append(kwargs)
+            return stmt
+
+        original = insights_service.apply_transaction_filters
+        insights_service.apply_transaction_filters = fake_apply
+        try:
+            insights_service._apply_period_filter(
+                object(),
+                period=(date(2026, 5, 10), date(2026, 5, 20)),
+                bank_name=None,
+                type=None,
+            )
+        finally:
+            insights_service.apply_transaction_filters = original
+
+        self.assertEqual(
+            [
+                {
+                    "month": None,
+                    "year": 2026,
+                    "date_from": date(2026, 5, 10),
+                    "date_to": date(2026, 5, 20),
+                    "bank_name": None,
+                    "type": None,
+                }
+            ],
+            calls,
+        )
 
     def test_get_insights_applies_activity_type_to_all_windows(self) -> None:
         self.seed_insight_periods()

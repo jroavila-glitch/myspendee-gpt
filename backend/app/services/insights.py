@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import Select
 
 from app.models import Transaction
 from app.schemas.insights import (
@@ -80,7 +81,9 @@ def get_insights(
             tx_type=transaction.type,
             notes=transaction.notes,
             amount_mxn=transaction.amount_mxn,
-            category_average=category_averages.get(transaction.category),
+            category_average=category_averages.get(
+                (transaction.category, transaction.type)
+            ),
             currency_original=transaction.currency_original,
             amount_original=transaction.amount_original,
             exchange_rate_used=transaction.exchange_rate_used,
@@ -137,17 +140,37 @@ def _period_totals(
             0,
         ),
     ).where(Transaction.type != "ignored")
-    stmt = apply_transaction_filters(
+    stmt = _apply_period_filter(
         stmt,
-        month=None,
-        year=period[0].year,
-        date_from=period[0],
-        date_to=period[1],
+        period=period,
         bank_name=bank_name,
         type=type,
     )
     income, expenses = db.execute(stmt).one()
     return Decimal(income), Decimal(expenses)
+
+
+def _apply_period_filter(
+    stmt: Select,
+    *,
+    period: tuple[date, date],
+    bank_name: str | None,
+    type: str | None,
+) -> Select:
+    month = period[0].month if _is_complete_calendar_month(period) else None
+    return apply_transaction_filters(
+        stmt,
+        month=month,
+        year=period[0].year,
+        date_from=None if month is not None else period[0],
+        date_to=None if month is not None else period[1],
+        bank_name=bank_name,
+        type=type,
+    )
+
+
+def _is_complete_calendar_month(period: tuple[date, date]) -> bool:
+    return period == _month_bounds(period[0].year, period[0].month)
 
 
 def _current_transactions(
@@ -157,12 +180,9 @@ def _current_transactions(
     bank_name: str | None,
     type: str | None,
 ) -> list[Transaction]:
-    stmt = apply_transaction_filters(
+    stmt = _apply_period_filter(
         select(Transaction).where(Transaction.type != "ignored"),
-        month=None,
-        year=period[0].year,
-        date_from=period[0],
-        date_to=period[1],
+        period=period,
         bank_name=bank_name,
         type=type,
     ).order_by(Transaction.date.asc(), Transaction.created_at.asc())
@@ -175,22 +195,22 @@ def _category_averages(
     period: tuple[date, date],
     bank_name: str | None,
     type: str | None,
-) -> dict[str, Decimal]:
+) -> dict[tuple[str, str], Decimal]:
     stmt = (
-        select(Transaction.category, func.avg(Transaction.amount_mxn))
+        select(Transaction.category, Transaction.type, func.avg(Transaction.amount_mxn))
         .where(Transaction.type != "ignored")
-        .group_by(Transaction.category)
+        .group_by(Transaction.category, Transaction.type)
     )
-    stmt = apply_transaction_filters(
+    stmt = _apply_period_filter(
         stmt,
-        month=None,
-        year=period[0].year,
-        date_from=period[0],
-        date_to=period[1],
+        period=period,
         bank_name=bank_name,
         type=type,
     )
-    return {category: Decimal(average) for category, average in db.execute(stmt).all()}
+    return {
+        (category, tx_type): Decimal(average)
+        for category, tx_type, average in db.execute(stmt).all()
+    }
 
 
 def _metric(current: Decimal, previous: Decimal, average: Decimal) -> MetricComparison:
