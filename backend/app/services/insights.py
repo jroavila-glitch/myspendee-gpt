@@ -14,13 +14,6 @@ def resolve_comparison_period(
     today: date | None = None,
 ) -> tuple[tuple[date, date], tuple[date, date]]:
     today = today or date.today()
-    if not 1 <= year <= 9999:
-        raise ValueError("year must be between 1 and 9999")
-    if year > today.year:
-        raise ValueError("future year is not allowed")
-    if month is not None and not 1 <= month <= 12:
-        raise ValueError("month must be between 1 and 12")
-
     if date_from is not None or date_to is not None:
         if date_from is None or date_to is None:
             raise ValueError("Custom ranges require both date_from and date_to")
@@ -33,6 +26,13 @@ def resolve_comparison_period(
         except OverflowError as error:
             raise ValueError("comparison period underflow") from error
         return (date_from, date_to), (previous_start, previous_end)
+
+    if not 1 <= year <= 9999:
+        raise ValueError("year must be between 1 and 9999")
+    if year > today.year:
+        raise ValueError("future year is not allowed")
+    if month is not None and not 1 <= month <= 12:
+        raise ValueError("month must be between 1 and 12")
 
     if month is None:
         try:

@@ -58,6 +58,17 @@ class InsightsTest(TestCase):
         self.assertEqual((date(2026, 5, 10), date(2026, 5, 20)), current)
         self.assertEqual((date(2026, 4, 29), date(2026, 5, 9)), previous)
 
+    def test_complete_custom_range_ignores_irrelevant_year_and_month(self) -> None:
+        current, previous = resolve_comparison_period(
+            year=10000,
+            month=13,
+            date_from=date(2026, 5, 10),
+            date_to=date(2026, 5, 20),
+            today=date(2026, 6, 8),
+        )
+        self.assertEqual((date(2026, 5, 10), date(2026, 5, 20)), current)
+        self.assertEqual((date(2026, 4, 29), date(2026, 5, 9)), previous)
+
     def test_custom_range_requires_both_bounds_in_order(self) -> None:
         with self.assertRaises(ValueError):
             resolve_comparison_period(
