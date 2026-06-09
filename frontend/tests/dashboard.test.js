@@ -9,6 +9,7 @@ import {
   calculateSavingsRate,
   convertInsightMetric,
   filterTransactionsByDrilldown,
+  filterTransactionsForWorkspace,
   getPreviewTransactions,
   getTransactionReviewReasons,
   joinReviewItems,
@@ -126,6 +127,17 @@ test('shows all matching transactions for a drilldown and limits the default pre
 
   assert.equal(getPreviewTransactions(transactions, false).length, 8)
   assert.equal(getPreviewTransactions(transactions, true).length, 12)
+})
+
+test('filters an editable transaction workspace by category and search text', () => {
+  const transactions = [
+    { id: '1', description: 'Morning coffee', category: 'Food & Drink', bank_name: 'Revolut', notes: '' },
+    { id: '2', description: 'Tennis lesson', category: 'Tennis', bank_name: 'Millennium', notes: 'Filip' },
+  ]
+
+  assert.deepEqual(filterTransactionsForWorkspace(transactions, 'Tennis', ''), [transactions[1]])
+  assert.deepEqual(filterTransactionsForWorkspace(transactions, '', 'revolut'), [transactions[0]])
+  assert.deepEqual(filterTransactionsForWorkspace(transactions, '', 'filip'), [transactions[1]])
 })
 
 test('derives savings-rate previous and average comparisons from insights', () => {

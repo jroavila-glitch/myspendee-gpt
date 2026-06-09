@@ -3,14 +3,15 @@ import { createPortal } from 'react-dom'
 import AppHeader from './components/AppHeader'
 import DashboardWorkspace from './components/DashboardWorkspace'
 import GlobalFilters from './components/GlobalFilters'
-import ReviewWorkspace from './components/ReviewWorkspace'
 import StatementsWorkspace from './components/StatementsWorkspace'
+import TransactionTable from './components/TransactionTable'
 import { api } from './lib/api'
 import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
   buildPeriodComparisonLabel,
   filterTransactionsByDrilldown,
+  filterTransactionsForWorkspace,
   joinReviewItems,
   mergeDrilldownFilters,
   replaceDisplayRatesFromFx,
@@ -154,11 +155,11 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
   )
 }
 
-function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply }) {
+function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, contained = false }) {
   if (!selectedIds.length) return null
 
   return (
-    <div className="bulk-bar">
+    <div className={`bulk-bar${contained ? ' bulk-bar-contained' : ''}`}>
       <div className="bulk-summary">
         <strong>{selectedIds.length}</strong>
         <span>selected</span>
@@ -195,6 +196,9 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkType, setBulkType] = useState('')
+  const [reviewCategory, setReviewCategory] = useState('')
+  const [reviewSearchText, setReviewSearchText] = useState('')
+  const [menuState, setMenuState] = useState(null)
   const [editingTransaction, setEditingTransaction] = useState(null)
   const [returnToReviewModal, setReturnToReviewModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -213,6 +217,7 @@ function App() {
   const notesPersistedValues = useRef({})
   const notesLatestDrafts = useRef({})
   const uploadInputRef = useRef(null)
+  const reviewSearchInputRef = useRef(null)
   const loadVersionRef = useRef(0)
   const mountedRef = useRef(true)
 
@@ -254,6 +259,10 @@ function App() {
   const reviewItems = useMemo(
     () => joinReviewItems(transactions, insights?.review_items || []),
     [transactions, insights],
+  )
+  const visibleReviewItems = useMemo(
+    () => filterTransactionsForWorkspace(reviewItems, reviewCategory, reviewSearchText),
+    [reviewItems, reviewCategory, reviewSearchText],
   )
   const analytics = useMemo(
     () => buildDisplayAnalytics(transactions, displayCurrency, displayRates),
@@ -379,6 +388,7 @@ function App() {
     setSelectedIds([])
     setBulkCategory('')
     setBulkType('')
+    setMenuState(null)
   }
 
   function closeEditModal() {
@@ -464,6 +474,12 @@ function App() {
     await loadAll()
   }
 
+  async function handleDeleteTransaction(id) {
+    await api.deleteTransaction(id)
+    setMenuState(null)
+    await loadAll()
+  }
+
   async function handleStatementDelete(id) {
     await api.deleteStatement(id)
     await loadAll()
@@ -542,18 +558,36 @@ function App() {
             onPrivacyToggle={() => setPrivacyMode((current) => !current)}
           />
         ) : tab === 'review' ? (
-          <ReviewWorkspace
-            transactions={reviewItems}
-            selectedIds={selectedIds}
-            displayCurrency={workflowDisplayCurrency}
-            displayRates={displayRates}
-            notesDrafts={notesDrafts}
-            savingNotesIds={savingNotesIds}
-            onToggleSelected={toggleSelected}
-            onEdit={setEditingTransaction}
-            onNotesChange={handleNotesChange}
-            onNotesBlur={handleNotesBlur}
-          />
+          <main className="workspace-main">
+            <TransactionTable
+              title="Review Transactions"
+              meta={`${visibleReviewItems.length} of ${reviewItems.length} items shown`}
+              transactions={visibleReviewItems}
+              selectedIds={selectedIds}
+              categoryOptions={categoryOptions}
+              category={reviewCategory}
+              searchText={reviewSearchText}
+              searchInputRef={reviewSearchInputRef}
+              displayCurrency={workflowDisplayCurrency}
+              displayRates={displayRates}
+              notesDrafts={notesDrafts}
+              savingNotesIds={savingNotesIds}
+              menuState={menuState}
+              emptyMessage="No transactions need review for the current filters."
+              onCategoryChange={setReviewCategory}
+              onSearchChange={setReviewSearchText}
+              onToggleSelected={toggleSelected}
+              onNotesChange={handleNotesChange}
+              onNotesBlur={handleNotesBlur}
+              onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
+              onMenuClose={() => setMenuState(null)}
+              onEdit={(transaction) => {
+                setEditingTransaction(transaction)
+                setMenuState(null)
+              }}
+              onDelete={handleDeleteTransaction}
+            />
+          </main>
         ) : (
           <StatementsWorkspace statements={statements} onViewStatement={handleViewStatement} onDeleteStatement={handleStatementDelete} />
         )}
@@ -587,31 +621,48 @@ function App() {
 
       {showReviewModal ? (
         <Modal title="Review Transactions" className="review-modal-card" onClose={closeReviewModal}>
-          <ReviewWorkspace
-            transactions={reviewItems}
-            selectedIds={selectedIds}
-            displayCurrency={workflowDisplayCurrency}
-            displayRates={displayRates}
-            notesDrafts={notesDrafts}
-            savingNotesIds={savingNotesIds}
-            onToggleSelected={toggleSelected}
-            onEdit={(transaction) => {
-              setShowReviewModal(false)
-              setReturnToReviewModal(true)
-              setEditingTransaction(transaction)
-            }}
-            onNotesChange={handleNotesChange}
-            onNotesBlur={handleNotesBlur}
-          />
-          <BulkBar
-            selectedIds={selectedIds}
-            bulkCategory={bulkCategory}
-            bulkType={bulkType}
-            categoryOptions={categoryOptions}
-            onCategoryChange={setBulkCategory}
-            onTypeChange={setBulkType}
-            onApply={handleBulkApply}
-          />
+          <div className="review-modal-content">
+            <TransactionTable
+              title="Transactions needing review"
+              meta={`${visibleReviewItems.length} of ${reviewItems.length} items shown`}
+              transactions={visibleReviewItems}
+              selectedIds={selectedIds}
+              categoryOptions={categoryOptions}
+              category={reviewCategory}
+              searchText={reviewSearchText}
+              searchInputRef={reviewSearchInputRef}
+              displayCurrency={workflowDisplayCurrency}
+              displayRates={displayRates}
+              notesDrafts={notesDrafts}
+              savingNotesIds={savingNotesIds}
+              menuState={menuState}
+              emptyMessage="No transactions need review for the current filters."
+              onCategoryChange={setReviewCategory}
+              onSearchChange={setReviewSearchText}
+              onToggleSelected={toggleSelected}
+              onNotesChange={handleNotesChange}
+              onNotesBlur={handleNotesBlur}
+              onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
+              onMenuClose={() => setMenuState(null)}
+              onEdit={(transaction) => {
+                setShowReviewModal(false)
+                setReturnToReviewModal(true)
+                setMenuState(null)
+                setEditingTransaction(transaction)
+              }}
+              onDelete={handleDeleteTransaction}
+            />
+            <BulkBar
+              selectedIds={selectedIds}
+              bulkCategory={bulkCategory}
+              bulkType={bulkType}
+              categoryOptions={categoryOptions}
+              onCategoryChange={setBulkCategory}
+              onTypeChange={setBulkType}
+              onApply={handleBulkApply}
+              contained
+            />
+          </div>
         </Modal>
       ) : null}
 

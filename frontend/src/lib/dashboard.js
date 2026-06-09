@@ -73,6 +73,27 @@ export function getPreviewTransactions(transactions, hasDrilldown) {
   return hasDrilldown ? transactions : transactions.slice(0, 8)
 }
 
+export function filterTransactionsForWorkspace(transactions, category, searchText) {
+  const normalizedSearch = searchText.trim().toLowerCase()
+  return transactions.filter((transaction) => {
+    if (category && transaction.category !== category) return false
+    if (!normalizedSearch) return true
+
+    return [
+      transaction.description,
+      transaction.category,
+      transaction.type,
+      transaction.bank_name,
+      transaction.notes,
+      transaction.original_amount_display,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedSearch)
+  })
+}
+
 export function joinReviewItems(transactions, reviewItems) {
   const transactionsById = new Map(transactions.map((transaction) => [String(transaction.id), transaction]))
   return reviewItems.flatMap((item) => {

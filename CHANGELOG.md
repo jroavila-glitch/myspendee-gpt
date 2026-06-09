@@ -12,6 +12,10 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Restored Review to the editable transaction-table workflow in both the Review
+  tab and Dashboard popup, including per-transaction edit/delete actions,
+  local search/category filters, and contained multi-select bulk editing
+
 - Made Dashboard financial totals safer for public-space use with a
   privacy-first net cash-flow reveal control, changed the review banner action
   to an in-page modal, and expanded active drilldowns to show every matching

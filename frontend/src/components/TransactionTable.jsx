@@ -22,12 +22,18 @@ function ReviewBadge({ transaction }) {
   ) : null
 }
 
-function TransactionMenu({ id, onEdit, onDelete, anchorRect, onClose }) {
+function TransactionMenu({ id, onEdit, onDelete, anchorRect, returnFocus, onClose }) {
   const editButtonRef = useRef(null)
+  const deleteButtonRef = useRef(null)
 
   useEffect(() => {
     editButtonRef.current?.focus()
   }, [])
+
+  function closeMenu() {
+    onClose()
+    requestAnimationFrame(() => returnFocus?.focus())
+  }
 
   if (!anchorRect) return null
   const top = anchorRect.bottom + window.scrollY + 8
@@ -35,7 +41,7 @@ function TransactionMenu({ id, onEdit, onDelete, anchorRect, onClose }) {
 
   return createPortal(
     <>
-      <div className="menu-backdrop" aria-hidden="true" onClick={() => onClose(true)} />
+      <div className="menu-backdrop" aria-hidden="true" onClick={closeMenu} />
       <div
         id={id}
         className="menu-popover"
@@ -46,12 +52,21 @@ function TransactionMenu({ id, onEdit, onDelete, anchorRect, onClose }) {
           if (event.key === 'Escape') {
             event.preventDefault()
             event.stopPropagation()
-            onClose(true)
+            closeMenu()
+          }
+          if (event.key === 'Tab') {
+            if (event.shiftKey && document.activeElement === editButtonRef.current) {
+              event.preventDefault()
+              deleteButtonRef.current?.focus()
+            } else if (!event.shiftKey && document.activeElement === deleteButtonRef.current) {
+              event.preventDefault()
+              editButtonRef.current?.focus()
+            }
           }
         }}
       >
         <button ref={editButtonRef} role="menuitem" onClick={onEdit}>Edit</button>
-        <button role="menuitem" className="danger-action" onClick={onDelete}>Delete</button>
+        <button ref={deleteButtonRef} role="menuitem" className="danger-action" onClick={onDelete}>Delete</button>
       </div>
     </>,
     document.body,
@@ -173,6 +188,7 @@ export default function TransactionTable({
                 <TransactionMenu
                   id={`transaction-menu-${transaction.id}`}
                   anchorRect={menuState.rect}
+                  returnFocus={menuState.target}
                   onClose={onMenuClose}
                   onEdit={() => onEdit(transaction)}
                   onDelete={() => onDelete(transaction.id)}
