@@ -118,14 +118,14 @@ function RankedList({ title, items, type, displayCurrency, conversionAvailable, 
   )
 }
 
-function RecentTransactionsPreview({ transactions, displayCurrency, displayRates, showAll }) {
+function RecentTransactionsPreview({ transactions, displayCurrency, displayRates, showAll, onEdit }) {
   const shownTransactions = getPreviewTransactions(transactions, showAll)
   return (
     <section className="panel recent-transactions-preview">
       <div className="panel-header">
         <div>
           <h3>{showAll ? 'Matching transactions' : 'Recent transactions'}</h3>
-          <p className="section-meta">{shownTransactions.length} of {transactions.length} shown · read only</p>
+          <p className="section-meta">{shownTransactions.length} of {transactions.length} shown · editable</p>
         </div>
       </div>
       <div className="preview-transaction-list">
@@ -140,6 +140,7 @@ function RecentTransactionsPreview({ transactions, displayCurrency, displayRates
               </span>
               <span className={`pill ${transaction.type}`}>{transaction.type}</span>
               <strong className={`preview-amount ${transaction.type}`}>{formatConvertedMoney(amount, displayCurrency)}</strong>
+              <button type="button" className="ghost-button compact-button preview-edit" onClick={() => onEdit(transaction)}>Edit</button>
             </div>
           )
         })}
@@ -164,6 +165,7 @@ export default function DashboardWorkspace({
   onClearDrilldown,
   privacyMode,
   onPrivacyToggle,
+  onEditTransaction,
 }) {
   const convertedInsights = useMemo(() => {
     if (!insights) return null
@@ -258,7 +260,7 @@ export default function DashboardWorkspace({
           </section>
         ) : null}
 
-        <RecentTransactionsPreview transactions={visibleTransactions} displayCurrency={displayCurrency} displayRates={displayRates} showAll={hasDrilldown} />
+        <RecentTransactionsPreview transactions={visibleTransactions} displayCurrency={displayCurrency} displayRates={displayRates} showAll={hasDrilldown} onEdit={onEditTransaction} />
       </div>
     </main>
   )

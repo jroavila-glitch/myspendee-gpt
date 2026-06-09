@@ -1477,7 +1477,7 @@ h3 {
 .cashflow-copy > strong {
   margin: 0.35rem 0 0.5rem;
   color: white;
-  font-size: clamp(2.35rem, 6vw, 4.7rem);
+  font-size: clamp(1.75rem, 3.5vw, 2.8rem);
   font-weight: 800;
   letter-spacing: -0.07em;
   line-height: 1;
@@ -1706,11 +1706,15 @@ h3 {
 
 .preview-transaction-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto minmax(150px, auto);
+  grid-template-columns: 72px minmax(0, 1fr) auto minmax(150px, auto) auto;
   gap: 0.75rem;
   align-items: center;
   padding: 0.68rem 0.1rem;
   border-top: 1px solid rgba(34, 41, 74, 0.07);
+}
+
+.preview-edit {
+  justify-self: end;
 }
 
 .preview-date,
@@ -2163,7 +2167,7 @@ textarea:focus-visible {
   }
 
   .cashflow-copy > strong {
-    font-size: clamp(2.15rem, 14vw, 3.5rem);
+    font-size: clamp(1.65rem, 8vw, 2.35rem);
   }
 
   .period-pickers label,

@@ -129,6 +129,12 @@ test('shows all matching transactions for a drilldown and limits the default pre
   assert.equal(getPreviewTransactions(transactions, true).length, 12)
 })
 
+test('keeps preview transaction records available for edit actions', () => {
+  const transactions = [{ id: 'one' }, { id: 'two' }]
+
+  assert.equal(getPreviewTransactions(transactions, true)[1], transactions[1])
+})
+
 test('filters an editable transaction workspace by category and search text', () => {
   const transactions = [
     { id: '1', description: 'Morning coffee', category: 'Food & Drink', bank_name: 'Revolut', notes: '' },

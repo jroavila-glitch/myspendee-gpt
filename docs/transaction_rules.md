@@ -106,6 +106,7 @@ Additional ignore behavior:
 - `Implemented`: `PAYU *GOOGLE CLOUD`, `ELEVENLABS`, `GOOGLE WORKSPACE`, `CLAUDE.AI`, `ANTHROPIC` -> `IG Ro Project`
 - `Implemented`: `HIGHLEVEL AGENCY SUB`, `CALENDLY`, `PADDLE.NET* ELFSIGHT`, `ELFSIGHT` -> `Perenniam Agency`
 - `Implemented`: `NETFLIX`, `CINEMA`, `UCI CINEMAS`, `HBOMAX.COM` and variants -> `Entertainment`
+- `Implemented`: `AEROMEXICO`, `AERO MEXICO`, `AEROVIAS DE MEXICO`, and close variants -> `Travel`
 - `Implemented`: `CLUBE VII LISBOA PT`, `UNITENIS LISBOA PT`, `CLUBE VII`, `Club7`, and similar variants -> `Gym` only when the original amount is exactly `110 EUR`; all other amounts -> `Food & Drink`
 - `Implemented`: `IVA POR INTERESES`, `IVA INTERES`, `INTERES EXENTO`, `INTERES GRAVABLE`, `INTERESES`, `INTERES`, `IMPOSTO SELO`, `COMISION`, `CONTA PACOTE PROGRAMA PRESTIGE` -> `Bills/Fees`
 - `Implemented`: `Compra EURc comisión` on ARQ is an expense in `Bills/Fees`
@@ -182,6 +183,8 @@ Additional ignore behavior:
 - `Implemented`: Notes-only edits do not mark a transaction reviewed.
 - `Implemented`: Review supports marking one or multiple selected transactions
   as reviewed.
+- `Implemented`: Transactions shown by Dashboard category/type drilldowns can
+  be edited directly from the matching-transactions list.
 - `Implemented`: Statement delete cascades to linked transactions
 
 ## Governance

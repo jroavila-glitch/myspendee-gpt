@@ -12,6 +12,10 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Reduced revealed net cash-flow prominence, added direct editing from
+  Dashboard drilldown transactions, and classified Aeromexico variants as
+  Travel
+
 - Added persistent transaction review completion: manually corrected
   transactions and explicitly confirmed single/bulk selections leave the
   Review queue, while notes-only edits remain unresolved

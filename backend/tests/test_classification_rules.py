@@ -215,6 +215,17 @@ class ClassificationRulesTest(TestCase):
                 )
                 self.assertEqual(("expense", "IG Ro Project"), (tx_type, category))
 
+    def test_aeromexico_variants_are_travel(self) -> None:
+        for description in ["AEROMEXICO", "AERO MEXICO", "AEROVIAS DE MEXICO"]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("2500"),
+                    bank_name="Oro Banamex",
+                    current_type="expense",
+                )
+                self.assertEqual(("expense", "Travel"), (tx_type, category))
+
     def test_apple_399_gets_gpt_rename(self) -> None:
         description, _ = apply_special_description_rules(
             "Apple.Com/Bill",

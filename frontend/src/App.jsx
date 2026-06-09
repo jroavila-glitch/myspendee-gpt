@@ -572,6 +572,7 @@ function App() {
             onClearDrilldown={clearDashboardDrilldown}
             privacyMode={privacyMode}
             onPrivacyToggle={() => setPrivacyMode((current) => !current)}
+            onEditTransaction={setEditingTransaction}
           />
         ) : tab === 'review' ? (
           <main className="workspace-main">
