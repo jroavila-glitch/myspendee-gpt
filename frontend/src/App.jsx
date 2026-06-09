@@ -155,7 +155,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
   )
 }
 
-function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, onMarkReviewed, contained = false }) {
+function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, onMarkReviewed, onDelete, contained = false }) {
   if (!selectedIds.length) return null
 
   return (
@@ -177,6 +177,7 @@ function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCateg
         </select>
         <button className="bulk-apply" onClick={onApply}>Apply</button>
         {onMarkReviewed ? <button className="bulk-reviewed" onClick={onMarkReviewed}>Mark selected reviewed</button> : null}
+        {onDelete ? <button className="ghost-button danger" onClick={onDelete}>Delete selected</button> : null}
       </div>
     </div>
   )
@@ -343,10 +344,14 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (tab !== 'review' && !showReviewModal) return
-    const reviewIds = new Set(reviewItems.map((item) => item.id))
-    setSelectedIds((current) => current.filter((id) => reviewIds.has(id)))
-  }, [reviewItems, showReviewModal, tab])
+    const selectableTransactions = tab === 'review' || showReviewModal
+      ? visibleReviewItems
+      : tab === 'dashboard'
+        ? getPreviewTransactions(previewTransactions, Boolean(dashboardDrilldown.category || dashboardDrilldown.type))
+        : []
+    const selectableIds = new Set(selectableTransactions.map((item) => item.id))
+    setSelectedIds((current) => current.filter((id) => selectableIds.has(id)))
+  }, [dashboardDrilldown, previewTransactions, showReviewModal, tab, visibleReviewItems])
 
   useEffect(() => {
     setNotesDrafts(Object.fromEntries(transactions.map((transaction) => {
@@ -382,6 +387,14 @@ function App() {
 
   function toggleSelected(id) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  }
+
+  function toggleAll(ids) {
+    setSelectedIds((current) => {
+      const allSelected = ids.length > 0 && ids.every((id) => current.includes(id))
+      if (allSelected) return current.filter((id) => !ids.includes(id))
+      return [...new Set([...current, ...ids])]
+    })
   }
 
   function closeReviewModal() {
@@ -483,6 +496,15 @@ function App() {
     await loadAll()
   }
 
+  async function handleBulkDelete() {
+    if (!window.confirm(`Delete ${selectedIds.length} selected transactions? This cannot be undone.`)) return
+    await api.bulkDelete({ ids: selectedIds })
+    setSelectedIds([])
+    setBulkCategory('')
+    setBulkType('')
+    await loadAll()
+  }
+
   async function handleMarkReviewed(id) {
     await api.updateTransaction(id, { reviewed: true })
     setMenuState(null)
@@ -573,6 +595,20 @@ function App() {
             privacyMode={privacyMode}
             onPrivacyToggle={() => setPrivacyMode((current) => !current)}
             onEditTransaction={setEditingTransaction}
+            transactionTableProps={{
+              selectedIds,
+              categoryOptions,
+              notesDrafts,
+              savingNotesIds,
+              menuState,
+              onToggleSelected: toggleSelected,
+              onToggleAll: toggleAll,
+              onNotesChange: handleNotesChange,
+              onNotesBlur: handleNotesBlur,
+              onMenuOpen: (id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target }),
+              onMenuClose: () => setMenuState(null),
+              onDelete: handleDeleteTransaction,
+            }}
           />
         ) : tab === 'review' ? (
           <main className="workspace-main">
@@ -594,6 +630,7 @@ function App() {
               onCategoryChange={setReviewCategory}
               onSearchChange={setReviewSearchText}
               onToggleSelected={toggleSelected}
+              onToggleAll={toggleAll}
               onNotesChange={handleNotesChange}
               onNotesBlur={handleNotesBlur}
               onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
@@ -611,7 +648,7 @@ function App() {
         )}
       </div>
 
-      {tab === 'review' ? (
+      {tab === 'review' || (tab === 'dashboard' && selectedIds.length > 0) ? (
         <BulkBar
           selectedIds={selectedIds}
           bulkCategory={bulkCategory}
@@ -620,7 +657,8 @@ function App() {
           onCategoryChange={setBulkCategory}
           onTypeChange={setBulkType}
           onApply={handleBulkApply}
-          onMarkReviewed={handleBulkMarkReviewed}
+          onMarkReviewed={tab === 'review' ? handleBulkMarkReviewed : undefined}
+          onDelete={handleBulkDelete}
         />
       ) : null}
 
@@ -659,6 +697,7 @@ function App() {
               onCategoryChange={setReviewCategory}
               onSearchChange={setReviewSearchText}
               onToggleSelected={toggleSelected}
+              onToggleAll={toggleAll}
               onNotesChange={handleNotesChange}
               onNotesBlur={handleNotesBlur}
               onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
@@ -681,6 +720,7 @@ function App() {
               onTypeChange={setBulkType}
               onApply={handleBulkApply}
               onMarkReviewed={handleBulkMarkReviewed}
+              onDelete={handleBulkDelete}
               contained
             />
           </div>

@@ -89,6 +89,10 @@ class TransactionBulkUpdate(BaseModel):
     reviewed: bool | None = None
 
 
+class TransactionBulkDelete(BaseModel):
+    ids: list[UUID]
+
+
 class TransactionRead(TransactionBase):
     id: UUID
     month: int

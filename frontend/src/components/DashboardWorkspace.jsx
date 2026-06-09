@@ -7,8 +7,7 @@ import {
   getPreviewTransactions,
 } from '../lib/dashboard'
 import { formatMoney } from '../lib/currency'
-
-const previewDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short' })
+import TransactionTable from './TransactionTable'
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(1)}%`
@@ -16,10 +15,6 @@ function formatPercent(value) {
 
 function formatConvertedMoney(value, currency) {
   return value === null ? 'Conversion unavailable' : formatMoney(value, currency)
-}
-
-function formatPreviewDate(value) {
-  return previewDateFormatter.format(new Date(`${value}T00:00:00`))
 }
 
 function movementFor(change, favorableWhenUp = true, comparisonLabel) {
@@ -118,35 +113,53 @@ function RankedList({ title, items, type, displayCurrency, conversionAvailable, 
   )
 }
 
-function RecentTransactionsPreview({ transactions, displayCurrency, displayRates, showAll, onEdit }) {
+function RecentTransactionsPreview({
+  transactions,
+  displayCurrency,
+  displayRates,
+  showAll,
+  selectedIds,
+  categoryOptions,
+  notesDrafts,
+  savingNotesIds,
+  menuState,
+  onToggleSelected,
+  onToggleAll,
+  onNotesChange,
+  onNotesBlur,
+  onMenuOpen,
+  onMenuClose,
+  onEdit,
+  onDelete,
+}) {
   const shownTransactions = getPreviewTransactions(transactions, showAll)
   return (
-    <section className="panel recent-transactions-preview">
-      <div className="panel-header">
-        <div>
-          <h3>{showAll ? 'Matching transactions' : 'Recent transactions'}</h3>
-          <p className="section-meta">{shownTransactions.length} of {transactions.length} shown · editable</p>
-        </div>
-      </div>
-      <div className="preview-transaction-list">
-        {shownTransactions.map((transaction) => {
-          const amount = convertInsightMetric(transaction.amount_mxn, displayCurrency, displayRates)
-          return (
-            <div key={transaction.id} className="preview-transaction-row">
-              <span className="preview-date">{formatPreviewDate(transaction.date)}</span>
-              <span className="preview-transaction-copy">
-                <strong>{transaction.description}</strong>
-                <small>{transaction.bank_name || 'No bank'} · {transaction.category}</small>
-              </span>
-              <span className={`pill ${transaction.type}`}>{transaction.type}</span>
-              <strong className={`preview-amount ${transaction.type}`}>{formatConvertedMoney(amount, displayCurrency)}</strong>
-              <button type="button" className="ghost-button compact-button preview-edit" onClick={() => onEdit(transaction)}>Edit</button>
-            </div>
-          )
-        })}
-        {transactions.length === 0 ? <div className="empty-list"><p>No transactions match this explanation.</p></div> : null}
-      </div>
-    </section>
+    <TransactionTable
+      title={showAll ? 'Matching transactions' : 'Recent transactions'}
+      meta={`${shownTransactions.length} of ${transactions.length} shown · select rows for bulk actions`}
+      transactions={shownTransactions}
+      selectedIds={selectedIds}
+      categoryOptions={categoryOptions}
+      category=""
+      searchText=""
+      displayCurrency={displayCurrency}
+      displayRates={displayRates}
+      notesDrafts={notesDrafts}
+      savingNotesIds={savingNotesIds}
+      menuState={menuState}
+      emptyMessage="No transactions match this explanation."
+      onCategoryChange={() => {}}
+      onSearchChange={() => {}}
+      onToggleSelected={onToggleSelected}
+      onToggleAll={onToggleAll}
+      onNotesChange={onNotesChange}
+      onNotesBlur={onNotesBlur}
+      onMenuOpen={onMenuOpen}
+      onMenuClose={onMenuClose}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      hideFilters
+    />
   )
 }
 
@@ -166,6 +179,7 @@ export default function DashboardWorkspace({
   privacyMode,
   onPrivacyToggle,
   onEditTransaction,
+  transactionTableProps,
 }) {
   const convertedInsights = useMemo(() => {
     if (!insights) return null
@@ -260,7 +274,14 @@ export default function DashboardWorkspace({
           </section>
         ) : null}
 
-        <RecentTransactionsPreview transactions={visibleTransactions} displayCurrency={displayCurrency} displayRates={displayRates} showAll={hasDrilldown} onEdit={onEditTransaction} />
+        <RecentTransactionsPreview
+          transactions={visibleTransactions}
+          displayCurrency={displayCurrency}
+          displayRates={displayRates}
+          showAll={hasDrilldown}
+          onEdit={onEditTransaction}
+          {...transactionTableProps}
+        />
       </div>
     </main>
   )

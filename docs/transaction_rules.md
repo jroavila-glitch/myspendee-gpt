@@ -184,7 +184,8 @@ Additional ignore behavior:
 - `Implemented`: Review supports marking one or multiple selected transactions
   as reviewed.
 - `Implemented`: Transactions shown by Dashboard category/type drilldowns can
-  be edited directly from the matching-transactions list.
+  be selected, edited, bulk changed, or bulk deleted directly from the
+  matching-transactions list.
 - `Implemented`: Statement delete cascades to linked transactions
 
 ## Governance

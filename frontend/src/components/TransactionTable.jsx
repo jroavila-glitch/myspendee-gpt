@@ -93,6 +93,7 @@ export default function TransactionTable({
   onCategoryChange,
   onSearchChange,
   onToggleSelected,
+  onToggleAll,
   onNotesChange,
   onNotesBlur,
   onMenuOpen,
@@ -100,6 +101,7 @@ export default function TransactionTable({
   onEdit,
   onDelete,
   onMarkReviewed,
+  hideFilters = false,
 }) {
   return (
     <section className="panel transaction-panel">
@@ -108,7 +110,15 @@ export default function TransactionTable({
           <h3>{title}</h3>
           <p className="section-meta">{meta}</p>
         </div>
-        <div className="transaction-filters">
+        <label className="transaction-select-all">
+          <input
+            type="checkbox"
+            checked={transactions.length > 0 && transactions.every((transaction) => selectedIds.includes(transaction.id))}
+            onChange={() => onToggleAll(transactions.map((transaction) => transaction.id))}
+          />
+          <span>Select all shown</span>
+        </label>
+        {!hideFilters ? <div className="transaction-filters">
           <label>
             <span>Category</span>
             <select value={category} onChange={(event) => onCategoryChange(event.target.value)}>
@@ -120,10 +130,10 @@ export default function TransactionTable({
             <span>Search</span>
             <input ref={searchInputRef} placeholder="Merchant, note, bank..." value={searchText} onChange={(event) => onSearchChange(event.target.value)} />
           </label>
-        </div>
+        </div> : null}
       </div>
 
-      {category || searchText.trim() ? (
+      {!hideFilters && (category || searchText.trim()) ? (
         <div className="transaction-filter-chips" aria-label="Transaction filters">
           {category ? <button className="filter-chip" onClick={() => onCategoryChange('')}>{category} ×</button> : null}
           {searchText.trim() ? <button className="filter-chip" onClick={() => onSearchChange('')}>Search: {searchText.trim()} ×</button> : null}
@@ -131,7 +141,14 @@ export default function TransactionTable({
       ) : null}
 
       <div className="transaction-head transaction-grid">
-        <span></span>
+        <span>
+          <input
+            aria-label={`Select all ${title.toLowerCase()}`}
+            type="checkbox"
+            checked={transactions.length > 0 && transactions.every((transaction) => selectedIds.includes(transaction.id))}
+            onChange={() => onToggleAll(transactions.map((transaction) => transaction.id))}
+          />
+        </span>
         <span>Transaction</span>
         <span>Category</span>
         <span>Amount</span>

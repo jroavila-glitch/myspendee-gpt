@@ -17,6 +17,7 @@ from app.schemas.common import (
     StatementRead,
     SummaryResponse,
     TransactionBulkUpdate,
+    TransactionBulkDelete,
     TransactionCreate,
     TransactionRead,
     TransactionUpdate,
@@ -216,6 +217,19 @@ def bulk_update(payload: TransactionBulkUpdate, db: Session = Depends(get_db)) -
             tx.reviewed_at = datetime.utcnow()
     db.commit()
     return {"updated": len(transactions)}
+
+
+@app.post("/transactions/bulk-delete")
+def bulk_delete(payload: TransactionBulkDelete, db: Session = Depends(get_db)) -> dict:
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="No transactions selected")
+    transactions = db.scalars(select(Transaction).where(Transaction.id.in_(payload.ids))).all()
+    if len(transactions) != len(set(payload.ids)):
+        raise HTTPException(status_code=409, detail="Some selected transactions no longer exist")
+    for transaction in transactions:
+        db.delete(transaction)
+    db.commit()
+    return {"deleted": len(transactions)}
 
 
 @app.get("/statements", response_model=list[StatementRead])

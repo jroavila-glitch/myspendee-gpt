@@ -1,14 +1,16 @@
 from datetime import date
 from decimal import Decimal
 from unittest import TestCase
+from uuid import uuid4
 
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import Transaction
-from app.main import bulk_update
-from app.schemas.common import TransactionBulkUpdate, TransactionUpdate
+from app.main import bulk_delete, bulk_update
+from app.schemas.common import TransactionBulkDelete, TransactionBulkUpdate, TransactionUpdate
 from app.services.transactions import update_transaction
 
 
@@ -119,3 +121,22 @@ class TransactionReviewTest(TestCase):
 
         self.assertEqual({"updated": 1}, result)
         self.assertIsNone(self.transaction.reviewed_at)
+
+    def test_bulk_delete_removes_selected_transactions(self) -> None:
+        result = bulk_delete(
+            TransactionBulkDelete(ids=[self.transaction.id]),
+            self.db,
+        )
+
+        self.assertEqual({"deleted": 1}, result)
+        self.assertIsNone(self.db.get(Transaction, self.transaction.id))
+
+    def test_bulk_delete_rejects_stale_partial_selection(self) -> None:
+        with self.assertRaises(HTTPException) as context:
+            bulk_delete(
+                TransactionBulkDelete(ids=[self.transaction.id, uuid4()]),
+                self.db,
+            )
+
+        self.assertEqual(409, context.exception.status_code)
+        self.assertIsNotNone(self.db.get(Transaction, self.transaction.id))

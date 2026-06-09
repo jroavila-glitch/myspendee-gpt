@@ -49,6 +49,7 @@ export const api = {
   updateTransaction: (id, body) => request(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
   bulkUpdate: (body) => request('/transactions/bulk-update', { method: 'POST', body: JSON.stringify(body) }),
+  bulkDelete: (body) => request('/transactions/bulk-delete', { method: 'POST', body: JSON.stringify(body) }),
   deleteStatement: (id) => request(`/statements/${id}`, { method: 'DELETE' }),
   async uploadStatements(files) {
     const formData = new FormData()

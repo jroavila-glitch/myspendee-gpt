@@ -12,6 +12,10 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Replaced the Dashboard transaction preview with the full selectable
+  transaction table, including select-all, bulk category/type changes, and
+  confirmed bulk deletion
+
 - Reduced revealed net cash-flow prominence, added direct editing from
   Dashboard drilldown transactions, and classified Aeromexico variants as
   Travel
