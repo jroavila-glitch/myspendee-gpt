@@ -177,6 +177,11 @@ Additional ignore behavior:
 - `Implemented`: Manual transaction edits for category/type override automatic classification.
 - `Implemented`: Bulk actions can change category and type
 - `Implemented`: Bulk type changes can set `income`, `expense`, or `ignored`
+- `Implemented`: Transactions with deterministic review reasons remain in Review
+  until explicitly marked reviewed or intentionally edited by the user.
+- `Implemented`: Notes-only edits do not mark a transaction reviewed.
+- `Implemented`: Review supports marking one or multiple selected transactions
+  as reviewed.
 - `Implemented`: Statement delete cascades to linked transactions
 
 ## Governance

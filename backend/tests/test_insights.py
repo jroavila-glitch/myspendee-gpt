@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from unittest import TestCase
 from uuid import uuid4
@@ -147,6 +147,24 @@ class InsightsTest(TestCase):
         self.assertEqual(Decimal("20"), response.review_amount_mxn)
         self.assertEqual(["Unclassified"], response.review_items[0].reasons)
         self.assertEqual(review_transaction.id, response.review_items[0].transaction_id)
+
+    def test_get_insights_excludes_reviewed_transactions(self) -> None:
+        review_transaction = self.seed_insight_periods()
+        review_transaction.reviewed_at = datetime(2026, 5, 16)
+        self.db.commit()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type=None,
+        )
+
+        self.assertEqual(0, response.review_count)
+        self.assertEqual([], response.review_items)
 
     def test_get_insights_keys_category_averages_by_category_and_type(self) -> None:
         for month in [2, 3, 4]:

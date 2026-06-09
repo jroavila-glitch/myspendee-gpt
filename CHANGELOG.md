@@ -12,6 +12,10 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added persistent transaction review completion: manually corrected
+  transactions and explicitly confirmed single/bulk selections leave the
+  Review queue, while notes-only edits remain unresolved
+
 - Restored Review to the editable transaction-table workflow in both the Review
   tab and Dashboard popup, including per-transaction edit/delete actions,
   local search/category filters, and contained multi-select bulk editing

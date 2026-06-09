@@ -32,12 +32,20 @@
 
 1. Run backend tests relevant to the change
 2. Confirm parser/rules changes have fixture coverage when possible
-3. Deploy to Railway
-4. Smoke test:
+3. For schema changes, run `alembic upgrade head` against the target database
+   before deploying code that requires the new schema
+4. Deploy to Railway
+5. Smoke test:
    - `/health`
    - `/banks`
    - `/categories`
    - one relevant production endpoint for the changed feature
+
+Railway backend startup also runs `alembic upgrade head` before Uvicorn as a
+guardrail. The initial migration detects legacy tables created before Alembic,
+allowing the existing database to be baselined without recreating them. Its
+downgrade is intentionally non-destructive; restore tables from a database
+backup rather than using Alembic to drop the baseline schema.
 
 ## Restore / Rollback
 

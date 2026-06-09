@@ -36,6 +36,8 @@ This roadmap should stay short and decision-oriented.
 - Dedicated Review workspace with deterministic reasons, expandable trust
   context, keyboard triage, bulk actions, quick edit, and trusted-period empty
   state
+- Persistent review completion state so confirmed or manually corrected
+  transactions leave the Review queue
 - Shared responsive workspace header and global filters for Dashboard and Review
 
 ## Near-Term Items

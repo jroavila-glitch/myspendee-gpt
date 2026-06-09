@@ -79,12 +79,14 @@ class TransactionUpdate(BaseModel):
     type: str | None = None
     bank_name: str | None = None
     notes: str | None = None
+    reviewed: bool | None = None
 
 
 class TransactionBulkUpdate(BaseModel):
     ids: list[UUID]
     category: str | None = None
     type: str | None = None
+    reviewed: bool | None = None
 
 
 class TransactionRead(TransactionBase):
@@ -94,6 +96,7 @@ class TransactionRead(TransactionBase):
     manually_added: bool
     statement_id: UUID | None
     created_at: datetime_type
+    reviewed_at: datetime_type | None
     original_amount_display: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

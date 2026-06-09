@@ -22,9 +22,10 @@ function ReviewBadge({ transaction }) {
   ) : null
 }
 
-function TransactionMenu({ id, onEdit, onDelete, anchorRect, returnFocus, onClose }) {
+function TransactionMenu({ id, onEdit, onDelete, onMarkReviewed, anchorRect, returnFocus, onClose }) {
   const editButtonRef = useRef(null)
   const deleteButtonRef = useRef(null)
+  const reviewedButtonRef = useRef(null)
 
   useEffect(() => {
     editButtonRef.current?.focus()
@@ -66,6 +67,7 @@ function TransactionMenu({ id, onEdit, onDelete, anchorRect, returnFocus, onClos
         }}
       >
         <button ref={editButtonRef} role="menuitem" onClick={onEdit}>Edit</button>
+        {onMarkReviewed ? <button ref={reviewedButtonRef} role="menuitem" onClick={onMarkReviewed}>Mark reviewed</button> : null}
         <button ref={deleteButtonRef} role="menuitem" className="danger-action" onClick={onDelete}>Delete</button>
       </div>
     </>,
@@ -97,6 +99,7 @@ export default function TransactionTable({
   onMenuClose,
   onEdit,
   onDelete,
+  onMarkReviewed,
 }) {
   return (
     <section className="panel transaction-panel">
@@ -191,6 +194,7 @@ export default function TransactionTable({
                   returnFocus={menuState.target}
                   onClose={onMenuClose}
                   onEdit={() => onEdit(transaction)}
+                  onMarkReviewed={onMarkReviewed ? () => onMarkReviewed(transaction.id) : null}
                   onDelete={() => onDelete(transaction.id)}
                 />
               ) : null}

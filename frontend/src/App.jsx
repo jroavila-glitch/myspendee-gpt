@@ -155,7 +155,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
   )
 }
 
-function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, contained = false }) {
+function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, onMarkReviewed, contained = false }) {
   if (!selectedIds.length) return null
 
   return (
@@ -176,6 +176,7 @@ function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCateg
           <option value="ignored">Ignored</option>
         </select>
         <button className="bulk-apply" onClick={onApply}>Apply</button>
+        {onMarkReviewed ? <button className="bulk-reviewed" onClick={onMarkReviewed}>Mark selected reviewed</button> : null}
       </div>
     </div>
   )
@@ -474,6 +475,21 @@ function App() {
     await loadAll()
   }
 
+  async function handleBulkMarkReviewed() {
+    await api.bulkUpdate({ ids: selectedIds, reviewed: true })
+    setSelectedIds([])
+    setBulkCategory('')
+    setBulkType('')
+    await loadAll()
+  }
+
+  async function handleMarkReviewed(id) {
+    await api.updateTransaction(id, { reviewed: true })
+    setMenuState(null)
+    setSelectedIds((current) => current.filter((selectedId) => selectedId !== id))
+    await loadAll()
+  }
+
   async function handleDeleteTransaction(id) {
     await api.deleteTransaction(id)
     setMenuState(null)
@@ -585,6 +601,7 @@ function App() {
                 setEditingTransaction(transaction)
                 setMenuState(null)
               }}
+              onMarkReviewed={handleMarkReviewed}
               onDelete={handleDeleteTransaction}
             />
           </main>
@@ -602,6 +619,7 @@ function App() {
           onCategoryChange={setBulkCategory}
           onTypeChange={setBulkType}
           onApply={handleBulkApply}
+          onMarkReviewed={handleBulkMarkReviewed}
         />
       ) : null}
 
@@ -650,6 +668,7 @@ function App() {
                 setMenuState(null)
                 setEditingTransaction(transaction)
               }}
+              onMarkReviewed={handleMarkReviewed}
               onDelete={handleDeleteTransaction}
             />
             <BulkBar
@@ -660,6 +679,7 @@ function App() {
               onCategoryChange={setBulkCategory}
               onTypeChange={setBulkType}
               onApply={handleBulkApply}
+              onMarkReviewed={handleBulkMarkReviewed}
               contained
             />
           </div>

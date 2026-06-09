@@ -76,6 +76,8 @@ def get_insights(
     review_amount = ZERO
     reason_counts: Counter[str] = Counter()
     for transaction in current_transactions:
+        if transaction.reviewed_at is not None:
+            continue
         reasons = review_reasons_for_transaction(
             category=transaction.category,
             tx_type=transaction.type,

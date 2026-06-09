@@ -1321,6 +1321,14 @@ h3 {
   font-weight: 700;
 }
 
+.bulk-reviewed {
+  border-radius: 10px;
+  padding: 0.68rem 0.9rem;
+  background: var(--green);
+  color: white;
+  font-weight: 700;
+}
+
 .error-banner {
   margin-top: 1rem;
   padding: 0.8rem 0.9rem;

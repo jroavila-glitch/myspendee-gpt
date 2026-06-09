@@ -55,6 +55,7 @@ class Transaction(Base):
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     manually_added: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     statement_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("statements.id", ondelete="CASCADE"),

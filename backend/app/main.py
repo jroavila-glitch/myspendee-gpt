@@ -203,10 +203,17 @@ def bulk_update(payload: TransactionBulkUpdate, db: Session = Depends(get_db)) -
         raise HTTPException(status_code=400, detail="No transactions selected")
     transactions = db.scalars(select(Transaction).where(Transaction.id.in_(payload.ids))).all()
     for tx in transactions:
+        has_meaningful_edit = False
         if payload.category:
+            has_meaningful_edit = has_meaningful_edit or tx.category != payload.category
             tx.category = payload.category
         if payload.type:
+            has_meaningful_edit = has_meaningful_edit or tx.type != payload.type
             tx.type = payload.type
+        if payload.reviewed is not None:
+            tx.reviewed_at = datetime.utcnow() if payload.reviewed else None
+        elif has_meaningful_edit:
+            tx.reviewed_at = datetime.utcnow()
     db.commit()
     return {"updated": len(transactions)}
 

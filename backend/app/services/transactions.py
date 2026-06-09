@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import and_, case, func, select
@@ -39,6 +39,7 @@ def serialize_transaction(transaction: Transaction) -> dict:
             "year",
             "manually_added",
             "notes",
+            "reviewed_at",
             "statement_id",
             "created_at",
         ]
@@ -139,6 +140,11 @@ def create_transaction(db: Session, tx: TransactionCreate) -> Transaction:
 
 def update_transaction(db: Session, transaction: Transaction, payload: TransactionUpdate) -> Transaction:
     updated_values = payload.model_dump(exclude_unset=True)
+    reviewed = updated_values.pop("reviewed", None)
+    has_meaningful_edit = any(
+        key != "notes" and getattr(transaction, key) != value
+        for key, value in updated_values.items()
+    )
     raw_data = serialize_transaction(transaction) | updated_values
     prepared = prepare_transaction_data(raw_data)
     # Edits from the dashboard are intentional overrides. The normalization
@@ -152,6 +158,10 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
         prepared["category"] = normalize_category(prepared["category"], prepared["type"])
     for key, value in prepared.items():
         setattr(transaction, key, value)
+    if reviewed is not None:
+        transaction.reviewed_at = datetime.utcnow() if reviewed else None
+    elif has_meaningful_edit:
+        transaction.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(transaction)
     return transaction
