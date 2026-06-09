@@ -26,13 +26,61 @@ function dedupeCategories(categories) {
   return Array.from(new Set([...categories.expense, ...categories.income]))
 }
 
-function Modal({ title, children, onClose }) {
+function Modal({ title, children, onClose, className = '' }) {
+  const dialogRef = useRef(null)
+  const closeButtonRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement
+    closeButtonRef.current?.focus()
+
+    function handleKeyDown(event) {
+      if (event.defaultPrevented) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const focusable = Array.from(dialogRef.current?.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ) || [])
+      if (!focusable.length) {
+        event.preventDefault()
+        dialogRef.current?.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) previouslyFocused.focus()
+    }
+  }, [])
+
   return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+      <div ref={dialogRef} className={`modal-card ${className}`} role="dialog" aria-modal="true" aria-label={title} tabIndex="-1" onClick={(event) => event.stopPropagation()}>
         <div className="panel-header">
           <h3>{title}</h3>
-          <button className="ghost-button" onClick={onClose}>Close</button>
+          <button ref={closeButtonRef} className="ghost-button" onClick={onClose}>Close</button>
         </div>
         {children}
       </div>
@@ -106,6 +154,32 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
   )
 }
 
+function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply }) {
+  if (!selectedIds.length) return null
+
+  return (
+    <div className="bulk-bar">
+      <div className="bulk-summary">
+        <strong>{selectedIds.length}</strong>
+        <span>selected</span>
+      </div>
+      <div className="bulk-controls">
+        <select value={bulkCategory} onChange={(event) => onCategoryChange(event.target.value)}>
+          <option value="">Change category</option>
+          {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+        </select>
+        <select value={bulkType} onChange={(event) => onTypeChange(event.target.value)}>
+          <option value="">Change type</option>
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+          <option value="ignored">Ignored</option>
+        </select>
+        <button className="bulk-apply" onClick={onApply}>Apply</button>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [tab, setTab] = useState('dashboard')
   const [period, setPeriod] = useState(getCurrentMonthState)
@@ -122,7 +196,10 @@ function App() {
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkType, setBulkType] = useState('')
   const [editingTransaction, setEditingTransaction] = useState(null)
+  const [returnToReviewModal, setReturnToReviewModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [privacyMode, setPrivacyMode] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [dashboardError, setDashboardError] = useState('')
@@ -256,10 +333,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (tab !== 'review') return
+    if (tab !== 'review' && !showReviewModal) return
     const reviewIds = new Set(reviewItems.map((item) => item.id))
     setSelectedIds((current) => current.filter((id) => reviewIds.has(id)))
-  }, [reviewItems, tab])
+  }, [reviewItems, showReviewModal, tab])
 
   useEffect(() => {
     setNotesDrafts(Object.fromEntries(transactions.map((transaction) => {
@@ -276,6 +353,7 @@ function App() {
   useEffect(() => {
     function handleShortcuts(event) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return
       const target = event.target
       if (target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
       if (event.key.toLowerCase() === 'n') {
@@ -294,6 +372,19 @@ function App() {
 
   function toggleSelected(id) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  }
+
+  function closeReviewModal() {
+    setShowReviewModal(false)
+    setSelectedIds([])
+    setBulkCategory('')
+    setBulkType('')
+  }
+
+  function closeEditModal() {
+    setEditingTransaction(null)
+    if (returnToReviewModal) setShowReviewModal(true)
+    setReturnToReviewModal(false)
   }
 
   function handlePeriodChange(value) {
@@ -444,9 +535,11 @@ function App() {
             displayRates={displayRates}
             visibleTransactions={previewTransactions}
             onRetry={loadAll}
-            onOpenReview={() => setTab('review')}
+            onOpenReview={() => setShowReviewModal(true)}
             onDrilldown={handleDashboardDrilldown}
             onClearDrilldown={clearDashboardDrilldown}
+            privacyMode={privacyMode}
+            onPrivacyToggle={() => setPrivacyMode((current) => !current)}
           />
         ) : tab === 'review' ? (
           <ReviewWorkspace
@@ -466,26 +559,16 @@ function App() {
         )}
       </div>
 
-      {selectedIds.length > 0 ? (
-        <div className="bulk-bar">
-          <div className="bulk-summary">
-            <strong>{selectedIds.length}</strong>
-            <span>selected</span>
-          </div>
-          <div className="bulk-controls">
-            <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)}>
-              <option value="">Change category</option>
-              {categoryOptions.map((category) => <option key={category}>{category}</option>)}
-            </select>
-            <select value={bulkType} onChange={(e) => setBulkType(e.target.value)}>
-              <option value="">Change type</option>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-              <option value="ignored">Ignored</option>
-            </select>
-            <button className="bulk-apply" onClick={handleBulkApply}>Apply</button>
-          </div>
-        </div>
+      {tab === 'review' ? (
+        <BulkBar
+          selectedIds={selectedIds}
+          bulkCategory={bulkCategory}
+          bulkType={bulkType}
+          categoryOptions={categoryOptions}
+          onCategoryChange={setBulkCategory}
+          onTypeChange={setBulkType}
+          onApply={handleBulkApply}
+        />
       ) : null}
 
       {showCreateModal ? (
@@ -502,16 +585,48 @@ function App() {
         </Modal>
       ) : null}
 
+      {showReviewModal ? (
+        <Modal title="Review Transactions" className="review-modal-card" onClose={closeReviewModal}>
+          <ReviewWorkspace
+            transactions={reviewItems}
+            selectedIds={selectedIds}
+            displayCurrency={workflowDisplayCurrency}
+            displayRates={displayRates}
+            notesDrafts={notesDrafts}
+            savingNotesIds={savingNotesIds}
+            onToggleSelected={toggleSelected}
+            onEdit={(transaction) => {
+              setShowReviewModal(false)
+              setReturnToReviewModal(true)
+              setEditingTransaction(transaction)
+            }}
+            onNotesChange={handleNotesChange}
+            onNotesBlur={handleNotesBlur}
+          />
+          <BulkBar
+            selectedIds={selectedIds}
+            bulkCategory={bulkCategory}
+            bulkType={bulkType}
+            categoryOptions={categoryOptions}
+            onCategoryChange={setBulkCategory}
+            onTypeChange={setBulkType}
+            onApply={handleBulkApply}
+          />
+        </Modal>
+      ) : null}
+
       {editingTransaction ? (
-        <Modal title="Edit Transaction" onClose={() => setEditingTransaction(null)}>
+        <Modal title="Edit Transaction" onClose={closeEditModal}>
           <TransactionForm
             categories={categories}
             initialValue={editingTransaction}
-            onCancel={() => setEditingTransaction(null)}
+            onCancel={closeEditModal}
             onSubmit={async (values) => {
               await api.updateTransaction(editingTransaction.id, values)
               setEditingTransaction(null)
               await loadAll()
+              if (returnToReviewModal) setShowReviewModal(true)
+              setReturnToReviewModal(false)
             }}
           />
         </Modal>

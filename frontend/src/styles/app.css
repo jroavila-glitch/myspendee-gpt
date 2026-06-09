@@ -1224,6 +1224,12 @@ h3 {
   box-shadow: var(--shadow-lg);
 }
 
+.review-modal-card {
+  width: min(1180px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1448,6 +1454,33 @@ h3 {
   font-weight: 800;
   letter-spacing: -0.07em;
   line-height: 1;
+}
+
+.cashflow-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.privacy-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 0.38rem 0.62rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cashflow-copy > strong.private-value {
+  font-size: clamp(1.8rem, 4.2vw, 3.2rem);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.review-modal-card .workspace-main {
+  padding: 0;
 }
 
 .cashflow-copy > strong.negative {

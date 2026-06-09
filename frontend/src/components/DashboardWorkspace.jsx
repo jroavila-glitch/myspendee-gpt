@@ -4,6 +4,7 @@ import {
   buildSavingsRateComparison,
   calculateSavingsRate,
   convertInsightMetric,
+  getPreviewTransactions,
 } from '../lib/dashboard'
 import { formatMoney } from '../lib/currency'
 
@@ -38,8 +39,9 @@ function movementFor(change, favorableWhenUp = true, comparisonLabel) {
   }
 }
 
-function ComparisonLine({ metric, displayCurrency, previousPeriodLabel }) {
+function ComparisonLine({ metric, displayCurrency, previousPeriodLabel, masked = false }) {
   if (!metric) return <p className="comparison-line unavailable">Comparison unavailable</p>
+  if (masked) return <p className="comparison-line">Comparison amounts hidden for privacy.</p>
   return (
     <p className="comparison-line">
       Compared with {previousPeriodLabel}: {formatConvertedMoney(metric.previous, displayCurrency)}
@@ -116,17 +118,18 @@ function RankedList({ title, items, type, displayCurrency, conversionAvailable, 
   )
 }
 
-function RecentTransactionsPreview({ transactions, displayCurrency, displayRates }) {
+function RecentTransactionsPreview({ transactions, displayCurrency, displayRates, showAll }) {
+  const shownTransactions = getPreviewTransactions(transactions, showAll)
   return (
     <section className="panel recent-transactions-preview">
       <div className="panel-header">
         <div>
-          <h3>Recent transactions</h3>
-          <p className="section-meta">{Math.min(transactions.length, 8)} of {transactions.length} shown · read only</p>
+          <h3>{showAll ? 'Matching transactions' : 'Recent transactions'}</h3>
+          <p className="section-meta">{shownTransactions.length} of {transactions.length} shown · read only</p>
         </div>
       </div>
       <div className="preview-transaction-list">
-        {transactions.slice(0, 8).map((transaction) => {
+        {shownTransactions.map((transaction) => {
           const amount = convertInsightMetric(transaction.amount_mxn, displayCurrency, displayRates)
           return (
             <div key={transaction.id} className="preview-transaction-row">
@@ -159,6 +162,8 @@ export default function DashboardWorkspace({
   onRetry,
   onDrilldown,
   onClearDrilldown,
+  privacyMode,
+  onPrivacyToggle,
 }) {
   const convertedInsights = useMemo(() => {
     if (!insights) return null
@@ -214,10 +219,17 @@ export default function DashboardWorkspace({
 
         <section className="cashflow-hero">
           <div className="cashflow-copy">
-            <span className="eyebrow">Net cash flow</span>
-            <strong className={analytics.summary.net >= 0 ? 'positive' : 'negative'}>{currentAvailable ? formatMoney(analytics.summary.net, displayCurrency) : 'Conversion unavailable'}</strong>
+            <div className="cashflow-title-row">
+              <span className="eyebrow">Net cash flow</span>
+              <button type="button" className="privacy-toggle" onClick={onPrivacyToggle} aria-pressed={!privacyMode}>
+                {privacyMode ? 'Reveal amount' : 'Hide amount'}
+              </button>
+            </div>
+            <strong className={`${analytics.summary.net >= 0 ? 'positive' : 'negative'}${privacyMode ? ' private-value' : ''}`}>
+              {privacyMode ? '••••••' : currentAvailable ? formatMoney(analytics.summary.net, displayCurrency) : 'Conversion unavailable'}
+            </strong>
             <Movement change={insights?.net?.previous_change_percent} favorableWhenUp label="Net cash flow comparison" comparisonLabel={previousPeriodLabel} />
-            <ComparisonLine metric={convertedInsights?.net} displayCurrency={displayCurrency} previousPeriodLabel={previousPeriodLabel} />
+            <ComparisonLine metric={convertedInsights?.net} displayCurrency={displayCurrency} previousPeriodLabel={previousPeriodLabel} masked={privacyMode} />
           </div>
           <div className={`month-status status-${(insights?.status?.label || 'unavailable').toLowerCase().replaceAll(' ', '-')}`}>
             <span className="eyebrow">Month Status</span>
@@ -246,7 +258,7 @@ export default function DashboardWorkspace({
           </section>
         ) : null}
 
-        <RecentTransactionsPreview transactions={visibleTransactions} displayCurrency={displayCurrency} displayRates={displayRates} />
+        <RecentTransactionsPreview transactions={visibleTransactions} displayCurrency={displayCurrency} displayRates={displayRates} showAll={hasDrilldown} />
       </div>
     </main>
   )

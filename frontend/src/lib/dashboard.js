@@ -69,6 +69,10 @@ export function filterTransactionsByDrilldown(transactions, drilldown) {
   })
 }
 
+export function getPreviewTransactions(transactions, hasDrilldown) {
+  return hasDrilldown ? transactions : transactions.slice(0, 8)
+}
+
 export function joinReviewItems(transactions, reviewItems) {
   const transactionsById = new Map(transactions.map((transaction) => [String(transaction.id), transaction]))
   return reviewItems.flatMap((item) => {

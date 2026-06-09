@@ -12,6 +12,11 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Made Dashboard financial totals safer for public-space use with a
+  privacy-first net cash-flow reveal control, changed the review banner action
+  to an in-page modal, and expanded active drilldowns to show every matching
+  transaction
+
 - Added a guided financial-clarity Dashboard with review-first status, net cash
   flow, Month Status, prior-period arrows, recent three-month averages,
   savings-rate comparisons, ranked income/spending, and preview-only

@@ -9,6 +9,7 @@ import {
   calculateSavingsRate,
   convertInsightMetric,
   filterTransactionsByDrilldown,
+  getPreviewTransactions,
   getTransactionReviewReasons,
   joinReviewItems,
   mergeDrilldownFilters,
@@ -118,6 +119,13 @@ test('filters compact preview by dashboard drilldown only', () => {
     filterTransactionsByDrilldown(transactions, { category: '', type: 'income' }).map((item) => item.id),
     [3],
   )
+})
+
+test('shows all matching transactions for a drilldown and limits the default preview', () => {
+  const transactions = Array.from({ length: 12 }, (_, index) => ({ id: String(index) }))
+
+  assert.equal(getPreviewTransactions(transactions, false).length, 8)
+  assert.equal(getPreviewTransactions(transactions, true).length, 12)
 })
 
 test('derives savings-rate previous and average comparisons from insights', () => {
