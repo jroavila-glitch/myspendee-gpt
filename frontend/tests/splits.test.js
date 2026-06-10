@@ -82,6 +82,18 @@ test('rejects invalid split rows with actionable messages', () => {
       remaining: 0.5,
     },
   )
+
+  assert.deepEqual(
+    validateSplitRows([
+      { amount: Number.NaN, category: 'Groceries' },
+      { amount: 40, category: 'Home' },
+    ], 100),
+    {
+      valid: false,
+      errors: ['Enter a valid amount for every split row.'],
+      remaining: 60,
+    },
+  )
 })
 
 test('converts amounts and percentages with cent-safe UI rounding', () => {

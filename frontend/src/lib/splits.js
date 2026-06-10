@@ -2,6 +2,10 @@ function toNumber(value) {
   return Number(value || 0)
 }
 
+function isFiniteAmount(value) {
+  return value !== '' && Number.isFinite(Number(value))
+}
+
 function toCents(value) {
   return Math.round(toNumber(value) * 100)
 }
@@ -52,7 +56,8 @@ export function allocateByPercent(total, percentages) {
 export function validateSplitRows(rows, total) {
   const errors = []
   const totalCents = toCents(total)
-  const rowAmounts = rows.map((row) => toCents(row.amount))
+  const invalidAmounts = rows.some((row) => !isFiniteAmount(row.amount))
+  const rowAmounts = rows.map((row) => (isFiniteAmount(row.amount) ? toCents(row.amount) : 0))
   const assignedCents = rowAmounts.reduce((sum, amount) => sum + amount, 0)
   const remaining = fromCents(totalCents - assignedCents)
 
@@ -64,7 +69,9 @@ export function validateSplitRows(rows, total) {
     errors.push('Choose a category for every split row.')
   }
 
-  if (rowAmounts.some((amount) => amount <= 0)) {
+  if (invalidAmounts) {
+    errors.push('Enter a valid amount for every split row.')
+  } else if (rowAmounts.some((amount) => amount <= 0)) {
     errors.push('Split amounts must be greater than zero.')
   }
 
@@ -75,7 +82,7 @@ export function validateSplitRows(rows, total) {
     errors.push('Split categories must be unique.')
   }
 
-  if (assignedCents !== totalCents) {
+  if (!invalidAmounts && assignedCents !== totalCents) {
     errors.push(`Split amounts must total ${formatAmount(total)}. Remaining: ${formatAmount(remaining)}.`)
   }
 
