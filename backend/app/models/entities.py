@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,7 +35,6 @@ class Statement(Base):
 class Transaction(Base):
     __tablename__ = "transactions"
     __table_args__ = (
-        UniqueConstraint("bank_name", "date", "amount_mxn", "description", name="uq_transaction_bank_date_amount_desc"),
         Index("ix_transactions_month_year_type", "month", "year", "type"),
         Index("ix_transactions_bank_name", "bank_name"),
         Index("ix_transactions_category", "category"),

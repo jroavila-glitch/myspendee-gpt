@@ -11,15 +11,6 @@ from app.services.normalization import normalize_bank_name
 from app.services.transactions import duplicate_exists, prepare_transaction_data
 
 
-def _duplicate_key(prepared: dict) -> tuple[str, date, Decimal, str]:
-    return (
-        prepared["bank_name"],
-        prepared["date"],
-        Decimal(prepared["amount_mxn"]),
-        prepared["description"],
-    )
-
-
 def process_uploaded_statement(db: Session, filename: str, pdf_bytes: bytes) -> tuple[Statement, int, int]:
     if not pdf_bytes:
         raise ValueError("Uploaded file is empty")
@@ -40,7 +31,6 @@ def process_uploaded_statement(db: Session, filename: str, pdf_bytes: bytes) -> 
     inserted = 0
     skipped = 0
     ignored = 0
-    seen_keys: set[tuple[str, date, Decimal, str]] = set()
     try:
         for row in extracted.get("transactions", []):
             raw_date = row.get("date")
@@ -62,13 +52,17 @@ def process_uploaded_statement(db: Session, filename: str, pdf_bytes: bytes) -> 
                 "manually_added": False,
             }
             prepared = prepare_transaction_data(tx_payload)
-            duplicate_key = _duplicate_key(prepared)
-            if duplicate_key in seen_keys or duplicate_exists(db, *duplicate_key):
+            if duplicate_exists(
+                db,
+                prepared["bank_name"],
+                prepared["date"],
+                Decimal(prepared["amount_mxn"]),
+                prepared["description"],
+            ):
                 skipped += 1
                 continue
             transaction = Transaction(**prepared)
             db.add(transaction)
-            seen_keys.add(duplicate_key)
             inserted += 1
             if prepared["type"] == "ignored":
                 ignored += 1

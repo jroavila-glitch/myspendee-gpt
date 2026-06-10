@@ -31,7 +31,7 @@ class FakeSession:
 
 
 class UploadRulesTest(TestCase):
-    def test_skips_duplicate_rows_within_same_upload_batch(self) -> None:
+    def test_keeps_identical_rows_visible_within_the_same_statement(self) -> None:
         fake_db = FakeSession()
         extracted = {
             "bank_name": "ARQ",
@@ -70,9 +70,9 @@ class UploadRulesTest(TestCase):
         ):
             statement, inserted, skipped = process_uploaded_statement(fake_db, "EUR_ARQ Statement - 2026-03.pdf", b"pdf")
 
-        self.assertEqual(1, inserted)
-        self.assertEqual(1, skipped)
-        self.assertEqual(1, statement.transaction_count)
-        self.assertEqual(1, statement.ignored_count)
+        self.assertEqual(2, inserted)
+        self.assertEqual(0, skipped)
+        self.assertEqual(2, statement.transaction_count)
+        self.assertEqual(2, statement.ignored_count)
         self.assertTrue(fake_db.committed)
         self.assertFalse(fake_db.rolled_back)

@@ -19,7 +19,9 @@ When a new rule is added or changed, we should update:
 - `Implemented`: The UI allows switching display currency between `MXN`, `EUR`, and `USD` for dashboard totals and transaction views.
 - `Implemented`: Non-MXN transactions keep their original currency amount for display.
 - `Implemented`: Ignored transactions are stored but excluded from dashboard metrics.
-- `Implemented`: Duplicate detection uses `bank_name + date + amount_mxn + description`.
+- `Implemented`: Duplicate detection blocks transactions already stored from
+  prior uploads using `bank_name + date + amount_mxn + description`, while
+  preserving identical rows that are visibly repeated within one statement.
 - `Implemented`: Time filtering supports a specific month, `YTD`, and custom date ranges.
 - `Implemented`: Summary and breakdown queries must respect active filters.
 
