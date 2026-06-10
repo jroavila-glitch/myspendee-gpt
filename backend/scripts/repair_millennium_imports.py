@@ -1,6 +1,6 @@
 import argparse
 import json
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -88,7 +88,7 @@ def _snapshot(statements: list[Statement], output_path: Path) -> None:
     output_path.write_text(
         json.dumps(
             {
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "statements": [
                     {
                         **{field: _json_value(getattr(statement, field)) for field in fields},

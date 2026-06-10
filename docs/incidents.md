@@ -40,7 +40,9 @@ Each entry should answer:
   vision-model extraction of dense transaction tables.
 - Resolution: added a deterministic Millennium parser that binds values within
   each row, uses the value date, and validates every transaction against the
-  running account balance.
+  running account balance. Reconciled and replaced the five January-May 2026
+  imports from their original PDFs, increasing the stored rows from 150 to 231
+  while preserving nine reviewed or annotated transactions.
 - Prevention:
   - recognized Millennium statements fail upload if every row cannot be
     balance-validated

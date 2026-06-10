@@ -14,6 +14,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 - Added deterministic Millennium statement parsing with balance-validated row
   amounts, preventing adjacent transactions from borrowing each other's values
+- Reconciled and replaced the five January-May 2026 Millennium imports from
+  their original PDFs, preserving reviewed/annotated transactions and allowing
+  legitimate identical rows visible within one statement
 
 - Replaced the Dashboard transaction preview with the full selectable
   transaction table, including select-all, bulk category/type changes, and
