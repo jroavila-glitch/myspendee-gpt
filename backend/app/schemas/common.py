@@ -93,6 +93,30 @@ class TransactionBulkDelete(BaseModel):
     ids: list[UUID]
 
 
+class TransactionAllocationInput(BaseModel):
+    category: str
+    amount_original: Decimal | None = None
+    amount_mxn: Decimal | None = None
+    notes: str | None = None
+
+
+class TransactionAllocationsUpdate(BaseModel):
+    allocations: list[TransactionAllocationInput]
+    expected_amount_mxn: Decimal
+    expected_type: str
+
+
+class TransactionAllocationRead(BaseModel):
+    id: UUID
+    category: str
+    amount_original: Decimal | None
+    amount_mxn: Decimal
+    notes: str | None
+    position: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TransactionRead(TransactionBase):
     id: UUID
     month: int

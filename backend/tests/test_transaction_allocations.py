@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from unittest import TestCase
 
@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import Transaction, TransactionAllocation
+from app.schemas.common import TransactionAllocationInput, TransactionAllocationsUpdate
+from app.services.allocations import remove_allocations, replace_allocations, resolve_allocation_amounts
 
 
 class TransactionAllocationTest(TestCase):
@@ -26,6 +28,63 @@ class TransactionAllocationTest(TestCase):
     def tearDown(self) -> None:
         self.db.close()
         self.engine.dispose()
+
+    def create_transaction(
+        self,
+        *,
+        amount_original: Decimal | None = Decimal("100.00"),
+        currency_original: str = "MXN",
+        amount_mxn: Decimal = Decimal("100.00"),
+        category: str = "Other",
+        tx_type: str = "expense",
+        reviewed_at: datetime | None = None,
+    ) -> Transaction:
+        transaction = Transaction(
+            date=date(2026, 6, 10),
+            description="Split transaction",
+            amount_original=amount_original,
+            currency_original=currency_original,
+            amount_mxn=amount_mxn,
+            exchange_rate_used=None,
+            category=category,
+            type=tx_type,
+            bank_name="Manual",
+            month=6,
+            year=2026,
+            manually_added=True,
+            reviewed_at=reviewed_at,
+        )
+        self.db.add(transaction)
+        self.db.commit()
+        return transaction
+
+    def allocation(
+        self,
+        category: str,
+        *,
+        amount_original: str | None = None,
+        amount_mxn: str | None = None,
+        notes: str | None = None,
+    ) -> TransactionAllocationInput:
+        return TransactionAllocationInput(
+            category=category,
+            amount_original=Decimal(amount_original) if amount_original is not None else None,
+            amount_mxn=Decimal(amount_mxn) if amount_mxn is not None else None,
+            notes=notes,
+        )
+
+    def update_payload(
+        self,
+        allocations: list[TransactionAllocationInput],
+        *,
+        expected_amount_mxn: str = "100.00",
+        expected_type: str = "expense",
+    ) -> TransactionAllocationsUpdate:
+        return TransactionAllocationsUpdate(
+            allocations=allocations,
+            expected_amount_mxn=Decimal(expected_amount_mxn),
+            expected_type=expected_type,
+        )
 
     def test_transaction_accepts_ordered_allocations_and_delete_cascades(self) -> None:
         transaction = Transaction(
@@ -71,3 +130,257 @@ class TransactionAllocationTest(TestCase):
 
         allocations = self.db.scalars(select(TransactionAllocation)).all()
         self.assertEqual([], allocations)
+
+    def test_replace_requires_at_least_two_rows(self) -> None:
+        transaction = self.create_transaction()
+
+        with self.assertRaisesRegex(ValueError, "At least two allocations are required"):
+            replace_allocations(
+                self.db,
+                transaction,
+                self.update_payload([self.allocation("Food & Drink", amount_original="100.00")]),
+            )
+
+    def test_replace_requires_expected_amount_and_type_to_match_source(self) -> None:
+        transaction = self.create_transaction()
+        allocations = [
+            self.allocation("Food & Drink", amount_original="40.00"),
+            self.allocation("Transport", amount_original="60.00"),
+        ]
+
+        with self.assertRaisesRegex(ValueError, "Transaction amount changed"):
+            replace_allocations(
+                self.db,
+                transaction,
+                self.update_payload(allocations, expected_amount_mxn="99.00"),
+            )
+        with self.assertRaisesRegex(ValueError, "Transaction type changed"):
+            replace_allocations(
+                self.db,
+                transaction,
+                self.update_payload(allocations, expected_type="income"),
+            )
+
+    def test_replace_rejects_ignored_and_category_type_mismatches(self) -> None:
+        ignored = self.create_transaction(category="ignored", tx_type="ignored")
+        with self.assertRaisesRegex(ValueError, "Only income or expense transactions can be split"):
+            replace_allocations(
+                self.db,
+                ignored,
+                self.update_payload(
+                    [
+                        self.allocation("Other", amount_original="40.00"),
+                        self.allocation("Other", amount_original="60.00"),
+                    ],
+                    expected_type="ignored",
+                ),
+            )
+
+        expense = self.create_transaction()
+        with self.assertRaisesRegex(ValueError, "Invalid expense allocation category: Tennis Lessons"):
+            replace_allocations(
+                self.db,
+                expense,
+                self.update_payload(
+                    [
+                        self.allocation("Tennis Lessons", amount_original="40.00"),
+                        self.allocation("Transport", amount_original="60.00"),
+                    ]
+                ),
+            )
+
+    def test_replace_rejects_zero_negative_and_inappropriate_amount_fields(self) -> None:
+        transaction = self.create_transaction()
+
+        for invalid_amount in ["0.00", "-1.00"]:
+            with self.subTest(invalid_amount=invalid_amount):
+                with self.assertRaisesRegex(ValueError, "Allocation amounts must be positive"):
+                    replace_allocations(
+                        self.db,
+                        transaction,
+                        self.update_payload(
+                            [
+                                self.allocation("Food & Drink", amount_original=invalid_amount),
+                                self.allocation("Transport", amount_original="100.00"),
+                            ]
+                        ),
+                    )
+
+        with self.assertRaisesRegex(ValueError, "amount_original is required"):
+            replace_allocations(
+                self.db,
+                transaction,
+                self.update_payload(
+                    [
+                        self.allocation("Food & Drink", amount_mxn="40.00"),
+                        self.allocation("Transport", amount_mxn="60.00"),
+                    ]
+                ),
+            )
+
+        canonical_only = self.create_transaction(amount_original=None)
+        with self.assertRaisesRegex(ValueError, "amount_mxn is required"):
+            replace_allocations(
+                self.db,
+                canonical_only,
+                self.update_payload(
+                    [
+                        self.allocation("Food & Drink", amount_original="40.00"),
+                        self.allocation("Transport", amount_original="60.00"),
+                    ]
+                ),
+            )
+
+    def test_resolve_quantizes_mxn_and_gives_final_row_rounding_remainder(self) -> None:
+        transaction = self.create_transaction(
+            amount_original=Decimal("3.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("100.00"),
+        )
+
+        resolved = resolve_allocation_amounts(
+            transaction,
+            [
+                self.allocation("Food & Drink", amount_original="1.00"),
+                self.allocation("Transport", amount_original="1.00"),
+                self.allocation("Home", amount_original="1.00"),
+            ],
+        )
+
+        self.assertEqual(
+            [Decimal("33.33"), Decimal("33.33"), Decimal("33.34")],
+            [row.amount_mxn for row in resolved],
+        )
+        self.assertEqual(Decimal("100.00"), sum(row.amount_mxn for row in resolved))
+
+    def test_resolve_rejects_allocations_that_round_to_zero_mxn(self) -> None:
+        transaction = self.create_transaction(
+            amount_original=Decimal("3.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("0.01"),
+        )
+
+        with self.assertRaisesRegex(ValueError, "Allocation amounts must be positive after MXN conversion"):
+            resolve_allocation_amounts(
+                transaction,
+                [
+                    self.allocation("Food & Drink", amount_original="1.00"),
+                    self.allocation("Transport", amount_original="1.00"),
+                    self.allocation("Home", amount_original="1.00"),
+                ],
+            )
+
+    def test_replace_requires_original_amounts_to_sum_exactly(self) -> None:
+        transaction = self.create_transaction(
+            amount_original=Decimal("50.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("1000.00"),
+        )
+
+        with self.assertRaisesRegex(ValueError, "Allocation original amounts must equal transaction original amount"):
+            replace_allocations(
+                self.db,
+                transaction,
+                self.update_payload(
+                    [
+                        self.allocation("Food & Drink", amount_original="20.00"),
+                        self.allocation("Transport", amount_original="29.99"),
+                    ],
+                    expected_amount_mxn="1000.00",
+                ),
+            )
+
+    def test_replace_requires_canonical_amounts_to_sum_exactly(self) -> None:
+        transaction = self.create_transaction(amount_original=None)
+
+        with self.assertRaisesRegex(ValueError, "Allocation MXN amounts must equal transaction MXN amount"):
+            replace_allocations(
+                self.db,
+                transaction,
+                self.update_payload(
+                    [
+                        self.allocation("Food & Drink", amount_mxn="40.00"),
+                        self.allocation("Transport", amount_mxn="59.99"),
+                    ]
+                ),
+            )
+
+    def test_replace_persists_allocations_in_order_and_marks_source_reviewed(self) -> None:
+        transaction = self.create_transaction(
+            amount_original=Decimal("3.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("100.00"),
+        )
+
+        updated = replace_allocations(
+            self.db,
+            transaction,
+            self.update_payload(
+                [
+                    self.allocation("Food & Drink", amount_original="1.00", notes="Lunch"),
+                    self.allocation("Transport", amount_original="2.00"),
+                ]
+            ),
+        )
+
+        self.assertIsNotNone(updated.reviewed_at)
+        self.assertEqual(["Food & Drink", "Transport"], [row.category for row in updated.allocations])
+        self.assertEqual([0, 1], [row.position for row in updated.allocations])
+        self.assertEqual([Decimal("33.33"), Decimal("66.67")], [row.amount_mxn for row in updated.allocations])
+        self.assertEqual("Lunch", updated.allocations[0].notes)
+
+    def test_replace_replaces_existing_allocations_atomically(self) -> None:
+        transaction = self.create_transaction()
+        replace_allocations(
+            self.db,
+            transaction,
+            self.update_payload(
+                [
+                    self.allocation("Food & Drink", amount_original="40.00"),
+                    self.allocation("Transport", amount_original="60.00"),
+                ]
+            ),
+        )
+
+        updated = replace_allocations(
+            self.db,
+            transaction,
+            self.update_payload(
+                [
+                    self.allocation("Home", amount_original="25.00"),
+                    self.allocation("Groceries", amount_original="75.00"),
+                ]
+            ),
+        )
+
+        self.assertEqual(["Home", "Groceries"], [row.category for row in updated.allocations])
+        self.assertEqual(2, len(self.db.scalars(select(TransactionAllocation)).all()))
+
+    def test_remove_requires_valid_replacement_category(self) -> None:
+        transaction = self.create_transaction()
+
+        with self.assertRaisesRegex(ValueError, "Invalid expense replacement category: Tennis Lessons"):
+            remove_allocations(self.db, transaction, "Tennis Lessons")
+
+    def test_remove_clears_allocations_updates_category_and_preserves_reviewed_state(self) -> None:
+        reviewed_at = datetime(2026, 6, 10, 12, 0, 0)
+        transaction = self.create_transaction(reviewed_at=reviewed_at)
+        replace_allocations(
+            self.db,
+            transaction,
+            self.update_payload(
+                [
+                    self.allocation("Food & Drink", amount_original="40.00"),
+                    self.allocation("Transport", amount_original="60.00"),
+                ]
+            ),
+        )
+        transaction.reviewed_at = reviewed_at
+        self.db.commit()
+
+        updated = remove_allocations(self.db, transaction, "Home")
+
+        self.assertEqual("Home", updated.category)
+        self.assertEqual([], updated.allocations)
+        self.assertEqual(reviewed_at, updated.reviewed_at)
+        self.assertEqual([], self.db.scalars(select(TransactionAllocation)).all())
