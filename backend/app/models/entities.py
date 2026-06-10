@@ -63,3 +63,38 @@ class Transaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     statement: Mapped[Statement | None] = relationship(back_populates="transactions")
+    allocations: Mapped[list["TransactionAllocation"]] = relationship(
+        back_populates="transaction",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="TransactionAllocation.position",
+    )
+
+
+class TransactionAllocation(Base):
+    __tablename__ = "transaction_allocations"
+    __table_args__ = (
+        Index("ix_transaction_allocations_transaction_id", "transaction_id"),
+        Index("ix_transaction_allocations_category", "category"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    transaction_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    category: Mapped[str] = mapped_column(String(80), nullable=False)
+    amount_mxn: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    amount_original: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+    transaction: Mapped[Transaction] = relationship(back_populates="allocations")
