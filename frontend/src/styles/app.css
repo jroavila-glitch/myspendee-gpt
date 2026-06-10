@@ -1433,6 +1433,15 @@ h3 {
   font-size: 0.82rem;
 }
 
+.split-submit-error {
+  border: 1px solid rgba(210, 76, 76, 0.26);
+  border-radius: 14px;
+  background: rgba(210, 76, 76, 0.08);
+  color: var(--danger);
+  padding: 0.75rem 0.85rem;
+  font-weight: 800;
+}
+
 .split-undo-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr) auto;

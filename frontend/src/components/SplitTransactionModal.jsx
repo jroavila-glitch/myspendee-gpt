@@ -38,27 +38,45 @@ function getSplitBasisCurrency(transaction) {
 
 export default function SplitTransactionModal({ transaction, categories, onCancel, onSave, onUndo }) {
   const [state, setState] = useState(() => createSplitModalState(transaction))
+  const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const typeCategories = useMemo(() => categories[transaction.type] || [], [categories, transaction.type])
   const amountLabel = getAmountInputLabel(transaction)
   const splitCurrency = getSplitBasisCurrency(transaction)
-  const canSave = isSplitModalSaveValid(state)
-  const canUndo = isUndoSplitValid(state)
+  const canSave = isSplitModalSaveValid(state) && !isSubmitting
+  const canUndo = isUndoSplitValid(state) && !isSubmitting
 
   useEffect(() => {
     setState(createSplitModalState(transaction))
+    setSubmitError('')
+    setIsSubmitting(false)
   }, [transaction])
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault()
     if (!canSave) return
-    onSave(state.rows)
+    setSubmitError('')
+    setIsSubmitting(true)
+    try {
+      await onSave(state.rows)
+    } catch (error) {
+      setSubmitError(error.message || 'Could not save split. Please try again.')
+      setIsSubmitting(false)
+    }
   }
 
-  function handleUndo() {
+  async function handleUndo() {
     if (!canUndo) return
     const replacement = state.replacementCategory
     if (!window.confirm(`Undo this split and recategorize the source transaction as "${replacement}"?`)) return
-    onUndo(replacement)
+    setSubmitError('')
+    setIsSubmitting(true)
+    try {
+      await onUndo(replacement)
+    } catch (error) {
+      setSubmitError(error.message || 'Could not undo split. Please try again.')
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -88,8 +106,8 @@ export default function SplitTransactionModal({ transaction, categories, onCance
             <h3>Split into categories</h3>
           </div>
           <div className="split-editor-actions">
-            <button type="button" className="ghost-button" onClick={() => setState((current) => addSplitRow(current))}>+ Add category</button>
-            <button type="button" className="ghost-button" onClick={() => setState((current) => applyFinalRowRemainder(current))}>Set final remainder</button>
+            <button type="button" className="ghost-button" disabled={isSubmitting} onClick={() => setState((current) => addSplitRow(current))}>+ Add category</button>
+            <button type="button" className="ghost-button" disabled={isSubmitting} onClick={() => setState((current) => applyFinalRowRemainder(current))}>Set final remainder</button>
           </div>
         </div>
 
@@ -106,24 +124,24 @@ export default function SplitTransactionModal({ transaction, categories, onCance
             <div key={index} className="split-grid split-row">
               <label>
                 <span>Category</span>
-                <select value={row.category} onChange={(event) => setState((current) => updateSplitRowCategory(current, index, event.target.value))}>
+                <select disabled={isSubmitting} value={row.category} onChange={(event) => setState((current) => updateSplitRowCategory(current, index, event.target.value))}>
                   <option value="">Choose category</option>
                   {typeCategories.map((category) => <option key={category}>{category}</option>)}
                 </select>
               </label>
               <label>
                 <span>{amountLabel}</span>
-                <input type="number" min="0" step="0.01" value={row.amount} onChange={(event) => setState((current) => updateSplitRowAmount(current, index, event.target.value))} />
+                <input disabled={isSubmitting} type="number" min="0" step="0.01" value={row.amount} onChange={(event) => setState((current) => updateSplitRowAmount(current, index, event.target.value))} />
               </label>
               <label>
                 <span>Percent</span>
-                <input type="number" min="0" step="0.01" value={row.percent} onChange={(event) => setState((current) => updateSplitRowPercent(current, index, event.target.value))} />
+                <input disabled={isSubmitting} type="number" min="0" step="0.01" value={row.percent} onChange={(event) => setState((current) => updateSplitRowPercent(current, index, event.target.value))} />
               </label>
               <label>
                 <span>Note</span>
-                <input value={row.notes} placeholder="Optional" onChange={(event) => setState((current) => updateSplitRowNotes(current, index, event.target.value))} />
+                <input disabled={isSubmitting} value={row.notes} placeholder="Optional" onChange={(event) => setState((current) => updateSplitRowNotes(current, index, event.target.value))} />
               </label>
-              <button type="button" className="ghost-button danger" disabled={state.rows.length <= 2} onClick={() => setState((current) => removeSplitRow(current, index))}>Remove</button>
+              <button type="button" className="ghost-button danger" disabled={isSubmitting || state.rows.length <= 2} onClick={() => setState((current) => removeSplitRow(current, index))}>Remove</button>
             </div>
           ))}
         </div>
@@ -158,18 +176,20 @@ export default function SplitTransactionModal({ transaction, categories, onCance
           </div>
           <label>
             <span>Replacement category</span>
-            <select value={state.replacementCategory} onChange={(event) => setState((current) => updateUndoReplacementCategory(current, event.target.value))}>
+            <select disabled={isSubmitting} value={state.replacementCategory} onChange={(event) => setState((current) => updateUndoReplacementCategory(current, event.target.value))}>
               <option value="">Choose replacement</option>
               {typeCategories.map((category) => <option key={category}>{category}</option>)}
             </select>
           </label>
-          <button type="button" className="ghost-button danger" disabled={!canUndo} onClick={handleUndo}>Undo Split</button>
+          <button type="button" className="ghost-button danger" disabled={!canUndo} onClick={handleUndo}>{isSubmitting ? 'Working...' : 'Undo Split'}</button>
         </section>
       ) : null}
 
+      {submitError ? <div className="split-submit-error" role="alert">{submitError}</div> : null}
+
       <div className="form-actions">
-        <button type="button" className="ghost-button" onClick={onCancel}>Cancel</button>
-        <button type="submit" disabled={!canSave}>Save split</button>
+        <button type="button" className="ghost-button" disabled={isSubmitting} onClick={onCancel}>Cancel</button>
+        <button type="submit" disabled={!canSave}>{isSubmitting ? 'Saving...' : 'Save split'}</button>
       </div>
     </form>
   )
