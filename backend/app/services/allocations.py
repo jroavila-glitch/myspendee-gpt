@@ -8,7 +8,6 @@ from app.schemas.common import (
     EXPENSE_CATEGORIES,
     INCOME_CATEGORIES,
     TransactionAllocationInput,
-    TransactionAllocationsUpdate,
 )
 
 
@@ -89,19 +88,15 @@ def resolve_allocation_amounts(
 def replace_allocations(
     db: Session,
     transaction: Transaction,
-    payload: TransactionAllocationsUpdate,
-) -> Transaction:
+    allocations: list[TransactionAllocationInput],
+) -> list[TransactionAllocation]:
     _validate_transaction_type(transaction)
-    if _money(payload.expected_amount_mxn) != _money(transaction.amount_mxn):
-        raise ValueError("Transaction amount changed; refresh and try again")
-    if payload.expected_type != transaction.type:
-        raise ValueError("Transaction type changed; refresh and try again")
-    if len(payload.allocations) < 2:
+    if len(allocations) < 2:
         raise ValueError("At least two allocations are required")
-    for allocation in payload.allocations:
+    for allocation in allocations:
         _validate_category(transaction, allocation.category, "allocation")
 
-    resolved = resolve_allocation_amounts(transaction, payload.allocations)
+    resolved = resolve_allocation_amounts(transaction, allocations)
     transaction.allocations = [
         TransactionAllocation(
             category=allocation.category,
@@ -115,7 +110,7 @@ def replace_allocations(
     transaction.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(transaction)
-    return transaction
+    return list(transaction.allocations)
 
 
 def remove_allocations(
