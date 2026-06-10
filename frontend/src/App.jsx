@@ -17,6 +17,7 @@ import {
   mergeDrilldownFilters,
   replaceDisplayRatesFromFx,
   shouldApplyRequestVersion,
+  shouldShowGlobalBulkBar,
 } from './lib/dashboard'
 
 function getCurrentMonthState() {
@@ -649,7 +650,7 @@ function App() {
         )}
       </div>
 
-      {tab === 'review' || (tab === 'dashboard' && selectedIds.length > 0) ? (
+      {shouldShowGlobalBulkBar(tab, selectedIds.length, showReviewModal) ? (
         <BulkBar
           selectedIds={selectedIds}
           bulkCategory={bulkCategory}

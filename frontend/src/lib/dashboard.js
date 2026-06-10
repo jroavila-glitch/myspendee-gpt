@@ -73,6 +73,11 @@ export function getPreviewTransactions(transactions, hasDrilldown) {
   return hasDrilldown ? transactions : transactions.slice(0, 8)
 }
 
+export function shouldShowGlobalBulkBar(tab, selectedCount, showReviewModal) {
+  if (!selectedCount || showReviewModal) return false
+  return tab === 'review' || tab === 'dashboard'
+}
+
 export function filterTransactionsForWorkspace(transactions, category, searchText) {
   const normalizedSearch = searchText.trim().toLowerCase()
   return transactions.filter((transaction) => {

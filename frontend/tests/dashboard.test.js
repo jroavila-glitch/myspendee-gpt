@@ -15,6 +15,7 @@ import {
   joinReviewItems,
   mergeDrilldownFilters,
   replaceDisplayRatesFromFx,
+  shouldShowGlobalBulkBar,
   shouldApplyRequestVersion,
 } from '../src/lib/dashboard.js'
 
@@ -133,6 +134,13 @@ test('keeps preview transaction records available for edit actions', () => {
   const transactions = [{ id: 'one' }, { id: 'two' }]
 
   assert.equal(getPreviewTransactions(transactions, true)[1], transactions[1])
+})
+
+test('hides the global bulk bar while the review modal owns bulk actions', () => {
+  assert.equal(shouldShowGlobalBulkBar('dashboard', 2, true), false)
+  assert.equal(shouldShowGlobalBulkBar('dashboard', 2, false), true)
+  assert.equal(shouldShowGlobalBulkBar('review', 2, false), true)
+  assert.equal(shouldShowGlobalBulkBar('dashboard', 0, false), false)
 })
 
 test('filters an editable transaction workspace by category and search text', () => {
