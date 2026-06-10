@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import and_, case, func, select, union_all
+from sqlalchemy import and_, case, func, or_, select, union_all
 from sqlalchemy.sql import Select
 from sqlalchemy.orm import Session
 
@@ -141,7 +141,12 @@ def apply_transaction_filters(
     if bank_name:
         stmt = stmt.where(Transaction.bank_name == bank_name)
     if category:
-        stmt = stmt.where(Transaction.category == category)
+        stmt = stmt.where(
+            or_(
+                and_(~Transaction.allocations.any(), Transaction.category == category),
+                Transaction.allocations.any(TransactionAllocation.category == category),
+            )
+        )
     if type:
         stmt = stmt.where(Transaction.type == type)
     return stmt

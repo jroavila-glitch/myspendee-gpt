@@ -533,3 +533,71 @@ class TransactionAllocationTest(TestCase):
             [("Groceries", Decimal("60.00"), 1)],
             [(row.category, row.total, row.count) for row in groceries_breakdown.expenses],
         )
+
+    def test_category_summary_includes_split_sources_by_allocation_category_once(self) -> None:
+        split_with_groceries = self.create_transaction(category="Other", amount_mxn=Decimal("100.00"))
+        replace_allocations(
+            self.db,
+            split_with_groceries,
+            [
+                self.allocation("Groceries", amount_original="40.00"),
+                self.allocation("Groceries", amount_original="60.00"),
+            ],
+        )
+        unsplit_groceries = self.create_transaction(category="Groceries", amount_mxn=Decimal("30.00"))
+        split_source_groceries_without_groceries_allocation = self.create_transaction(
+            amount_original=Decimal("50.00"),
+            amount_mxn=Decimal("50.00"),
+            category="Groceries",
+        )
+        replace_allocations(
+            self.db,
+            split_source_groceries_without_groceries_allocation,
+            [
+                self.allocation("Home", amount_original="20.00"),
+                self.allocation("Transport", amount_original="30.00"),
+            ],
+        )
+        self.db.commit()
+
+        summary = get_summary(self.db, month=6, year=2026, category="Groceries")
+
+        self.assertEqual(Decimal("130.00"), summary.expenses)
+        self.assertEqual(Decimal("-130.00"), summary.net)
+        self.assertEqual("Groceries", unsplit_groceries.category)
+
+    def test_category_transaction_list_includes_split_sources_by_allocation_category_once(self) -> None:
+        split_with_groceries = self.create_transaction(category="Other", amount_mxn=Decimal("100.00"))
+        replace_allocations(
+            self.db,
+            split_with_groceries,
+            [
+                self.allocation("Groceries", amount_original="40.00"),
+                self.allocation("Groceries", amount_original="60.00"),
+            ],
+        )
+        unsplit_groceries = self.create_transaction(category="Groceries", amount_mxn=Decimal("30.00"))
+        split_source_groceries_without_groceries_allocation = self.create_transaction(
+            amount_original=Decimal("50.00"),
+            amount_mxn=Decimal("50.00"),
+            category="Groceries",
+        )
+        replace_allocations(
+            self.db,
+            split_source_groceries_without_groceries_allocation,
+            [
+                self.allocation("Home", amount_original="20.00"),
+                self.allocation("Transport", amount_original="30.00"),
+            ],
+        )
+        self.db.commit()
+
+        response = self.client.get("/transactions?month=6&year=2026&category=Groceries")
+
+        self.assertEqual(200, response.status_code, response.text)
+        ids = [row["id"] for row in response.json()]
+        self.assertEqual(
+            [str(unsplit_groceries.id), str(split_with_groceries.id)],
+            ids,
+        )
+        self.assertEqual(len(ids), len(set(ids)))
