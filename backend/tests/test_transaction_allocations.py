@@ -439,6 +439,17 @@ class TransactionAllocationTest(TestCase):
     def test_remove_requires_valid_replacement_category(self) -> None:
         transaction = self.create_transaction()
 
+        with self.assertRaisesRegex(ValueError, "Transaction is not split"):
+            remove_allocations(self.db, transaction, "Home")
+
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Food & Drink", amount_original="40.00"),
+                self.allocation("Transport", amount_original="60.00"),
+            ],
+        )
         with self.assertRaisesRegex(ValueError, "Invalid expense replacement category: Tennis Lessons"):
             remove_allocations(self.db, transaction, "Tennis Lessons")
 
@@ -483,3 +494,14 @@ class TransactionAllocationTest(TestCase):
         self.assertEqual(0, data["allocation_count"])
         self.assertEqual([], data["allocations"])
         self.assertIsNotNone(data["reviewed_at"])
+
+    def test_delete_allocations_rejects_unsplit_transaction_without_recategorizing(self) -> None:
+        transaction = self.create_transaction(category="Other")
+
+        response = self.client.delete(f"/transactions/{transaction.id}/allocations?category=Home")
+
+        self.assertEqual(422, response.status_code, response.text)
+        self.assertEqual("Transaction is not split", response.json()["detail"])
+        self.db.expire_all()
+        persisted = self.db.get(Transaction, transaction.id)
+        self.assertEqual("Other", persisted.category)

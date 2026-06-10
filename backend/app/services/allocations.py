@@ -124,6 +124,8 @@ def remove_allocations(
     replacement_category: str,
 ) -> Transaction:
     _validate_transaction_type(transaction)
+    if not transaction.allocations:
+        raise ValueError("Transaction is not split")
     _validate_category(transaction, replacement_category, "replacement")
     transaction.allocations = []
     transaction.category = replacement_category
