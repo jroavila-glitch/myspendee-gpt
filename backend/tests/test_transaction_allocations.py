@@ -162,6 +162,19 @@ class TransactionAllocationTest(TestCase):
                 ],
             )
 
+    def test_replace_rejects_duplicate_allocation_categories(self) -> None:
+        transaction = self.create_transaction()
+
+        with self.assertRaisesRegex(ValueError, "Allocation categories must be unique"):
+            replace_allocations(
+                self.db,
+                transaction,
+                [
+                    self.allocation("Groceries", amount_original="40.00"),
+                    self.allocation("Groceries", amount_original="60.00"),
+                ],
+            )
+
     def test_replace_rejects_zero_negative_and_inappropriate_amount_fields(self) -> None:
         transaction = self.create_transaction()
 
@@ -541,7 +554,7 @@ class TransactionAllocationTest(TestCase):
             split_with_groceries,
             [
                 self.allocation("Groceries", amount_original="40.00"),
-                self.allocation("Groceries", amount_original="60.00"),
+                self.allocation("Home", amount_original="60.00"),
             ],
         )
         unsplit_groceries = self.create_transaction(category="Groceries", amount_mxn=Decimal("30.00"))
@@ -573,7 +586,7 @@ class TransactionAllocationTest(TestCase):
             split_with_groceries,
             [
                 self.allocation("Groceries", amount_original="40.00"),
-                self.allocation("Groceries", amount_original="60.00"),
+                self.allocation("Home", amount_original="60.00"),
             ],
         )
         unsplit_groceries = self.create_transaction(category="Groceries", amount_mxn=Decimal("30.00"))

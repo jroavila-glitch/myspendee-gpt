@@ -98,6 +98,9 @@ def replace_allocations(
     _validate_transaction_type(transaction)
     if len(allocations) < 2:
         raise ValueError("At least two allocations are required")
+    categories = [allocation.category for allocation in allocations]
+    if len(set(categories)) != len(categories):
+        raise ValueError("Allocation categories must be unique")
     for allocation in allocations:
         _validate_category(transaction, allocation.category, "allocation")
 

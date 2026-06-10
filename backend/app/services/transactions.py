@@ -268,7 +268,7 @@ def get_breakdown(
             TransactionAllocation.category.label("category"),
             Transaction.type.label("type"),
             TransactionAllocation.amount_mxn.label("amount_mxn"),
-            TransactionAllocation.id.label("source_id"),
+            Transaction.id.label("source_id"),
         )
         .join(TransactionAllocation, TransactionAllocation.transaction_id == Transaction.id)
         .where(Transaction.type != "ignored")
@@ -292,7 +292,7 @@ def get_breakdown(
             breakdown_rows.c.category,
             breakdown_rows.c.type,
             func.coalesce(func.sum(breakdown_rows.c.amount_mxn), 0).label("total"),
-            func.count(breakdown_rows.c.source_id).label("count"),
+            func.count(func.distinct(breakdown_rows.c.source_id)).label("count"),
         )
         .group_by(breakdown_rows.c.category, breakdown_rows.c.type)
         .order_by(breakdown_rows.c.type, func.sum(breakdown_rows.c.amount_mxn).desc())
