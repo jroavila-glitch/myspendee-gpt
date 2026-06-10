@@ -320,6 +320,14 @@ class TransactionAllocationTest(TestCase):
 
     def test_put_allocations_replaces_split_and_serializes_allocations(self) -> None:
         transaction = self.create_transaction(category="Other")
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Home", amount_original="25.00"),
+                self.allocation("Groceries", amount_original="75.00"),
+            ],
+        )
 
         response = self.client.put(
             f"/transactions/{transaction.id}/allocations",
@@ -340,6 +348,13 @@ class TransactionAllocationTest(TestCase):
         self.assertEqual(["Food & Drink", "Transport"], [row["category"] for row in data["allocations"]])
         self.assertEqual([0, 1], [row["position"] for row in data["allocations"]])
         self.assertEqual("Lunch", data["allocations"][0]["notes"])
+        self.db.expire_all()
+        persisted = self.db.get(Transaction, transaction.id)
+        self.assertEqual(
+            [("Food & Drink", Decimal("40.00")), ("Transport", Decimal("60.00"))],
+            [(row.category, row.amount_original) for row in persisted.allocations],
+        )
+        self.assertEqual(2, len(self.db.scalars(select(TransactionAllocation)).all()))
 
     def test_put_allocations_rejects_stale_expected_amount_or_type(self) -> None:
         stale_amount = self.create_transaction()
