@@ -1,11 +1,11 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, func, select, union_all
 from sqlalchemy.sql import Select
 from sqlalchemy.orm import Session
 
-from app.models import Statement, Transaction
+from app.models import Statement, Transaction, TransactionAllocation
 from app.schemas.common import BreakdownItem, BreakdownResponse, SummaryResponse, TransactionCreate, TransactionUpdate
 from app.services.classification import apply_special_description_rules, classify_transaction, normalize_category
 from app.services.normalization import normalize_bank_name, resolve_amounts
@@ -235,26 +235,62 @@ def get_breakdown(
     category: str | None = None,
     type: str | None = None,
 ) -> BreakdownResponse:
-    stmt = (
+    unsplit_stmt = (
         select(
-            Transaction.category,
-            Transaction.type,
-            func.coalesce(func.sum(Transaction.amount_mxn), 0).label("total"),
-            func.count(Transaction.id).label("count"),
+            Transaction.category.label("category"),
+            Transaction.type.label("type"),
+            Transaction.amount_mxn.label("amount_mxn"),
+            Transaction.id.label("source_id"),
         )
         .where(Transaction.type != "ignored")
-        .group_by(Transaction.category, Transaction.type)
-        .order_by(Transaction.type, func.sum(Transaction.amount_mxn).desc())
+        .where(~Transaction.allocations.any())
     )
-    stmt = apply_transaction_filters(
-        stmt,
+    unsplit_stmt = apply_transaction_filters(
+        unsplit_stmt,
         month=month,
         year=year,
         date_from=date_from,
         date_to=date_to,
         bank_name=bank_name,
-        category=category,
+        category=None,
         type=type,
+    )
+    if category:
+        unsplit_stmt = unsplit_stmt.where(Transaction.category == category)
+
+    split_stmt = (
+        select(
+            TransactionAllocation.category.label("category"),
+            Transaction.type.label("type"),
+            TransactionAllocation.amount_mxn.label("amount_mxn"),
+            TransactionAllocation.id.label("source_id"),
+        )
+        .join(TransactionAllocation, TransactionAllocation.transaction_id == Transaction.id)
+        .where(Transaction.type != "ignored")
+    )
+    split_stmt = apply_transaction_filters(
+        split_stmt,
+        month=month,
+        year=year,
+        date_from=date_from,
+        date_to=date_to,
+        bank_name=bank_name,
+        category=None,
+        type=type,
+    )
+    if category:
+        split_stmt = split_stmt.where(TransactionAllocation.category == category)
+
+    breakdown_rows = union_all(unsplit_stmt, split_stmt).subquery()
+    stmt = (
+        select(
+            breakdown_rows.c.category,
+            breakdown_rows.c.type,
+            func.coalesce(func.sum(breakdown_rows.c.amount_mxn), 0).label("total"),
+            func.count(breakdown_rows.c.source_id).label("count"),
+        )
+        .group_by(breakdown_rows.c.category, breakdown_rows.c.type)
+        .order_by(breakdown_rows.c.type, func.sum(breakdown_rows.c.amount_mxn).desc())
     )
     rows = db.execute(stmt).all()
     income = [BreakdownItem(category=r.category, type=r.type, total=r.total, count=r.count) for r in rows if r.type == "income"]

@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import Transaction
+from app.schemas.common import TransactionAllocationInput
+from app.services.allocations import replace_allocations
 from app.schemas.insights import ReviewItemInsight
 from app.services import insights as insights_service
 from app.services.insights import (
@@ -60,6 +62,44 @@ class InsightsTest(TestCase):
         )
         self.db.add(transaction)
         self.db.flush()
+        return transaction
+
+    def allocation(
+        self,
+        category: str,
+        amount_mxn: str,
+    ) -> TransactionAllocationInput:
+        return TransactionAllocationInput(
+            category=category,
+            amount_mxn=Decimal(amount_mxn),
+        )
+
+    def add_split_transaction(
+        self,
+        *,
+        tx_date: date,
+        description: str,
+        amount_mxn: str = "100.00",
+        source_category: str = "Other",
+        notes: str | None = None,
+    ) -> Transaction:
+        transaction = self.add_transaction(
+            tx_date=tx_date,
+            description=description,
+            amount_mxn=amount_mxn,
+            category=source_category,
+            tx_type="expense",
+            notes=notes,
+            amount_original=None,
+        )
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Groceries", "60.00"),
+                self.allocation("Home", "40.00"),
+            ],
+        )
         return transaction
 
     def seed_insight_periods(self) -> Transaction:
@@ -206,6 +246,45 @@ class InsightsTest(TestCase):
         self.assertEqual(
             ["Unclassified", "Higher than usual"],
             response.review_items[0].reasons,
+        )
+
+    def test_get_insights_uses_split_allocations_for_category_averages_but_source_totals_for_review(self) -> None:
+        for month in [2, 3, 4]:
+            self.add_split_transaction(
+                tx_date=date(2026, month, 2),
+                description=f"Split baseline {month}",
+            )
+        reviewed_split = self.add_split_transaction(
+            tx_date=date(2026, 5, 2),
+            description="Reviewed split current",
+            notes="Manual review needed",
+        )
+        review_transaction = self.add_transaction(
+            tx_date=date(2026, 5, 3),
+            description="Groceries spike",
+            amount_mxn="130.00",
+            category="Groceries",
+            tx_type="expense",
+        )
+        self.db.commit()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type=None,
+        )
+
+        self.assertIsNotNone(reviewed_split.reviewed_at)
+        self.assertEqual(Decimal("230.00"), response.expenses.current)
+        self.assertEqual(Decimal("130.00"), response.review_amount_mxn)
+        self.assertEqual(1, response.review_count)
+        self.assertEqual(
+            [(review_transaction.id, ["Higher than usual"])],
+            [(item.transaction_id, item.reasons) for item in response.review_items],
         )
 
     def test_get_insights_aggregates_multiple_reasons_with_deterministic_ties(self) -> None:

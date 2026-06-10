@@ -12,6 +12,7 @@ from app.main import app, get_db
 from app.models import Transaction, TransactionAllocation
 from app.schemas.common import TransactionAllocationInput
 from app.services.allocations import remove_allocations, replace_allocations, resolve_allocation_amounts
+from app.services.transactions import get_breakdown, get_summary
 
 
 class TransactionAllocationTest(TestCase):
@@ -505,3 +506,30 @@ class TransactionAllocationTest(TestCase):
         self.db.expire_all()
         persisted = self.db.get(Transaction, transaction.id)
         self.assertEqual("Other", persisted.category)
+
+    def test_summary_counts_split_source_once_and_breakdown_uses_allocations(self) -> None:
+        transaction = self.create_transaction(category="Other")
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Groceries", amount_original="60.00"),
+                self.allocation("Home", amount_original="40.00"),
+            ],
+        )
+
+        summary = get_summary(self.db, month=6, year=2026)
+        breakdown = get_breakdown(self.db, month=6, year=2026)
+        groceries_breakdown = get_breakdown(self.db, month=6, year=2026, category="Groceries")
+
+        self.assertEqual(Decimal("100.00"), summary.expenses)
+        self.assertEqual(Decimal("100.00"), summary.net * Decimal("-1"))
+        self.assertEqual(
+            [("Groceries", Decimal("60.00"), 1), ("Home", Decimal("40.00"), 1)],
+            [(row.category, row.total, row.count) for row in breakdown.expenses],
+        )
+        self.assertEqual([], breakdown.income)
+        self.assertEqual(
+            [("Groceries", Decimal("60.00"), 1)],
+            [(row.category, row.total, row.count) for row in groceries_breakdown.expenses],
+        )

@@ -3,11 +3,11 @@ from collections import Counter
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, union_all
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
-from app.models import Transaction
+from app.models import Transaction, TransactionAllocation
 from app.schemas.insights import (
     InsightsResponse,
     MetricComparison,
@@ -198,16 +198,46 @@ def _category_averages(
     bank_name: str | None,
     type: str | None,
 ) -> dict[tuple[str, str], Decimal]:
-    stmt = (
-        select(Transaction.category, Transaction.type, func.avg(Transaction.amount_mxn))
+    unsplit_stmt = (
+        select(
+            Transaction.category.label("category"),
+            Transaction.type.label("type"),
+            Transaction.amount_mxn.label("amount_mxn"),
+        )
         .where(Transaction.type != "ignored")
-        .group_by(Transaction.category, Transaction.type)
+        .where(~Transaction.allocations.any())
     )
-    stmt = _apply_period_filter(
-        stmt,
+    unsplit_stmt = _apply_period_filter(
+        unsplit_stmt,
         period=period,
         bank_name=bank_name,
         type=type,
+    )
+
+    split_stmt = (
+        select(
+            TransactionAllocation.category.label("category"),
+            Transaction.type.label("type"),
+            TransactionAllocation.amount_mxn.label("amount_mxn"),
+        )
+        .join(TransactionAllocation, TransactionAllocation.transaction_id == Transaction.id)
+        .where(Transaction.type != "ignored")
+    )
+    split_stmt = _apply_period_filter(
+        split_stmt,
+        period=period,
+        bank_name=bank_name,
+        type=type,
+    )
+
+    average_rows = union_all(unsplit_stmt, split_stmt).subquery()
+    stmt = (
+        select(
+            average_rows.c.category,
+            average_rows.c.type,
+            func.avg(average_rows.c.amount_mxn),
+        )
+        .group_by(average_rows.c.category, average_rows.c.type)
     )
     return {
         (category, tx_type): Decimal(average)
