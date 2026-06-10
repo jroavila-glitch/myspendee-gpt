@@ -150,6 +150,13 @@ Additional ignore behavior:
 - `Implemented`: Keeps `MONEDA EXTRANJERA` lines as FX metadata attached to the merchant row, not separate transactions
 - `Implemented`: Extracts `INTERESES` and `IVA SOBRE COMISIONES E INTERESES` rows as `Bills/Fees`
 
+### Millennium
+
+- `Implemented`: Deterministic parser binds each transaction amount to its own
+  row and validates income/expense direction against the resulting account
+  balance before accepting the row.
+- `Implemented`: Millennium statements use `DATA VALOR` as the transaction date.
+
 ### Rappi
 
 - `Implemented`: `Compras a meses` uses `Mensualidad` as the actual amount

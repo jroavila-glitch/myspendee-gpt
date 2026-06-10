@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added deterministic Millennium statement parsing with balance-validated row
+  amounts, preventing adjacent transactions from borrowing each other's values
+
 - Replaced the Dashboard transaction preview with the full selectable
   transaction table, including select-all, bulk category/type changes, and
   confirmed bulk deletion

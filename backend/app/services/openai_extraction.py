@@ -10,6 +10,7 @@ from pdf2image import convert_from_bytes
 from app.services.arq_parser import parse_arq_pdf
 from app.services.banamex_parser import parse_banamex_pdf
 from app.services.hsbc_parser import parse_hsbc_pdf
+from app.services.millennium_parser import parse_millennium_pdf
 from app.services.rappi_parser import parse_rappi_pdf
 
 
@@ -113,6 +114,10 @@ def _merge_transactions(existing: list[dict], additions: list[dict]) -> list[dic
 
 
 def extract_transactions_from_pdf(pdf_bytes: bytes) -> dict:
+    millennium_result = parse_millennium_pdf(pdf_bytes)
+    if millennium_result and millennium_result.get("transactions"):
+        return millennium_result
+
     banamex_result = parse_banamex_pdf(pdf_bytes)
     if banamex_result and banamex_result.get("transactions"):
         return banamex_result
