@@ -22,6 +22,15 @@ def _money(value: Decimal) -> Decimal:
     return value.quantize(MONEY_QUANTUM)
 
 
+def _validate_cent_amount(value: Decimal, field_name: str) -> Decimal:
+    amount = _money(value)
+    if value != amount:
+        raise ValueError(f"Allocation {field_name} must use cents")
+    if amount <= 0:
+        raise ValueError("Allocation amounts must be positive")
+    return amount
+
+
 def _validate_transaction_type(transaction: Transaction) -> None:
     if transaction.type not in ALLOWED_ALLOCATION_CATEGORIES:
         raise ValueError("Only income or expense transactions can be split")
@@ -41,9 +50,7 @@ def resolve_allocation_amounts(
         for allocation in allocations:
             if allocation.amount_original is None:
                 raise ValueError("Allocation amount_original is required when the transaction has an original amount")
-            amount_original = _money(allocation.amount_original)
-            if amount_original <= 0:
-                raise ValueError("Allocation amounts must be positive")
+            amount_original = _validate_cent_amount(allocation.amount_original, "amount_original")
             original_amounts.append(amount_original)
 
         transaction_original = _money(transaction.amount_original)
@@ -75,9 +82,7 @@ def resolve_allocation_amounts(
     for allocation in allocations:
         if allocation.amount_mxn is None:
             raise ValueError("Allocation amount_mxn is required when the transaction has no original amount")
-        amount_mxn = _money(allocation.amount_mxn)
-        if amount_mxn <= 0:
-            raise ValueError("Allocation amounts must be positive")
+        amount_mxn = _validate_cent_amount(allocation.amount_mxn, "amount_mxn")
         resolved.append(allocation.model_copy(update={"amount_original": None, "amount_mxn": amount_mxn}))
 
     if sum((allocation.amount_mxn for allocation in resolved), Decimal("0.00")) != _money(transaction.amount_mxn):

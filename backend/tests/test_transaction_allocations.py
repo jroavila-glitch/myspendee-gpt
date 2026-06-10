@@ -243,6 +243,23 @@ class TransactionAllocationTest(TestCase):
                 ],
             )
 
+    def test_replace_rejects_fractional_cent_original_amounts_before_rounding(self) -> None:
+        transaction = self.create_transaction(
+            amount_original=Decimal("100.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("2000.00"),
+        )
+
+        with self.assertRaisesRegex(ValueError, "amount_original must use cents"):
+            replace_allocations(
+                self.db,
+                transaction,
+                [
+                    self.allocation("Food & Drink", amount_original="50.004"),
+                    self.allocation("Transport", amount_original="50.004"),
+                ],
+            )
+
     def test_replace_requires_canonical_amounts_to_sum_exactly(self) -> None:
         transaction = self.create_transaction(amount_original=None)
 
@@ -253,6 +270,19 @@ class TransactionAllocationTest(TestCase):
                 [
                     self.allocation("Food & Drink", amount_mxn="40.00"),
                     self.allocation("Transport", amount_mxn="59.99"),
+                ],
+            )
+
+    def test_replace_rejects_fractional_cent_mxn_amounts_before_rounding(self) -> None:
+        transaction = self.create_transaction(amount_original=None)
+
+        with self.assertRaisesRegex(ValueError, "amount_mxn must use cents"):
+            replace_allocations(
+                self.db,
+                transaction,
+                [
+                    self.allocation("Food & Drink", amount_mxn="50.004"),
+                    self.allocation("Transport", amount_mxn="50.004"),
                 ],
             )
 
@@ -300,6 +330,34 @@ class TransactionAllocationTest(TestCase):
 
         self.assertEqual(["Home", "Groceries"], [row.category for row in replaced])
         self.assertEqual(2, len(self.db.scalars(select(TransactionAllocation)).all()))
+
+    def test_invalid_replace_leaves_existing_allocations_unchanged(self) -> None:
+        transaction = self.create_transaction()
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Food & Drink", amount_original="40.00"),
+                self.allocation("Transport", amount_original="60.00"),
+            ],
+        )
+
+        with self.assertRaisesRegex(ValueError, "Allocation original amounts must equal transaction original amount"):
+            replace_allocations(
+                self.db,
+                transaction,
+                [
+                    self.allocation("Home", amount_original="25.00"),
+                    self.allocation("Groceries", amount_original="70.00"),
+                ],
+            )
+
+        self.db.expire_all()
+        persisted = self.db.get(Transaction, transaction.id)
+        self.assertEqual(
+            [("Food & Drink", Decimal("40.00")), ("Transport", Decimal("60.00"))],
+            [(row.category, row.amount_original) for row in persisted.allocations],
+        )
 
     def test_remove_requires_valid_replacement_category(self) -> None:
         transaction = self.create_transaction()
