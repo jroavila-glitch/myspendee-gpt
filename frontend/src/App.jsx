@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import AppHeader from './components/AppHeader'
 import DashboardWorkspace from './components/DashboardWorkspace'
 import GlobalFilters from './components/GlobalFilters'
+import SplitTransactionModal from './components/SplitTransactionModal'
 import StatementsWorkspace from './components/StatementsWorkspace'
 import TransactionTable from './components/TransactionTable'
 import { api } from './lib/api'
@@ -19,6 +20,7 @@ import {
   shouldApplyRequestVersion,
   shouldShowGlobalBulkBar,
 } from './lib/dashboard'
+import { buildSplitPayload } from './lib/splits'
 
 function getCurrentMonthState() {
   const now = new Date()
@@ -92,7 +94,7 @@ function Modal({ title, children, onClose, className = '' }) {
   )
 }
 
-function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
+function TransactionForm({ categories, initialValue, onSubmit, onCancel, secondaryAction }) {
   const [form, setForm] = useState(
     initialValue || {
       date: new Date().toISOString().slice(0, 10),
@@ -150,6 +152,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel }) {
       <label><span>Bank</span><input value={form.bank_name} onChange={(e) => updateField('bank_name', e.target.value)} /></label>
       <label className="full"><span>Notes</span><textarea rows="3" value={form.notes} onChange={(e) => updateField('notes', e.target.value)} /></label>
       <div className="form-actions full">
+        {secondaryAction ? <button type="button" className="ghost-button" onClick={secondaryAction.onClick}>{secondaryAction.label}</button> : null}
         <button type="button" className="ghost-button" onClick={onCancel}>Cancel</button>
         <button type="submit">Save</button>
       </div>
@@ -204,6 +207,7 @@ function App() {
   const [reviewSearchText, setReviewSearchText] = useState('')
   const [menuState, setMenuState] = useState(null)
   const [editingTransaction, setEditingTransaction] = useState(null)
+  const [splittingTransaction, setSplittingTransaction] = useState(null)
   const [returnToReviewModal, setReturnToReviewModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -413,6 +417,35 @@ function App() {
     setReturnToReviewModal(false)
   }
 
+  function closeSplitModal() {
+    setSplittingTransaction(null)
+    if (returnToReviewModal) setShowReviewModal(true)
+    setReturnToReviewModal(false)
+  }
+
+  function openSplitModal(transaction, { fromReviewModal = false } = {}) {
+    setMenuState(null)
+    setEditingTransaction(null)
+    if (fromReviewModal) {
+      setShowReviewModal(false)
+      setReturnToReviewModal(true)
+    }
+    setSplittingTransaction(transaction)
+  }
+
+  function openEditFlow(transaction, { fromReviewModal = false } = {}) {
+    if (transaction.is_split) {
+      openSplitModal(transaction, { fromReviewModal })
+      return
+    }
+    setMenuState(null)
+    if (fromReviewModal) {
+      setShowReviewModal(false)
+      setReturnToReviewModal(true)
+    }
+    setEditingTransaction(transaction)
+  }
+
   function handlePeriodChange(value) {
     setPeriod((current) => {
       if (value !== 'custom') return { ...current, month: value }
@@ -596,7 +629,7 @@ function App() {
             onClearDrilldown={clearDashboardDrilldown}
             privacyMode={privacyMode}
             onPrivacyToggle={() => setPrivacyMode((current) => !current)}
-            onEditTransaction={setEditingTransaction}
+            onEditTransaction={openEditFlow}
             transactionTableProps={{
               selectedIds,
               categoryOptions,
@@ -637,10 +670,7 @@ function App() {
               onNotesBlur={handleNotesBlur}
               onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
               onMenuClose={() => setMenuState(null)}
-              onEdit={(transaction) => {
-                setEditingTransaction(transaction)
-                setMenuState(null)
-              }}
+              onEdit={openEditFlow}
               onMarkReviewed={handleMarkReviewed}
               onDelete={handleDeleteTransaction}
             />
@@ -704,12 +734,7 @@ function App() {
               onNotesBlur={handleNotesBlur}
               onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
               onMenuClose={() => setMenuState(null)}
-              onEdit={(transaction) => {
-                setShowReviewModal(false)
-                setReturnToReviewModal(true)
-                setMenuState(null)
-                setEditingTransaction(transaction)
-              }}
+              onEdit={(transaction) => openEditFlow(transaction, { fromReviewModal: true })}
               onMarkReviewed={handleMarkReviewed}
               onDelete={handleDeleteTransaction}
             />
@@ -735,9 +760,42 @@ function App() {
             categories={categories}
             initialValue={editingTransaction}
             onCancel={closeEditModal}
+            secondaryAction={
+              editingTransaction.type === 'income' || editingTransaction.type === 'expense'
+                ? {
+                  label: editingTransaction.is_split ? 'Edit split' : 'Split transaction',
+                  onClick: () => openSplitModal(editingTransaction),
+                }
+                : null
+            }
             onSubmit={async (values) => {
               await api.updateTransaction(editingTransaction.id, values)
               setEditingTransaction(null)
+              await loadAll()
+              if (returnToReviewModal) setShowReviewModal(true)
+              setReturnToReviewModal(false)
+            }}
+          />
+        </Modal>
+      ) : null}
+
+      {splittingTransaction ? (
+        <Modal title={splittingTransaction.is_split ? 'Edit Split' : 'Split Transaction'} className="split-modal-card" onClose={closeSplitModal}>
+          <SplitTransactionModal
+            transaction={splittingTransaction}
+            categories={categories}
+            onCancel={closeSplitModal}
+            onSave={async (rows) => {
+              const payload = buildSplitPayload({ transaction: splittingTransaction, rows })
+              await api.setAllocations(splittingTransaction.id, splittingTransaction, payload.allocations)
+              setSplittingTransaction(null)
+              await loadAll()
+              if (returnToReviewModal) setShowReviewModal(true)
+              setReturnToReviewModal(false)
+            }}
+            onUndo={async (replacementCategory) => {
+              await api.clearAllocations(splittingTransaction.id, replacementCategory)
+              setSplittingTransaction(null)
               await loadAll()
               if (returnToReviewModal) setShowReviewModal(true)
               setReturnToReviewModal(false)

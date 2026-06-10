@@ -1233,6 +1233,12 @@ h3 {
   box-shadow: var(--shadow-lg);
 }
 
+.split-modal-card {
+  width: min(1120px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
 .review-modal-card {
   width: min(1320px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
@@ -1263,6 +1269,175 @@ h3 {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.form-actions button:disabled,
+.split-editor-actions button:disabled,
+.split-row button:disabled,
+.split-undo-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.split-modal {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.split-source-card,
+.split-editor-card,
+.split-undo-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  padding: 0.9rem;
+}
+
+.split-source-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.split-source-card h3,
+.split-editor-header h3 {
+  margin: 0.16rem 0 0;
+  font-size: 1rem;
+}
+
+.split-source-card p,
+.split-undo-card p {
+  margin: 0.22rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.split-source-totals,
+.split-totals {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.split-source-totals div,
+.split-totals div {
+  min-width: 150px;
+  padding: 0.68rem 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-strong);
+}
+
+.split-source-totals span,
+.split-totals span,
+.split-grid label span,
+.split-undo-card label span {
+  display: block;
+  margin-bottom: 0.22rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.split-source-totals strong,
+.split-totals strong {
+  font-size: 0.95rem;
+}
+
+.split-editor-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.split-editor-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.split-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.split-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.15fr) minmax(130px, 0.72fr) minmax(110px, 0.56fr) minmax(180px, 1fr) auto;
+  gap: 0.55rem;
+  align-items: end;
+}
+
+.split-grid-head {
+  padding: 0 0.2rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.split-row-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.split-row {
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-strong);
+}
+
+.split-row input,
+.split-row select,
+.split-undo-card select {
+  border-radius: 10px;
+  padding: 0.62rem 0.74rem;
+}
+
+.split-row button {
+  margin-bottom: 0.02rem;
+}
+
+.split-totals {
+  justify-content: flex-start;
+}
+
+.split-totals .balanced strong {
+  color: var(--green);
+}
+
+.split-totals .unbalanced strong {
+  color: var(--amber);
+}
+
+.split-errors {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.68rem 0.78rem;
+  border: 1px solid rgba(215, 154, 54, 0.22);
+  border-radius: 12px;
+  background: var(--amber-soft);
+  color: #8b5b16;
+}
+
+.split-errors p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.split-undo-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr) auto;
+  gap: 0.75rem;
+  align-items: end;
 }
 
 .bulk-bar {
@@ -1990,8 +2165,27 @@ textarea:focus-visible {
   .cashflow-hero,
   .dashboard-kpi-grid,
   .ranked-grid,
-  .review-overview {
+  .review-overview,
+  .split-source-card,
+  .split-undo-card {
     grid-template-columns: 1fr;
+  }
+
+  .split-source-totals,
+  .split-editor-actions {
+    justify-content: flex-start;
+  }
+
+  .split-grid-head {
+    display: none;
+  }
+
+  .split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .split-row button {
+    width: fit-content;
   }
 
   .review-row-main,
@@ -2141,7 +2335,12 @@ textarea:focus-visible {
   .period-pickers,
   .active-filters,
   .transaction-filters,
-  .bulk-bar {
+  .bulk-bar,
+  .split-editor-actions,
+  .split-source-totals,
+  .split-source-totals div,
+  .split-totals,
+  .split-totals div {
     width: 100%;
   }
 
@@ -2201,6 +2400,19 @@ textarea:focus-visible {
 
   .bulk-controls {
     flex-direction: column;
+  }
+
+  .split-editor-header,
+  .split-source-totals,
+  .split-totals {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .split-editor-actions button,
+  .split-row button,
+  .split-undo-card button {
+    width: 100%;
   }
 
   .statement-card {

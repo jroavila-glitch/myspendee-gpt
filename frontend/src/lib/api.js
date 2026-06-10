@@ -48,6 +48,15 @@ export const api = {
   addTransaction: (body) => request('/transactions', { method: 'POST', body: JSON.stringify(body) }),
   updateTransaction: (id, body) => request(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
+  setAllocations: (id, transaction, allocations) => request(`/transactions/${id}/allocations`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      expected_amount_mxn: transaction.amount_mxn,
+      expected_type: transaction.type,
+      allocations,
+    }),
+  }),
+  clearAllocations: (id, category) => request(`/transactions/${id}/allocations?${new URLSearchParams({ category }).toString()}`, { method: 'DELETE' }),
   bulkUpdate: (body) => request('/transactions/bulk-update', { method: 'POST', body: JSON.stringify(body) }),
   bulkDelete: (body) => request('/transactions/bulk-delete', { method: 'POST', body: JSON.stringify(body) }),
   deleteStatement: (id) => request(`/statements/${id}`, { method: 'DELETE' }),

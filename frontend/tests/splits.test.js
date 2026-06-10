@@ -5,7 +5,13 @@ import {
   allocateByPercent,
   amountToPercent,
   buildSplitPayload,
+  createSplitModalState,
+  isSplitModalSaveValid,
+  isUndoSplitValid,
   percentToAmount,
+  updateSplitRowAmount,
+  updateSplitRowPercent,
+  updateUndoReplacementCategory,
   validateSplitRows,
 } from '../src/lib/splits.js'
 
@@ -147,4 +153,102 @@ test('builds split payload using MXN amount when original amount is unavailable'
       { category: 'Home', amount_mxn: 40, notes: null },
     ],
   })
+})
+
+test('opening an unsplit transaction creates two rows and assigns the second row the remainder', () => {
+  const state = createSplitModalState({
+    amount_mxn: '100.00',
+    amount_original: null,
+    category: 'Food & Drink',
+    type: 'expense',
+    allocations: [],
+  })
+
+  assert.equal(state.rows.length, 2)
+  assert.equal(state.rows[0].category, 'Food & Drink')
+  assert.equal(state.rows[0].amount, '')
+  assert.equal(state.rows[0].percent, '')
+  assert.equal(state.rows[1].amount, 100)
+  assert.equal(state.rows[1].percent, 100)
+})
+
+test('opening an existing split uses existing allocations', () => {
+  const state = createSplitModalState({
+    amount_mxn: '2000.00',
+    amount_original: '100.00',
+    category: 'Other',
+    type: 'expense',
+    allocations: [
+      { category: 'Groceries', amount_original: '60.00', amount_mxn: '1200.00', notes: 'Market' },
+      { category: 'Home', amount_original: '40.00', amount_mxn: '800.00', notes: null },
+    ],
+  })
+
+  assert.deepEqual(state.rows, [
+    { category: 'Groceries', amount: 60, percent: 60, notes: 'Market' },
+    { category: 'Home', amount: 40, percent: 40, notes: '' },
+  ])
+})
+
+test('editing amount updates percentage', () => {
+  const state = createSplitModalState({
+    amount_mxn: '100.00',
+    amount_original: null,
+    category: 'Other',
+    type: 'expense',
+  })
+
+  const updated = updateSplitRowAmount(state, 0, '25.00')
+
+  assert.equal(updated.rows[0].amount, 25)
+  assert.equal(updated.rows[0].percent, 25)
+})
+
+test('editing percentage updates amount', () => {
+  const state = createSplitModalState({
+    amount_mxn: '200.00',
+    amount_original: null,
+    category: 'Other',
+    type: 'expense',
+  })
+
+  const updated = updateSplitRowPercent(state, 0, '12.5')
+
+  assert.equal(updated.rows[0].percent, 12.5)
+  assert.equal(updated.rows[0].amount, 25)
+})
+
+test('save remains invalid until total reconciles', () => {
+  const state = createSplitModalState({
+    amount_mxn: '100.00',
+    amount_original: null,
+    category: 'Other',
+    type: 'expense',
+    allocations: [
+      { category: 'Groceries', amount_mxn: '60.00' },
+      { category: 'Home', amount_mxn: '40.00' },
+    ],
+  })
+
+  const unreconciled = updateSplitRowAmount(state, 1, '30.00')
+  assert.equal(isSplitModalSaveValid(unreconciled), false)
+
+  const reconciled = updateSplitRowAmount(unreconciled, 1, '40.00')
+  assert.equal(isSplitModalSaveValid(reconciled), true)
+})
+
+test('undo split requires a replacement category', () => {
+  const state = createSplitModalState({
+    amount_mxn: '100.00',
+    amount_original: null,
+    category: 'Other',
+    type: 'expense',
+    allocations: [
+      { category: 'Groceries', amount_mxn: '60.00' },
+      { category: 'Home', amount_mxn: '40.00' },
+    ],
+  })
+
+  assert.equal(isUndoSplitValid(state), false)
+  assert.equal(isUndoSplitValid(updateUndoReplacementCategory(state, 'Home')), true)
 })

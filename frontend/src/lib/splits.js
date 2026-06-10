@@ -24,6 +24,49 @@ function hasOriginalAmount(transaction) {
   return Number.isFinite(Number(transaction.amount_original))
 }
 
+function normalizeEditableAmount(value) {
+  if (value === '') return ''
+  return fromCents(toCents(value))
+}
+
+function normalizeEditablePercent(value) {
+  if (value === '') return ''
+  return fromCents(toCents(value))
+}
+
+function getSplitBasisAmount(transaction) {
+  return hasOriginalAmount(transaction) ? transaction.amount_original : transaction.amount_mxn
+}
+
+function getAllocationBasisAmount(transaction, allocation) {
+  return hasOriginalAmount(transaction) ? allocation.amount_original : allocation.amount_mxn
+}
+
+function withValidation(state) {
+  const validation = validateSplitRows(state.rows, state.total)
+  return {
+    ...state,
+    validation,
+    canSave: validation.valid,
+    canUndo: isUndoSplitValid(state),
+  }
+}
+
+function createRowFromAmount({ category = '', amount = '', notes = '', total }) {
+  const normalizedAmount = normalizeEditableAmount(amount)
+  return {
+    category,
+    amount: normalizedAmount,
+    percent: normalizedAmount === '' ? '' : amountToPercent(normalizedAmount, total),
+    notes: notes || '',
+  }
+}
+
+function updateRow(state, index, updater) {
+  const rows = state.rows.map((row, rowIndex) => (rowIndex === index ? updater(row) : row))
+  return withValidation({ ...state, rows })
+}
+
 export function amountToPercent(amount, total) {
   const totalCents = toCents(total)
   if (!totalCents) return 0
@@ -105,4 +148,91 @@ export function buildSplitPayload({ transaction, rows }) {
       notes: String(row.notes || '').trim() || null,
     })),
   }
+}
+
+export function createSplitModalState(transaction) {
+  const total = normalizeEditableAmount(getSplitBasisAmount(transaction))
+  const allocations = Array.isArray(transaction.allocations) ? transaction.allocations : []
+  const rows = allocations.length
+    ? allocations.map((allocation) => createRowFromAmount({
+      category: allocation.category,
+      amount: getAllocationBasisAmount(transaction, allocation),
+      notes: allocation.notes || '',
+      total,
+    }))
+    : [
+      createRowFromAmount({ category: transaction.category || '', amount: '', total }),
+      createRowFromAmount({ category: '', amount: total, total }),
+    ]
+
+  return withValidation({
+    total,
+    rows,
+    replacementCategory: '',
+    isExistingSplit: allocations.length > 0 || Boolean(transaction.is_split),
+  })
+}
+
+export function updateSplitRowAmount(state, index, amount) {
+  const normalizedAmount = normalizeEditableAmount(amount)
+  return updateRow(state, index, (row) => ({
+    ...row,
+    amount: normalizedAmount,
+    percent: normalizedAmount === '' ? '' : amountToPercent(normalizedAmount, state.total),
+  }))
+}
+
+export function updateSplitRowPercent(state, index, percent) {
+  const normalizedPercent = normalizeEditablePercent(percent)
+  return updateRow(state, index, (row) => ({
+    ...row,
+    percent: normalizedPercent,
+    amount: normalizedPercent === '' ? '' : percentToAmount(normalizedPercent, state.total),
+  }))
+}
+
+export function updateSplitRowCategory(state, index, category) {
+  return updateRow(state, index, (row) => ({ ...row, category }))
+}
+
+export function updateSplitRowNotes(state, index, notes) {
+  return updateRow(state, index, (row) => ({ ...row, notes }))
+}
+
+export function addSplitRow(state) {
+  return withValidation({
+    ...state,
+    rows: [...state.rows, createRowFromAmount({ total: state.total })],
+  })
+}
+
+export function removeSplitRow(state, index) {
+  return withValidation({
+    ...state,
+    rows: state.rows.filter((_, rowIndex) => rowIndex !== index),
+  })
+}
+
+export function applyFinalRowRemainder(state) {
+  const amounts = applyRemainder(state.total, state.rows.map((row) => row.amount))
+  return withValidation({
+    ...state,
+    rows: state.rows.map((row, index) => createRowFromAmount({
+      ...row,
+      amount: amounts[index],
+      total: state.total,
+    })),
+  })
+}
+
+export function updateUndoReplacementCategory(state, replacementCategory) {
+  return withValidation({ ...state, replacementCategory })
+}
+
+export function isSplitModalSaveValid(state) {
+  return validateSplitRows(state.rows, state.total).valid
+}
+
+export function isUndoSplitValid(state) {
+  return Boolean(state.isExistingSplit && String(state.replacementCategory || '').trim())
 }
