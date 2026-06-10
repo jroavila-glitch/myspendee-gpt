@@ -126,6 +126,9 @@ class TransactionRead(TransactionBase):
     created_at: datetime_type
     reviewed_at: datetime_type | None
     original_amount_display: str | None = None
+    allocations: list[TransactionAllocationRead] = Field(default_factory=list)
+    is_split: bool = False
+    allocation_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

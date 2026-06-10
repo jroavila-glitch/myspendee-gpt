@@ -19,12 +19,22 @@ from app.schemas.common import (
     TransactionBulkUpdate,
     TransactionBulkDelete,
     TransactionCreate,
+    TransactionAllocationsUpdate,
     TransactionRead,
     TransactionUpdate,
     UploadResult,
 )
 from app.schemas.insights import InsightsResponse
-from app.services.transactions import create_transaction, delete_statement, get_breakdown, get_summary, serialize_transaction, update_transaction
+from app.services.allocations import remove_allocations, replace_allocations
+from app.services.transactions import (
+    SplitTransactionMutationError,
+    create_transaction,
+    delete_statement,
+    get_breakdown,
+    get_summary,
+    serialize_transaction,
+    update_transaction,
+)
 from app.services.transactions import apply_transaction_filters
 from app.services.fx_rates import get_display_rates
 from app.services.insights import get_insights
@@ -182,9 +192,48 @@ def edit_transaction(transaction_id: UUID, payload: TransactionUpdate, db: Sessi
         raise HTTPException(status_code=404, detail="Transaction not found")
     try:
         transaction = update_transaction(db, transaction, payload)
+    except SplitTransactionMutationError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Duplicate transaction after update") from exc
+    return TransactionRead.model_validate(serialize_transaction(transaction))
+
+
+@app.put("/transactions/{transaction_id}/allocations", response_model=TransactionRead)
+def put_transaction_allocations(
+    transaction_id: UUID,
+    payload: TransactionAllocationsUpdate,
+    db: Session = Depends(get_db),
+) -> TransactionRead:
+    transaction = db.get(Transaction, transaction_id)
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    if transaction.amount_mxn != payload.expected_amount_mxn or transaction.type != payload.expected_type:
+        raise HTTPException(status_code=409, detail="Transaction changed since split editor opened")
+    try:
+        replace_allocations(db, transaction, payload.allocations)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return TransactionRead.model_validate(serialize_transaction(transaction))
+
+
+@app.delete("/transactions/{transaction_id}/allocations", response_model=TransactionRead)
+def delete_transaction_allocations(
+    transaction_id: UUID,
+    category: str = Query(...),
+    db: Session = Depends(get_db),
+) -> TransactionRead:
+    transaction = db.get(Transaction, transaction_id)
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    try:
+        transaction = remove_allocations(db, transaction, category)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return TransactionRead.model_validate(serialize_transaction(transaction))
 
 
@@ -203,6 +252,16 @@ def bulk_update(payload: TransactionBulkUpdate, db: Session = Depends(get_db)) -
     if not payload.ids:
         raise HTTPException(status_code=400, detail="No transactions selected")
     transactions = db.scalars(select(Transaction).where(Transaction.id.in_(payload.ids))).all()
+    split_update_conflict = any(
+        tx.allocations
+        and (
+            (payload.category is not None and tx.category != payload.category)
+            or (payload.type is not None and tx.type != payload.type)
+        )
+        for tx in transactions
+    )
+    if split_update_conflict:
+        raise HTTPException(status_code=409, detail="Split transactions cannot receive bulk category or type changes")
     for tx in transactions:
         has_meaningful_edit = False
         if payload.category:

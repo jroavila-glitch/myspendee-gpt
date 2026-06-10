@@ -8,8 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db import Base
-from app.models import Transaction
-from app.main import bulk_delete, bulk_update
+from app.models import Transaction, TransactionAllocation
+from app.main import bulk_delete, bulk_update, edit_transaction
 from app.schemas.common import TransactionBulkDelete, TransactionBulkUpdate, TransactionUpdate
 from app.services.transactions import update_transaction
 
@@ -40,6 +40,26 @@ class TransactionReviewTest(TestCase):
     def tearDown(self) -> None:
         self.db.close()
         self.engine.dispose()
+
+    def add_split_allocations(self, transaction: Transaction | None = None) -> Transaction:
+        split_transaction = transaction or self.transaction
+        split_transaction.allocations = [
+            TransactionAllocation(
+                category="Food & Drink",
+                amount_original=Decimal("1.00"),
+                amount_mxn=Decimal("20.00"),
+                position=0,
+            ),
+            TransactionAllocation(
+                category="Transport",
+                amount_original=Decimal("2.00"),
+                amount_mxn=Decimal("40.00"),
+                position=1,
+            ),
+        ]
+        self.db.commit()
+        self.db.refresh(split_transaction)
+        return split_transaction
 
     def test_manual_edit_marks_transaction_reviewed(self) -> None:
         updated = update_transaction(
@@ -121,6 +141,49 @@ class TransactionReviewTest(TestCase):
 
         self.assertEqual({"updated": 1}, result)
         self.assertIsNone(self.transaction.reviewed_at)
+
+    def test_amount_type_and_currency_edits_reject_split_transactions(self) -> None:
+        guarded_payloads = [
+            TransactionUpdate(amount_mxn=Decimal("61.00")),
+            TransactionUpdate(amount_original=Decimal("4.00")),
+            TransactionUpdate(currency_original="USD"),
+            TransactionUpdate(type="income"),
+        ]
+
+        for payload in guarded_payloads:
+            with self.subTest(payload=payload.model_dump(exclude_unset=True)):
+                split_transaction = self.add_split_allocations()
+                with self.assertRaises(HTTPException) as context:
+                    edit_transaction(split_transaction.id, payload, self.db)
+
+                self.assertEqual(409, context.exception.status_code)
+                self.db.rollback()
+
+    def test_bulk_category_or_type_change_rejects_selected_split_transactions(self) -> None:
+        split_transaction = self.add_split_allocations()
+
+        for payload in [
+            TransactionBulkUpdate(ids=[split_transaction.id], category="Food & Drink"),
+            TransactionBulkUpdate(ids=[split_transaction.id], type="income"),
+        ]:
+            with self.subTest(payload=payload.model_dump(exclude_unset=True)):
+                with self.assertRaises(HTTPException) as context:
+                    bulk_update(payload, self.db)
+
+                self.assertEqual(409, context.exception.status_code)
+                self.db.rollback()
+
+    def test_bulk_mark_reviewed_only_allows_selected_split_transactions(self) -> None:
+        split_transaction = self.add_split_allocations()
+
+        result = bulk_update(
+            TransactionBulkUpdate(ids=[split_transaction.id], reviewed=True),
+            self.db,
+        )
+        self.db.refresh(split_transaction)
+
+        self.assertEqual({"updated": 1}, result)
+        self.assertIsNotNone(split_transaction.reviewed_at)
 
     def test_bulk_delete_removes_selected_transactions(self) -> None:
         result = bulk_delete(

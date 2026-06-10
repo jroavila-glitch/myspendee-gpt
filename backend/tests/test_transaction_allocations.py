@@ -2,10 +2,13 @@ from datetime import date, datetime
 from decimal import Decimal
 from unittest import TestCase
 
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 from app.db import Base
+from app.main import app, get_db
 from app.models import Transaction, TransactionAllocation
 from app.schemas.common import TransactionAllocationInput
 from app.services.allocations import remove_allocations, replace_allocations, resolve_allocation_amounts
@@ -13,7 +16,11 @@ from app.services.allocations import remove_allocations, replace_allocations, re
 
 class TransactionAllocationTest(TestCase):
     def setUp(self) -> None:
-        self.engine = create_engine("sqlite+pysqlite:///:memory:")
+        self.engine = create_engine(
+            "sqlite+pysqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
 
         @event.listens_for(self.engine, "connect")
         def enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:
@@ -24,8 +31,11 @@ class TransactionAllocationTest(TestCase):
 
         Base.metadata.create_all(self.engine)
         self.db = Session(self.engine)
+        app.dependency_overrides[get_db] = lambda: self.db
+        self.client = TestClient(app)
 
     def tearDown(self) -> None:
+        app.dependency_overrides.clear()
         self.db.close()
         self.engine.dispose()
 
@@ -308,6 +318,58 @@ class TransactionAllocationTest(TestCase):
         self.assertEqual([Decimal("33.33"), Decimal("66.67")], [row.amount_mxn for row in replaced])
         self.assertEqual("Lunch", replaced[0].notes)
 
+    def test_put_allocations_replaces_split_and_serializes_allocations(self) -> None:
+        transaction = self.create_transaction(category="Other")
+
+        response = self.client.put(
+            f"/transactions/{transaction.id}/allocations",
+            json={
+                "expected_amount_mxn": "100.00",
+                "expected_type": "expense",
+                "allocations": [
+                    {"category": "Food & Drink", "amount_original": "40.00", "notes": "Lunch"},
+                    {"category": "Transport", "amount_original": "60.00"},
+                ],
+            },
+        )
+
+        self.assertEqual(200, response.status_code, response.text)
+        data = response.json()
+        self.assertTrue(data["is_split"])
+        self.assertEqual(2, data["allocation_count"])
+        self.assertEqual(["Food & Drink", "Transport"], [row["category"] for row in data["allocations"]])
+        self.assertEqual([0, 1], [row["position"] for row in data["allocations"]])
+        self.assertEqual("Lunch", data["allocations"][0]["notes"])
+
+    def test_put_allocations_rejects_stale_expected_amount_or_type(self) -> None:
+        stale_amount = self.create_transaction()
+        amount_response = self.client.put(
+            f"/transactions/{stale_amount.id}/allocations",
+            json={
+                "expected_amount_mxn": "99.99",
+                "expected_type": "expense",
+                "allocations": [
+                    {"category": "Food & Drink", "amount_original": "40.00"},
+                    {"category": "Transport", "amount_original": "60.00"},
+                ],
+            },
+        )
+        self.assertEqual(409, amount_response.status_code, amount_response.text)
+
+        stale_type = self.create_transaction()
+        type_response = self.client.put(
+            f"/transactions/{stale_type.id}/allocations",
+            json={
+                "expected_amount_mxn": "100.00",
+                "expected_type": "income",
+                "allocations": [
+                    {"category": "Food & Drink", "amount_original": "40.00"},
+                    {"category": "Transport", "amount_original": "60.00"},
+                ],
+            },
+        )
+        self.assertEqual(409, type_response.status_code, type_response.text)
+
     def test_replace_replaces_existing_allocations_atomically(self) -> None:
         transaction = self.create_transaction()
         replace_allocations(
@@ -385,3 +447,24 @@ class TransactionAllocationTest(TestCase):
         self.assertEqual([], updated.allocations)
         self.assertEqual(reviewed_at, updated.reviewed_at)
         self.assertEqual([], self.db.scalars(select(TransactionAllocation)).all())
+
+    def test_delete_allocations_returns_unsplit_reviewed_transaction(self) -> None:
+        transaction = self.create_transaction(category="Other")
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Food & Drink", amount_original="40.00"),
+                self.allocation("Transport", amount_original="60.00"),
+            ],
+        )
+
+        response = self.client.delete(f"/transactions/{transaction.id}/allocations?category=Home")
+
+        self.assertEqual(200, response.status_code, response.text)
+        data = response.json()
+        self.assertEqual("Home", data["category"])
+        self.assertFalse(data["is_split"])
+        self.assertEqual(0, data["allocation_count"])
+        self.assertEqual([], data["allocations"])
+        self.assertIsNotNone(data["reviewed_at"])

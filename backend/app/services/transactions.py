@@ -11,6 +11,10 @@ from app.services.classification import apply_special_description_rules, classif
 from app.services.normalization import normalize_bank_name, resolve_amounts
 
 
+class SplitTransactionMutationError(ValueError):
+    pass
+
+
 def _format_original_amount(amount_original: Decimal | None, currency: str, amount_mxn: Decimal, rate: Decimal | None) -> str | None:
     if currency == "MXN":
         return None
@@ -50,6 +54,20 @@ def serialize_transaction(transaction: Transaction) -> dict:
         transaction.amount_mxn,
         transaction.exchange_rate_used,
     )
+    allocations = sorted(transaction.allocations, key=lambda allocation: allocation.position)
+    payload["allocations"] = [
+        {
+            "id": allocation.id,
+            "category": allocation.category,
+            "amount_original": allocation.amount_original,
+            "amount_mxn": allocation.amount_mxn,
+            "notes": allocation.notes,
+            "position": allocation.position,
+        }
+        for allocation in allocations
+    ]
+    payload["allocation_count"] = len(allocations)
+    payload["is_split"] = bool(allocations)
     return payload
 
 
@@ -140,6 +158,15 @@ def create_transaction(db: Session, tx: TransactionCreate) -> Transaction:
 
 def update_transaction(db: Session, transaction: Transaction, payload: TransactionUpdate) -> Transaction:
     updated_values = payload.model_dump(exclude_unset=True)
+    guarded_fields = {"amount_mxn", "amount_original", "currency_original", "type"}
+    changed_guarded_fields = [
+        field
+        for field in guarded_fields
+        if field in updated_values and getattr(transaction, field) != updated_values[field]
+    ]
+    if transaction.allocations and changed_guarded_fields:
+        raise SplitTransactionMutationError("Split transactions cannot change total, type, currency, or original amount")
+
     reviewed = updated_values.pop("reviewed", None)
     has_meaningful_edit = any(
         key != "notes" and getattr(transaction, key) != value
