@@ -27,15 +27,15 @@ function getAllocationDisplayAmount(transaction, allocation, displayCurrency, di
   if (displayCurrency === originalCurrency && hasFiniteValue(allocation.amount_mxn) && hasFiniteValue(transaction.exchange_rate_used)) {
     return toNumber(allocation.amount_mxn) / toNumber(transaction.exchange_rate_used)
   }
+  if (hasFiniteValue(allocation.amount_mxn)) {
+    const fallbackRate = toNumber(displayRates[displayCurrency])
+    return fallbackRate ? toNumber(allocation.amount_mxn) / fallbackRate : null
+  }
   if (hasFiniteValue(allocation.amount_original) && hasFiniteValue(transaction.exchange_rate_used)) {
     const amountMxn = toNumber(allocation.amount_original) * toNumber(transaction.exchange_rate_used)
     if (displayCurrency === 'MXN') return amountMxn
     const fallbackRate = toNumber(displayRates[displayCurrency])
     return fallbackRate ? amountMxn / fallbackRate : null
-  }
-  if (hasFiniteValue(allocation.amount_mxn)) {
-    const fallbackRate = toNumber(displayRates[displayCurrency])
-    return fallbackRate ? toNumber(allocation.amount_mxn) / fallbackRate : null
   }
   return null
 }

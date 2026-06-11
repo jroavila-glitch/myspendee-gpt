@@ -221,6 +221,30 @@ test('builds display analytics with split breakdowns without duplicating source 
   ])
 })
 
+test('builds split breakdowns from canonical allocation amounts for third-currency display', () => {
+  const analytics = buildDisplayAnalytics([
+    {
+      id: 'split-usd',
+      type: 'expense',
+      amount_mxn: 1999.9,
+      amount_original: 100,
+      currency_original: 'USD',
+      exchange_rate_used: 20,
+      category: 'Other',
+      allocations: [
+        { category: 'Groceries', amount_original: 50, amount_mxn: 1000 },
+        { category: 'Home', amount_original: 50, amount_mxn: 999.9 },
+      ],
+    },
+  ], 'EUR', { MXN: 1, EUR: 10, USD: 20 })
+
+  assert.deepEqual(analytics.summary, { income: 0, expenses: 199.99, net: -199.99 })
+  assert.deepEqual(analytics.breakdown.expenses, [
+    { category: 'Groceries', type: 'expense', total: 100, count: 1 },
+    { category: 'Home', type: 'expense', total: 99.99, count: 1 },
+  ])
+})
+
 test('derives savings-rate previous and average comparisons from insights', () => {
   const comparison = buildSavingsRateComparison({
     income: { current: 2000, previous: 1000, average: 800 },
