@@ -98,7 +98,8 @@ Additional ignore behavior:
 - `Implemented`: Restaurant and cafe merchants like `FERTONANI CAFE`, `RC SANCHES`, `PANDORCA`, `ENJOY VALUE`, `FEITO PORTUGAL`, `ASUR C CONV SHOP`, `ZHANG YUEMEI`, and similar variants -> `Food & Drink`
 - `Implemented`: `BOLT`, `UBR`, `UBER` without EATS, `LIME` -> `Transport`
 - `Implemented`: `CONTINENTE`, `PINGO DOCE`, `CELEIRO`, `GLEBA`, `PAGOS FIJOS`, `EL CORTE INGLES`, `LIDL` -> `Groceries`
-- `Implemented`: `TENNIS SHOP`, `DECATHLON`, `CLUBE INTERNACIONAL`, `CAMARA LISBOA CLUBE LISBOA`, `TENNIS POINT`, `TP* TENNIS-POINT` -> `Tennis`
+- `Implemented`: `TENNIS SHOP`, `DECATHLON`, `CLUBE INTERNACIONAL`, `TENNIS POINT`, `TP* TENNIS-POINT` -> `Tennis`
+- `Implemented`: `COMPRA CAMARA LISBOA`, `CAMARA LISBOA CLUBE LISBOA`, `COMPRA CÂMARA LISBOA`, and close variants for Monsanto court bookings -> `Monsanto courts`
 - `Implemented`: `AMAZON` or `AMZN` except the ignored `149 MXN` case -> `Home`
 - `Implemented`: `ALMITAS INC INVEST` -> `Rent`
 - `Implemented`: `GONCALO DE CAMPOS MELO` transfers on Revolut -> `Rent`

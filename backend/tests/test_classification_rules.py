@@ -226,6 +226,23 @@ class ClassificationRulesTest(TestCase):
                 )
                 self.assertEqual(("expense", "Travel"), (tx_type, category))
 
+    def test_monsanto_court_variants_are_monsanto_courts(self) -> None:
+        for description in [
+            "COMPRA CAMARA LISBOA",
+            "CAMARA LISBOA CLUBE LISBOA",
+            "Compra Câmara Lisboa",
+        ]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("420"),
+                    bank_name="Millennium",
+                    amount_original=Decimal("20"),
+                    currency_original="EUR",
+                    current_type="expense",
+                )
+                self.assertEqual(("expense", "Monsanto courts"), (tx_type, category))
+
     def test_apple_399_gets_gpt_rename(self) -> None:
         description, _ = apply_special_description_rules(
             "Apple.Com/Bill",
@@ -233,3 +250,13 @@ class ClassificationRulesTest(TestCase):
             "Oro Banamex",
         )
         self.assertEqual("GPT - Servicio Apple.Com/Bill", description)
+
+    def test_monsanto_court_variants_get_monsanto_prefix(self) -> None:
+        for raw_description in ["COMPRA CAMARA LISBOA", "CAMARA LISBOA CLUBE LISBOA"]:
+            with self.subTest(raw_description=raw_description):
+                description, _ = apply_special_description_rules(
+                    raw_description,
+                    Decimal("420"),
+                    "Millennium",
+                )
+                self.assertEqual(f"Monsanto - {raw_description}", description)

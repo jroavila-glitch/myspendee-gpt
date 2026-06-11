@@ -54,6 +54,7 @@ textarea {
 button {
   border: 0;
   cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
 input,
@@ -65,6 +66,26 @@ textarea {
   border-radius: 14px;
   padding: 0.82rem 0.95rem;
   color: var(--text);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+select {
+  cursor: pointer;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+select:not(:disabled):hover,
+input:not(:disabled):hover,
+textarea:not(:disabled):hover {
+  border-color: rgba(95, 84, 247, 0.22);
+  box-shadow: 0 0 0 3px rgba(95, 84, 247, 0.045);
 }
 
 input::placeholder,
@@ -159,6 +180,14 @@ h3 {
   background: var(--purple);
   color: white;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.tabs button:not(.active):hover,
+.accent-button:hover,
+.upload-button:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
 }
 
 .accent-button,
@@ -426,6 +455,18 @@ h3 {
 }
 
 .ghost-button.danger {
+  color: var(--red);
+}
+
+.ghost-button:hover {
+  border-color: rgba(95, 84, 247, 0.2);
+  background: var(--purple-soft);
+  box-shadow: 0 8px 18px rgba(30, 36, 64, 0.06);
+}
+
+.ghost-button.danger:hover {
+  border-color: rgba(207, 74, 73, 0.18);
+  background: var(--red-soft);
   color: var(--red);
 }
 
@@ -857,7 +898,8 @@ h3 {
 }
 
 .transaction-row:hover {
-  background: rgba(95, 84, 247, 0.018);
+  background: rgba(95, 84, 247, 0.026);
+  box-shadow: inset 3px 0 0 rgba(95, 84, 247, 0.24);
 }
 
 .density-compact .transaction-row {
@@ -1164,6 +1206,7 @@ h3 {
 .icon-button:hover {
   border-color: rgba(111, 72, 255, 0.22);
   background: var(--purple-soft);
+  box-shadow: 0 8px 18px rgba(30, 36, 64, 0.06);
 }
 
 .menu-backdrop {
@@ -1568,12 +1611,22 @@ h3 {
   font-weight: 700;
 }
 
+.bulk-apply:not(:disabled):hover {
+  background: #222a48;
+  box-shadow: 0 10px 22px rgba(24, 31, 56, 0.18);
+}
+
 .bulk-reviewed {
   border-radius: 10px;
   padding: 0.68rem 0.9rem;
   background: var(--green);
   color: white;
   font-weight: 700;
+}
+
+.bulk-reviewed:not(:disabled):hover {
+  background: #217f63;
+  box-shadow: 0 10px 22px rgba(27, 139, 103, 0.18);
 }
 
 .bulk-controls .danger {

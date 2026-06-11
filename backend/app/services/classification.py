@@ -48,7 +48,8 @@ EXPENSE_RULES = [
     ),
     (r"BOLT|BOLT\.EU|UBR|UBER(?!.*EATS)|UBER \*ONE MEMBERSHI|LIME", "Transport"),
     (r"CONTINENTE|PINGO DOCE|CELEIRO|GLEBA|PAGOS FIJOS|EL CORTE INGLES|LIDL", "Groceries"),
-    (r"TENNIS SHOP|DECATHLON|CLUBE INTERNACIONAL|CAMARA LISBOA CLUBE LISBOA|TENNIS POINT|TP\* TENNIS-POINT", "Tennis"),
+    (r"COMPRA\s+CAMARA\s+LISBOA|CAMARA\s+LISBOA\s+CLUBE\s+LISBOA", "Monsanto courts"),
+    (r"TENNIS SHOP|DECATHLON|CLUBE INTERNACIONAL|TENNIS POINT|TP\* TENNIS-POINT", "Tennis"),
     (r"APARECIDA FERNANDA|AMAZON|AMZN", "Home"),
     (r"ALMITAS INC INVEST|GONCALO DE CAMPOS MELO", "Rent"),
     (r"RITUALS|GBMD.+MEDICINA|TRF MB WAY P/ FERNANDO ALVES|TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES|TRANSFER TO FERNANDO MOTA", "Healthcare"),
@@ -100,7 +101,10 @@ def apply_special_description_rules(description: str, amount_mxn: Decimal, bank_
         or "TRF P/ INES GARDETE LEMOS" in normalized
     ) and not normalized.startswith("BRIAN -"):
         return f"Brian - {description}", notes
-    if "CAMARA LISBOA CLUBE LISBOA" in normalized and not normalized.startswith("MONSANTO -"):
+    if (
+        "COMPRA CAMARA LISBOA" in normalized
+        or "CAMARA LISBOA CLUBE LISBOA" in normalized
+    ) and not normalized.startswith("MONSANTO -"):
         return f"Monsanto - {description}", notes
     if "BONIFIC" in normalized and bank_name.lower().startswith("rappi"):
         return "RappiCard - BONIFICACIÓN CON CASHBACK", notes

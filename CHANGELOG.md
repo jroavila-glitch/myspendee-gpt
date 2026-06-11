@@ -57,6 +57,7 @@ It should not include tiny style tweaks or trivial wording changes. It should in
   with responsive global filters and hardened asynchronous/FX state handling
 
 - Added `Tennis Rush` income classification for exact EUR 25 Millennium/Revolut income and amount-aware Clube VII/Unitenis expense classification
+- Added `Monsanto courts` expense classification for Câmara Lisboa / Monsanto court booking transactions
 
 - Renamed the Vercel frontend project to `moneoapp`, deployed the Moneo identity, and retired the previous production alias
 

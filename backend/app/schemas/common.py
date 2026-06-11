@@ -28,6 +28,7 @@ EXPENSE_CATEGORIES = [
     "Groceries",
     "Food & Drink",
     "Tennis",
+    "Monsanto courts",
     "Car",
     "Transport",
     "IG Ro Project",
