@@ -34,7 +34,8 @@
 2. Confirm parser/rules changes have fixture coverage when possible
 3. For schema changes, run `alembic upgrade head` against the target database
    before deploying code that requires the new schema
-4. Deploy to Railway
+4. Deploy to Railway from the backend app root. From the repo root, use:
+   `railway up ./backend --path-as-root --service backend --detach`
 5. Smoke test:
    - `/health`
    - `/banks`
