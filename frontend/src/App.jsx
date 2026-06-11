@@ -31,7 +31,7 @@ function dedupeCategories(categories) {
   return Array.from(new Set([...categories.expense, ...categories.income]))
 }
 
-function Modal({ title, children, onClose, className = '' }) {
+function Modal({ title, children, onClose, className = '', closeDisabled = false }) {
   const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -48,6 +48,7 @@ function Modal({ title, children, onClose, className = '' }) {
       if (event.defaultPrevented) return
       if (event.key === 'Escape') {
         event.preventDefault()
+        if (closeDisabled) return
         onCloseRef.current()
         return
       }
@@ -78,14 +79,14 @@ function Modal({ title, children, onClose, className = '' }) {
       window.removeEventListener('keydown', handleKeyDown)
       if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) previouslyFocused.focus()
     }
-  }, [])
+  }, [closeDisabled])
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={closeDisabled ? undefined : onClose}>
       <div ref={dialogRef} className={`modal-card ${className}`} role="dialog" aria-modal="true" aria-label={title} tabIndex="-1" onClick={(event) => event.stopPropagation()}>
         <div className="panel-header">
           <h3>{title}</h3>
-          <button ref={closeButtonRef} className="ghost-button" onClick={onClose}>Close</button>
+          <button ref={closeButtonRef} className="ghost-button" disabled={closeDisabled} onClick={onClose}>Close</button>
         </div>
         {children}
       </div>
@@ -208,6 +209,7 @@ function App() {
   const [menuState, setMenuState] = useState(null)
   const [editingTransaction, setEditingTransaction] = useState(null)
   const [splittingTransaction, setSplittingTransaction] = useState(null)
+  const [splitSubmitPending, setSplitSubmitPending] = useState(false)
   const [returnToReviewModal, setReturnToReviewModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -418,6 +420,7 @@ function App() {
   }
 
   function closeSplitModal() {
+    if (splitSubmitPending) return
     setSplittingTransaction(null)
     if (returnToReviewModal) setShowReviewModal(true)
     setReturnToReviewModal(false)
@@ -430,6 +433,7 @@ function App() {
       setShowReviewModal(false)
       setReturnToReviewModal(true)
     }
+    setSplitSubmitPending(false)
     setSplittingTransaction(transaction)
   }
 
@@ -780,11 +784,12 @@ function App() {
       ) : null}
 
       {splittingTransaction ? (
-        <Modal title={splittingTransaction.is_split ? 'Edit Split' : 'Split Transaction'} className="split-modal-card" onClose={closeSplitModal}>
+        <Modal title={splittingTransaction.is_split ? 'Edit Split' : 'Split Transaction'} className="split-modal-card" onClose={closeSplitModal} closeDisabled={splitSubmitPending}>
           <SplitTransactionModal
             transaction={splittingTransaction}
             categories={categories}
             onCancel={closeSplitModal}
+            onSubmittingChange={setSplitSubmitPending}
             onSave={async (rows) => {
               const payload = buildSplitPayload({ transaction: splittingTransaction, rows })
               await api.setAllocations(splittingTransaction.id, splittingTransaction, payload.allocations)

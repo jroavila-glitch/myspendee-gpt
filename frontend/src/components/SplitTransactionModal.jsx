@@ -36,7 +36,7 @@ function getSplitBasisCurrency(transaction) {
   return transaction.amount_original != null && transaction.amount_original !== '' ? transaction.currency_original || 'MXN' : 'MXN'
 }
 
-export default function SplitTransactionModal({ transaction, categories, onCancel, onSave, onUndo }) {
+export default function SplitTransactionModal({ transaction, categories, onCancel, onSave, onUndo, onSubmittingChange }) {
   const [state, setState] = useState(() => createSplitModalState(transaction))
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -50,7 +50,12 @@ export default function SplitTransactionModal({ transaction, categories, onCance
     setState(createSplitModalState(transaction))
     setSubmitError('')
     setIsSubmitting(false)
+    onSubmittingChange?.(false)
   }, [transaction])
+
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting)
+  }, [isSubmitting, onSubmittingChange])
 
   async function handleSave(event) {
     event.preventDefault()
