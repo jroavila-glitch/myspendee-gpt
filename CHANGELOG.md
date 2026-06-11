@@ -17,6 +17,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
   transaction date. Only the monthly rent charge with original amount exactly
   600 EUR is shifted: days 28+ are suggested for the next month, while days
   1-3 stay in the current transaction month.
+- Added statement-level import audit warnings, starting with ARQ checks for
+  skipped date-like transaction blocks and raw `Almitas Inc Invest` mentions
+  that do not become parsed transactions.
 - Fixed transaction edit handling so metadata-only edits and explicit manual
   amount corrections do not unexpectedly re-normalize historical FX amounts.
 

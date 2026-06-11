@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,6 +23,7 @@ class Statement(Base):
     period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     transaction_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     ignored_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    audit_warnings: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     transactions: Mapped[list["Transaction"]] = relationship(

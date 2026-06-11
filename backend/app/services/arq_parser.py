@@ -164,10 +164,15 @@ def parse_arq_pdf(pdf_bytes: bytes) -> dict | None:
 
     statement_year = int(period_start[:4]) if period_start else date.today().year
     transactions: list[dict] = []
+    audit_warnings: list[str] = []
+    unparsed_blocks: list[str] = []
 
-    for block in _parse_blocks(section):
+    blocks = _parse_blocks(section)
+    for block in blocks:
         match = ROW_RE.match(block)
         if not match:
+            if BLOCK_START_RE.match(block):
+                unparsed_blocks.append(block)
             continue
 
         amount = _parse_money(match.group("amount"))
@@ -196,9 +201,30 @@ def parse_arq_pdf(pdf_bytes: bytes) -> dict | None:
             }
         )
 
+    if unparsed_blocks:
+        preview = "; ".join(unparsed_blocks[:3])
+        audit_warnings.append(f"ARQ parser skipped {len(unparsed_blocks)} date-like transaction block(s): {preview}")
+
+    raw_almitas_count = len(re.findall(r"ALMITAS\s+INC\s+INVEST", text, flags=re.IGNORECASE))
+    parsed_almitas_count = sum(
+        1
+        for transaction in transactions
+        if re.search(
+            r"ALMITAS\s+INC\s+INVEST",
+            " ".join(str(transaction.get(key) or "") for key in ["description", "notes"]),
+            flags=re.IGNORECASE,
+        )
+    )
+    if raw_almitas_count > parsed_almitas_count:
+        audit_warnings.append(
+            "ARQ raw text mentions Almitas "
+            f"{raw_almitas_count} time(s) but only {parsed_almitas_count} Almitas transaction row(s) were parsed."
+        )
+
     return {
         "bank_name": "ARQ",
         "period_start": period_start,
         "period_end": period_end,
         "transactions": transactions,
+        "audit_warnings": audit_warnings,
     }

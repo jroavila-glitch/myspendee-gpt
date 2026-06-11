@@ -76,3 +76,34 @@ class UploadRulesTest(TestCase):
         self.assertEqual(2, statement.ignored_count)
         self.assertTrue(fake_db.committed)
         self.assertFalse(fake_db.rolled_back)
+
+    def test_persists_statement_audit_warnings(self) -> None:
+        fake_db = FakeSession()
+        extracted = {
+            "bank_name": "ARQ",
+            "period_start": "2026-03-01",
+            "period_end": "2026-03-31",
+            "audit_warnings": ["ARQ raw text mentions Almitas 2 times but only 1 rent row was parsed."],
+            "transactions": [
+                {
+                    "date": "2026-03-03",
+                    "description": "Venta EURc - Almitas Inc Invest E Consu Lda",
+                    "amount_original": 2200,
+                    "currency_original": "EUR",
+                    "local_mxn": None,
+                    "exchange_rate": 20.5,
+                    "category": "Rent",
+                    "type": "expense",
+                    "notes": "Almitas Inc Invest E Consu Lda",
+                },
+            ],
+        }
+
+        with (
+            patch("app.services.upload.extract_transactions_from_pdf", return_value=extracted),
+            patch("app.services.upload.duplicate_exists", return_value=False),
+            patch("app.services.normalization.get_banxico_rate", return_value=20.5),
+        ):
+            statement, _inserted, _skipped = process_uploaded_statement(fake_db, "EUR_ARQ Statement - 2026-03.pdf", b"pdf")
+
+        self.assertEqual(extracted["audit_warnings"], statement.audit_warnings)

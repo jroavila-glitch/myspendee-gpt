@@ -183,6 +183,9 @@ Additional ignore behavior:
 - `Implemented`: ARQ transactions continued on later PDF pages are parsed after first-page summaries and footers
 - `Implemented`: Foreign account-currency values are not copied directly into `amount_mxn`
 - `Implemented`: `Conversión USDc a EURc` and similar conversions are ignored
+- `Implemented`: ARQ imports store audit warnings when date-like transaction
+  blocks are skipped or when raw extracted text mentions `Almitas Inc Invest`
+  more times than parsed transactions.
 - `Implemented`: Roommate transfers should be ignored from P&L
 - `Implemented`: First dashboard version includes a `Rent & Roommates` panel driven by imported transactions
 - `Pending`: Roommate panel should evolve into a fuller reconciliation view for rent and utilities

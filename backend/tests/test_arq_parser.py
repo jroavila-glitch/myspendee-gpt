@@ -39,6 +39,32 @@ class ArqParserTest(TestCase):
         self.assertTrue(any("PAUL PITTERLEIN" in note.upper() for note in notes if note))
         self.assertTrue(any("Almitas Inc Invest" in note for note in notes if note))
 
+    def test_parses_month_end_almitas_rent_row(self) -> None:
+        text = self._load_fixture("eur_arq_2026_02.txt").replace(
+            "Feb 28 Compra EURc + 210 EUR + 210 FILIP MAREK OLECHOWSKI",
+            "Mar 31 Venta EURc - 2,200 EUR - 2,200 Almitas Inc Invest E Consu Lda",
+        ).replace("1 February 2026", "1 March 2026").replace("28 February", "31 March")
+        with patch("app.services.arq_parser._extract_text", return_value=text):
+            parsed = parse_arq_pdf(b"stub")
+
+        assert parsed is not None
+        rent = next(item for item in parsed["transactions"] if item["date"] == "2026-03-31")
+        self.assertEqual("Venta EURc - Almitas Inc Invest E Consu Lda", rent["description"])
+        self.assertEqual(2200.0, rent["amount_original"])
+        self.assertEqual("out", rent["direction"])
+
+    def test_warns_when_almitas_text_is_not_parsed_as_transaction(self) -> None:
+        text = self._load_fixture("eur_arq_2026_02.txt").replace(
+            "Feb 28 Compra EURc + 210 EUR + 210 FILIP MAREK OLECHOWSKI",
+            "Mar 31 Venta EURc - 2,200 EUR Almitas Inc Invest E Consu Lda",
+        )
+        with patch("app.services.arq_parser._extract_text", return_value=text):
+            parsed = parse_arq_pdf(b"stub")
+
+        assert parsed is not None
+        warnings = parsed.get("audit_warnings", [])
+        self.assertTrue(any("Almitas" in warning for warning in warnings))
+
     def test_parses_usd_arq_statement_with_mxn_equivalent_when_present(self) -> None:
         with patch("app.services.arq_parser._extract_text", return_value=self._load_fixture("usd_arq_2026_01.txt")):
             parsed = parse_arq_pdf(b"stub")

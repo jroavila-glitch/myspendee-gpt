@@ -22,6 +22,7 @@ def process_uploaded_statement(db: Session, filename: str, pdf_bytes: bytes) -> 
         bank_name=normalized_bank_name,
         period_start=date.fromisoformat(extracted["period_start"]) if extracted.get("period_start") else None,
         period_end=date.fromisoformat(extracted["period_end"]) if extracted.get("period_end") else None,
+        audit_warnings=extracted.get("audit_warnings") or [],
         transaction_count=0,
         ignored_count=0,
     )
