@@ -38,6 +38,10 @@ function getAllocationDisplayTransaction(transaction, allocation) {
   }
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}
+
 function AllocationSummary({ transaction, displayCurrency, displayRates }) {
   const allocations = getAllocations(transaction)
   if (!allocations.length) return null
@@ -68,8 +72,11 @@ function TransactionMenu({ id, splitLabel, onEdit, onSplit, onDelete, onMarkRevi
   }
 
   if (!anchorRect) return null
+  const menuWidth = 184
+  const viewportPadding = 12
   const top = anchorRect.bottom + window.scrollY + 8
-  const left = anchorRect.right + window.scrollX - 184
+  const maxLeft = window.scrollX + window.innerWidth - menuWidth - viewportPadding
+  const left = clamp(anchorRect.right + window.scrollX - menuWidth, window.scrollX + viewportPadding, maxLeft)
 
   return createPortal(
     <>
@@ -240,14 +247,23 @@ export default function TransactionTable({
             </div>
 
             <div className="transaction-notes">
-              <input
-                className="notes-input"
-                value={notesDrafts[transaction.id] ?? ''}
-                placeholder="Add a note"
-                onBlur={(event) => onNotesBlur(transaction, event.target.value)}
-                onChange={(event) => onNotesChange(transaction, event.target.value)}
-              />
-              {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
+              {transaction.drilldown_category ? (
+                <>
+                  {transaction.drilldown_notes ? <span className="allocation-note">Allocation note: {transaction.drilldown_notes}</span> : null}
+                  <span className="row-meta">Source note editing is available from Edit.</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    className="notes-input"
+                    value={notesDrafts[transaction.id] ?? ''}
+                    placeholder="Add a note"
+                    onBlur={(event) => onNotesBlur(transaction, event.target.value)}
+                    onChange={(event) => onNotesChange(transaction, event.target.value)}
+                  />
+                  {savingNotesIds.includes(transaction.id) ? <span className="row-meta">Saving…</span> : null}
+                </>
+              )}
             </div>
 
             <div className="actions-cell">

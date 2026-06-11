@@ -132,7 +132,7 @@ test('filters split transaction drilldowns by allocation category with allocatio
     description: 'Big store run',
     allocations: [
       { category: 'Groceries', amount_mxn: 60 },
-      { category: 'Home', amount_mxn: 40 },
+      { category: 'Home', amount_mxn: 40, notes: 'lamp shade' },
     ],
   }
 
@@ -147,6 +147,7 @@ test('filters split transaction drilldowns by allocation category with allocatio
   assert.equal(results[0].category, 'Other')
   assert.equal(results[0].drilldown_category, 'Home')
   assert.equal(results[0].drilldown_amount_mxn, 40)
+  assert.equal(results[0].drilldown_notes, 'lamp shade')
   assert.equal(results[0].source_amount_mxn, 100)
 })
 
