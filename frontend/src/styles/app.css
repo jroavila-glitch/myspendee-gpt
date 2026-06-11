@@ -858,7 +858,7 @@ h3 {
 .transaction-head,
 .transaction-row {
   display: grid;
-  grid-template-columns: 36px minmax(300px, 2fr) minmax(138px, 0.9fr) minmax(140px, 0.82fr) minmax(220px, 1fr) 40px;
+  grid-template-columns: 36px minmax(300px, 2fr) minmax(138px, 0.9fr) minmax(140px, 0.82fr) minmax(220px, 1fr) minmax(110px, auto);
   gap: 0.65rem;
   align-items: center;
 }
@@ -1188,7 +1188,16 @@ h3 {
 
 .actions-cell {
   display: flex;
+  align-items: center;
+  gap: 0.42rem;
   justify-content: flex-end;
+}
+
+.row-split-action {
+  white-space: nowrap;
+  padding: 0.46rem 0.62rem;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .icon-button {

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from '../lib/currency'
 import { getTransactionReviewReasons } from '../lib/dashboard'
+import { canSplitTransaction, getSplitActionLabel, isSplitTransaction } from '../lib/transactions'
 
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 
@@ -24,10 +25,6 @@ function ReviewBadge({ transaction }) {
 
 function getAllocations(transaction) {
   return Array.isArray(transaction.allocations) ? transaction.allocations : []
-}
-
-function isSplitTransaction(transaction) {
-  return Boolean(transaction.is_split) || getAllocations(transaction).length > 0
 }
 
 function getAllocationDisplayTransaction(transaction, allocation) {
@@ -197,8 +194,11 @@ export default function TransactionTable({
       </div>
 
       <div className="transaction-list">
-        {transactions.map((transaction) => (
-          <div key={transaction.id} className="transaction-row transaction-grid">
+        {transactions.map((transaction) => {
+          const splitAction = onSplit && canSplitTransaction(transaction)
+          const splitLabel = getSplitActionLabel(transaction)
+          return (
+            <div key={transaction.id} className="transaction-row transaction-grid">
             <div className="transaction-check">
               <input aria-label={`Select ${transaction.description}`} type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => onToggleSelected(transaction.id)} />
             </div>
@@ -267,6 +267,15 @@ export default function TransactionTable({
             </div>
 
             <div className="actions-cell">
+              {splitAction ? (
+                <button
+                  type="button"
+                  className="ghost-button row-split-action"
+                  onClick={() => onSplit(transaction)}
+                >
+                  {splitLabel}
+                </button>
+              ) : null}
               <button
                 aria-label={`Actions for ${transaction.description}`}
                 aria-haspopup="menu"
@@ -284,15 +293,16 @@ export default function TransactionTable({
                   returnFocus={menuState.target}
                   onClose={onMenuClose}
                   onEdit={() => onEdit(transaction)}
-                  splitLabel={isSplitTransaction(transaction) ? 'Edit split' : 'Split transaction'}
-                  onSplit={onSplit && ['income', 'expense'].includes(transaction.type) ? () => onSplit(transaction) : null}
+                  splitLabel={splitLabel}
+                  onSplit={splitAction ? () => onSplit(transaction) : null}
                   onMarkReviewed={onMarkReviewed ? () => onMarkReviewed(transaction.id) : null}
                   onDelete={() => onDelete(transaction.id)}
                 />
               ) : null}
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {transactions.length === 0 ? (
           <div className="empty-list">

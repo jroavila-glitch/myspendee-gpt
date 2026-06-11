@@ -196,6 +196,8 @@ Additional ignore behavior:
 - `Implemented`: Transactions shown by Dashboard category/type drilldowns can
   be selected, edited, bulk changed, or bulk deleted directly from the
   matching-transactions list.
+- `Implemented`: Any visible income or expense transaction row can open Split
+  or Edit split, whether or not it is currently in the Review queue.
 - `Implemented`: A single income or expense transaction can be split across
   two or more unique same-type categories while remaining one source bank
   record.
