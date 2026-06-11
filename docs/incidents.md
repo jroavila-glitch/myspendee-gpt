@@ -48,3 +48,20 @@ Each entry should answer:
     balance-validated
   - keep a regression fixture for adjacent income and expense transfers
   - audit and re-import existing Millennium statements after explicit approval
+
+## 2026-06-11: Railway Railpack Python Default Failed Backend Deploy
+
+- Impact: the first split-transactions backend deploy failed during image
+  build. A follow-up deploy briefly returned 502 while the app was still
+  starting, and an over-eager removal of that deployment caused a short
+  `Application not found` window before the backend was redeployed.
+- Root cause: Railpack selected Python `3.13.14` by default, but the builder
+  had no precompiled Python for that version. The manual health check was run
+  before Uvicorn had finished starting.
+- Resolution: pinned the backend Railway runtime with `backend/.python-version`
+  set to `3.12`, redeployed the backend, confirmed Alembic migration
+  `20260610_0003 -> 20260610_0004`, and verified production health.
+- Prevention:
+  - keep the Railway Python runtime pinned in repo
+  - wait for both Railway `SUCCESS` and Uvicorn startup logs before smoke tests
+  - avoid removing a successful deployment until logs prove the app is stuck
