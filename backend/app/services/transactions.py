@@ -208,8 +208,13 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
         key != "notes" and getattr(transaction, key) != value
         for key, value in updated_values.items()
     )
+    amount_fields = {"amount_mxn", "amount_original", "currency_original", "exchange_rate_used"}
+    amount_fields_edited = bool(amount_fields & updated_values.keys())
     raw_data = serialize_transaction(transaction) | updated_values
     prepared = prepare_transaction_data(raw_data)
+    if not amount_fields_edited:
+        for field in amount_fields:
+            prepared[field] = getattr(transaction, field)
     # Edits from the dashboard are intentional overrides. The normalization
     # pipeline may still recompute amounts/dates, but it should not reclassify
     # a category/type the user explicitly selected in the edit modal.

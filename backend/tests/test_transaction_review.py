@@ -69,6 +69,25 @@ class TransactionReviewTest(TestCase):
         )
         self.assertIsNotNone(updated.reviewed_at)
 
+    def test_metadata_edit_preserves_existing_amount_fields(self) -> None:
+        self.transaction.description = "Transfer to GONCALO DE CAMPOS MELO ANDREA MOUTINHO DE ALME"
+        self.transaction.amount_original = Decimal("36.67")
+        self.transaction.amount_mxn = Decimal("2365.50")
+        self.transaction.exchange_rate_used = Decimal("21.500000")
+        self.transaction.category = "Rent"
+        self.db.commit()
+        self.db.refresh(self.transaction)
+
+        updated = update_transaction(
+            self.db,
+            self.transaction,
+            TransactionUpdate(assigned_month=3, assigned_year=2026),
+        )
+
+        self.assertEqual(Decimal("36.67"), updated.amount_original)
+        self.assertEqual(Decimal("2365.50"), updated.amount_mxn)
+        self.assertEqual(Decimal("21.500000"), updated.exchange_rate_used)
+
     def test_notes_only_edit_does_not_mark_transaction_reviewed(self) -> None:
         updated = update_transaction(
             self.db,
