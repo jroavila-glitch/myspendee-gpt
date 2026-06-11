@@ -260,7 +260,7 @@ class TransactionReviewTest(TestCase):
         self.assertEqual(6, prepared["assigned_month"])
         self.assertEqual(2026, prepared["assigned_year"])
 
-    def test_rent_paid_at_start_of_month_is_assigned_to_previous_month(self) -> None:
+    def test_rent_paid_at_start_of_month_stays_in_current_month(self) -> None:
         prepared = prepare_transaction_data({
             "date": date(2026, 7, 1),
             "description": "ALMITAS INC INVEST",
@@ -274,7 +274,7 @@ class TransactionReviewTest(TestCase):
 
         self.assertEqual(7, prepared["month"])
         self.assertEqual(2026, prepared["year"])
-        self.assertEqual(6, prepared["assigned_month"])
+        self.assertEqual(7, prepared["assigned_month"])
         self.assertEqual(2026, prepared["assigned_year"])
 
     def test_month_summary_uses_assigned_month_for_rent(self) -> None:

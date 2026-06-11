@@ -107,8 +107,8 @@ Additional ignore behavior:
 - `Implemented`: `ALMITAS INC INVEST` -> `Rent`
 - `Implemented`: `GONCALO DE CAMPOS MELO` transfers on Revolut -> `Rent`
 - `Implemented`: Rent expenses paid near month boundaries get an assigned
-  reporting month suggestion: day `28+` maps to the next month, and day `1-3`
-  maps to the previous month.
+  reporting month suggestion: day `28+` maps to the next month; day `1-3`
+  stays in the current transaction month.
 - `Implemented`: `APARECIDA FERNANDA` -> `Home`
 - `Implemented`: `RITUALS`, `GBMD ... MEDICINA`, `TRF MB WAY P/ FERNANDO ALVES`, `Transfer to FERNANDO CARLOS TEIXEIRA ALVES`, `Transfer to FERNANDO MOTA` and close variants -> `Healthcare`
 - `Implemented`: `VODAFONE`, `TELCEL`, `REPAIR`, `M.REPAIR`, `ISHOP MIXUP`, `MACSTORE ...`, matching Apple service rows -> `Phone/Tech`

@@ -31,18 +31,10 @@ def _next_month(tx_date: date) -> tuple[int, int]:
     return tx_date.month + 1, tx_date.year
 
 
-def _previous_month(tx_date: date) -> tuple[int, int]:
-    if tx_date.month == 1:
-        return 12, tx_date.year - 1
-    return tx_date.month - 1, tx_date.year
-
-
 def suggest_assigned_period(tx_date: date, category: str, tx_type: str) -> tuple[int, int]:
     if category == "Rent" and tx_type == "expense":
         if tx_date.day >= 28:
             return _next_month(tx_date)
-        if tx_date.day <= 3:
-            return _previous_month(tx_date)
     return tx_date.month, tx_date.year
 
 
