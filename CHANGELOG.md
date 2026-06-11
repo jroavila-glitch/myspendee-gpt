@@ -14,8 +14,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 - Added assigned reporting month/year for transactions so rent paid around a
   month boundary can count in the intended month without changing the bank
-  transaction date. Rent paid on days 28+ is suggested for the next month; rent
-  paid on days 1-3 stays in the current transaction month.
+  transaction date. Only the monthly rent charge with original amount exactly
+  600 EUR is shifted: days 28+ are suggested for the next month, while days
+  1-3 stay in the current transaction month.
 - Fixed transaction edit handling so metadata-only edits and explicit manual
   amount corrections do not unexpectedly re-normalize historical FX amounts.
 

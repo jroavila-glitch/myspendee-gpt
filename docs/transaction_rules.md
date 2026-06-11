@@ -106,9 +106,11 @@ Additional ignore behavior:
 - `Implemented`: `AMAZON` or `AMZN` except the ignored `149 MXN` case -> `Home`
 - `Implemented`: `ALMITAS INC INVEST` -> `Rent`
 - `Implemented`: `GONCALO DE CAMPOS MELO` transfers on Revolut -> `Rent`
-- `Implemented`: Rent expenses paid near month boundaries get an assigned
-  reporting month suggestion: day `28+` maps to the next month; day `1-3`
-  stays in the current transaction month.
+- `Implemented`: Only the monthly rent charge with original amount exactly
+  `600 EUR` gets an assigned reporting month suggestion: day `28+` maps to
+  the next month; day `1-3` stays in the current transaction month. Smaller
+  housing-related transfers, utilities, or shared-cost payments stay in their
+  transaction month even when they are categorized as `Rent`.
 - `Implemented`: `APARECIDA FERNANDA` -> `Home`
 - `Implemented`: `RITUALS`, `GBMD ... MEDICINA`, `TRF MB WAY P/ FERNANDO ALVES`, `Transfer to FERNANDO CARLOS TEIXEIRA ALVES`, `Transfer to FERNANDO MOTA` and close variants -> `Healthcare`
 - `Implemented`: `VODAFONE`, `TELCEL`, `REPAIR`, `M.REPAIR`, `ISHOP MIXUP`, `MACSTORE ...`, matching Apple service rows -> `Phone/Tech`

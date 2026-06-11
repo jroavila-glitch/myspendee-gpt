@@ -31,8 +31,15 @@ def _next_month(tx_date: date) -> tuple[int, int]:
     return tx_date.month + 1, tx_date.year
 
 
-def suggest_assigned_period(tx_date: date, category: str, tx_type: str) -> tuple[int, int]:
-    if category == "Rent" and tx_type == "expense":
+def suggest_assigned_period(
+    tx_date: date,
+    category: str,
+    tx_type: str,
+    amount_original: Decimal | None = None,
+    currency_original: str | None = None,
+) -> tuple[int, int]:
+    is_monthly_rent = amount_original == Decimal("600.00") and currency_original == "EUR"
+    if category == "Rent" and tx_type == "expense" and is_monthly_rent:
         if tx_date.day >= 28:
             return _next_month(tx_date)
     return tx_date.month, tx_date.year
@@ -118,7 +125,13 @@ def prepare_transaction_data(data: dict) -> dict:
     assigned_month = data.get("assigned_month")
     assigned_year = data.get("assigned_year")
     if assigned_month is None or assigned_year is None:
-        assigned_month, assigned_year = suggest_assigned_period(tx_date, category, tx_type)
+        assigned_month, assigned_year = suggest_assigned_period(
+            tx_date,
+            category,
+            tx_type,
+            amount_original,
+            currency_original,
+        )
     return {
         "date": tx_date,
         "description": description,

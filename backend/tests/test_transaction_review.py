@@ -260,6 +260,23 @@ class TransactionReviewTest(TestCase):
         self.assertEqual(6, prepared["assigned_month"])
         self.assertEqual(2026, prepared["assigned_year"])
 
+    def test_non_600_eur_rent_paid_at_month_end_stays_in_current_month(self) -> None:
+        prepared = prepare_transaction_data({
+            "date": date(2026, 2, 28),
+            "description": "Transfer to GONCALO DE CAMPOS MELO ANDREA MOUTINHO DE ALME",
+            "amount_mxn": Decimal("2365.50"),
+            "amount_original": Decimal("110.02"),
+            "currency_original": "EUR",
+            "bank_name": "Revolut",
+            "type": "expense",
+            "category": "Rent",
+        })
+
+        self.assertEqual(2, prepared["month"])
+        self.assertEqual(2026, prepared["year"])
+        self.assertEqual(2, prepared["assigned_month"])
+        self.assertEqual(2026, prepared["assigned_year"])
+
     def test_rent_paid_at_start_of_month_stays_in_current_month(self) -> None:
         prepared = prepare_transaction_data({
             "date": date(2026, 7, 1),
