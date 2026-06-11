@@ -1274,6 +1274,11 @@ h3 {
   border-bottom: 1px solid rgba(34, 41, 74, 0.07);
 }
 
+.statement-card.has-warning {
+  background: rgba(244, 177, 80, 0.055);
+  box-shadow: inset 3px 0 0 rgba(210, 139, 45, 0.46);
+}
+
 .statement-actions {
   display: flex;
   justify-content: flex-end;
@@ -1318,7 +1323,41 @@ h3 {
 }
 
 .statement-card:hover {
-  background: rgba(95, 84, 247, 0.018);
+  background: rgba(95, 84, 247, 0.032);
+  box-shadow: inset 3px 0 0 rgba(95, 84, 247, 0.18);
+}
+
+.statement-card.has-warning:hover {
+  background: rgba(244, 177, 80, 0.09);
+  box-shadow: inset 3px 0 0 rgba(210, 139, 45, 0.62);
+}
+
+.statement-warning-pill {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.36rem;
+  border-radius: 999px;
+  padding: 0.22rem 0.48rem;
+  background: rgba(244, 177, 80, 0.18);
+  color: #9b641f;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.statement-warning-details {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.32rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: rgba(244, 177, 80, 0.11);
+  color: #704412;
+}
+
+.statement-warning-details p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .modal-backdrop {
@@ -1570,6 +1609,11 @@ h3 {
   border: 1px solid var(--border-strong);
   box-shadow: 0 18px 48px rgba(23, 31, 59, 0.16);
   z-index: 50;
+}
+
+.bulk-bar[aria-busy="true"] {
+  border-color: rgba(95, 84, 247, 0.24);
+  box-shadow: 0 18px 48px rgba(23, 31, 59, 0.14), inset 0 0 0 1px rgba(95, 84, 247, 0.08);
 }
 
 .bulk-bar-contained {
@@ -2134,6 +2178,11 @@ h3 {
 .review-row {
   padding: 0.82rem 1rem;
   transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.review-row:hover {
+  border-color: rgba(95, 84, 247, 0.2);
+  background: rgba(95, 84, 247, 0.025);
 }
 
 .review-row.active {

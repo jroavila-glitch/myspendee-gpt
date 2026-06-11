@@ -81,3 +81,30 @@ Expected result:
 - Treat API keys and MCP credentials as sensitive
 - If a key was exposed in chat or logs, rotate it
 - Prefer documenting setup steps rather than storing live secrets in repo files
+
+## Statement Import Audits
+
+Use `backend/scripts/audit_statement_imports.py` when a bank statement parser
+fix needs to be checked against already-imported production data.
+
+Example:
+
+```bash
+curl -s 'https://backend-production-d437.up.railway.app/transactions?year=2026' > /tmp/moneo_transactions_2026.json
+PYTHONPATH=backend backend/.venv/bin/python backend/scripts/audit_statement_imports.py \
+  --transactions-json /tmp/moneo_transactions_2026.json \
+  '/path/to/EUR_ARQ Statement - 2026-03.pdf'
+```
+
+Current support:
+
+- ARQ / DolarApp PDFs through the deterministic ARQ parser
+- exact matching by bank, transaction date, canonical description, original
+  amount, and original currency
+- description-mismatch reporting when the same date/amount/currency already
+  exists in production under a different canonical description
+- ARQ `Almitas Inc Invest` rent normalization, where the statement row shows
+  `2,200 EUR` but Moneo stores the actual rent as `600 EUR`
+
+The script exits non-zero when it finds truly missing rows or parser errors,
+which makes it suitable for release checks after parser changes.

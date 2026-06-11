@@ -186,6 +186,12 @@ Additional ignore behavior:
 - `Implemented`: ARQ imports store audit warnings when date-like transaction
   blocks are skipped or when raw extracted text mentions `Almitas Inc Invest`
   more times than parsed transactions.
+- `Implemented`: Original ARQ PDFs can be audited against production imports
+  with deterministic row matching by date, canonical description, original
+  amount, and original currency. Description-only differences are reported
+  separately from truly missing rows.
+- `Implemented`: January-May 2026 original ARQ PDFs were audited and 16
+  confirmed missing statement rows were restored to production on 2026-06-11.
 - `Implemented`: Roommate transfers should be ignored from P&L
 - `Implemented`: First dashboard version includes a `Rent & Roommates` panel driven by imported transactions
 - `Pending`: Roommate panel should evolve into a fuller reconciliation view for rent and utilities

@@ -8,6 +8,15 @@ test('allows splitting reviewed income and expense transactions', () => {
   assert.equal(canSplitTransaction({ type: 'income', reviewed_at: '2026-06-11T12:00:00' }), true)
 })
 
+test('allows splitting category drilldown display rows backed by expense or income sources', () => {
+  assert.equal(canSplitTransaction({
+    type: 'expense',
+    drilldown_category: 'Groceries',
+    drilldown_amount_mxn: 50,
+    source_amount_mxn: 100,
+  }), true)
+})
+
 test('blocks splitting ignored transactions', () => {
   assert.equal(canSplitTransaction({ type: 'ignored', reviewed_at: null }), false)
 })

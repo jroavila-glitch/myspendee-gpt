@@ -12,6 +12,13 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added deterministic ARQ import audit tooling, surfaced statement import
+  warnings in the Statements UI, and restored 16 confirmed missing
+  January-May 2026 ARQ rows in production from the original PDFs.
+- Optimized reviewed-only bulk review actions so multi-select “mark selected
+  reviewed” uses one database update instead of one transaction update at a
+  time.
+
 - Added assigned reporting month/year for transactions so rent paid around a
   month boundary can count in the intended month without changing the bank
   transaction date. Only the monthly rent charge with original amount exactly

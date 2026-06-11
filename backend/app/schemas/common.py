@@ -150,7 +150,7 @@ class StatementRead(BaseModel):
     period_end: date_type | None
     transaction_count: int
     ignored_count: int
-    audit_warnings: list[str] = []
+    audit_warnings: list[str] = Field(default_factory=list)
     uploaded_at: datetime_type
 
     model_config = ConfigDict(from_attributes=True)

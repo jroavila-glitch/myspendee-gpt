@@ -171,6 +171,17 @@ class TransactionReviewTest(TestCase):
         self.assertEqual({"updated": 1}, result)
         self.assertIsNotNone(self.transaction.reviewed_at)
 
+    def test_bulk_mark_reviewed_rejects_stale_selection(self) -> None:
+        with self.assertRaises(HTTPException) as context:
+            bulk_update(
+                TransactionBulkUpdate(ids=[self.transaction.id, uuid4()], reviewed=True),
+                self.db,
+            )
+
+        self.assertEqual(409, context.exception.status_code)
+        self.db.refresh(self.transaction)
+        self.assertIsNone(self.transaction.reviewed_at)
+
     def test_noop_bulk_change_does_not_mark_transaction_reviewed(self) -> None:
         result = bulk_update(
             TransactionBulkUpdate(ids=[self.transaction.id], category="Other", type="expense"),

@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import distinct, select
+from sqlalchemy import distinct, select, update as sql_update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -256,7 +256,22 @@ def remove_transaction(transaction_id: UUID, db: Session = Depends(get_db)) -> d
 def bulk_update(payload: TransactionBulkUpdate, db: Session = Depends(get_db)) -> dict:
     if not payload.ids:
         raise HTTPException(status_code=400, detail="No transactions selected")
+    if payload.reviewed is not None and payload.category is None and payload.type is None:
+        reviewed_at = datetime.utcnow() if payload.reviewed else None
+        result = db.execute(
+            sql_update(Transaction)
+            .where(Transaction.id.in_(payload.ids))
+            .values(reviewed_at=reviewed_at)
+        )
+        if result.rowcount != len(set(payload.ids)):
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Some selected transactions no longer exist")
+        db.commit()
+        return {"updated": result.rowcount}
+
     transactions = db.scalars(select(Transaction).where(Transaction.id.in_(payload.ids))).all()
+    if len(transactions) != len(set(payload.ids)):
+        raise HTTPException(status_code=409, detail="Some selected transactions no longer exist")
     split_update_conflict = any(
         tx.allocations
         and (
