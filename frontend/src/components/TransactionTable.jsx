@@ -22,8 +22,39 @@ function ReviewBadge({ transaction }) {
   ) : null
 }
 
-function TransactionMenu({ id, onEdit, onDelete, onMarkReviewed, anchorRect, returnFocus, onClose }) {
+function getAllocations(transaction) {
+  return Array.isArray(transaction.allocations) ? transaction.allocations : []
+}
+
+function isSplitTransaction(transaction) {
+  return Boolean(transaction.is_split) || getAllocations(transaction).length > 0
+}
+
+function getAllocationDisplayTransaction(transaction, allocation) {
+  return {
+    ...transaction,
+    amount_mxn: allocation.amount_mxn ?? 0,
+    amount_original: allocation.amount_original ?? null,
+  }
+}
+
+function AllocationSummary({ transaction, displayCurrency, displayRates }) {
+  const allocations = getAllocations(transaction)
+  if (!allocations.length) return null
+  return (
+    <div className="allocation-summary" aria-label="Split allocation summary">
+      {allocations.map((allocation) => (
+        <span key={`${allocation.category}-${allocation.amount_mxn ?? allocation.amount_original}`}>
+          {allocation.category} {formatMoney(getDisplayAmount(getAllocationDisplayTransaction(transaction, allocation), displayCurrency, displayRates), displayCurrency)}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function TransactionMenu({ id, splitLabel, onEdit, onSplit, onDelete, onMarkReviewed, anchorRect, returnFocus, onClose }) {
   const editButtonRef = useRef(null)
+  const splitButtonRef = useRef(null)
   const deleteButtonRef = useRef(null)
   const reviewedButtonRef = useRef(null)
 
@@ -68,6 +99,7 @@ function TransactionMenu({ id, onEdit, onDelete, onMarkReviewed, anchorRect, ret
       >
         <button ref={editButtonRef} role="menuitem" onClick={onEdit}>Edit</button>
         {onMarkReviewed ? <button ref={reviewedButtonRef} role="menuitem" onClick={onMarkReviewed}>Mark reviewed</button> : null}
+        {onSplit ? <button ref={splitButtonRef} role="menuitem" onClick={onSplit}>{splitLabel}</button> : null}
         <button ref={deleteButtonRef} role="menuitem" className="danger-action" onClick={onDelete}>Delete</button>
       </div>
     </>,
@@ -99,6 +131,7 @@ export default function TransactionTable({
   onMenuOpen,
   onMenuClose,
   onEdit,
+  onSplit,
   onDelete,
   onMarkReviewed,
   hideFilters = false,
@@ -170,16 +203,40 @@ export default function TransactionTable({
                 <span>{transaction.bank_name}</span>
               </div>
               <ReviewBadge transaction={transaction} />
+              {isSplitTransaction(transaction) ? (
+                <span className="split-badge">Split · {getAllocations(transaction).length} categories</span>
+              ) : null}
+              <AllocationSummary transaction={transaction} displayCurrency={displayCurrency} displayRates={displayRates} />
               {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
             </div>
 
             <div className="transaction-category">
               <span className={`pill ${transaction.type}`}>{transaction.category}</span>
+              {transaction.drilldown_category ? <span className="drilldown-category-context">{transaction.drilldown_category}</span> : null}
             </div>
 
             <div className={`transaction-amount ${transaction.type}`}>
-              <strong className="amount-value">{formatMoney(getDisplayAmount(transaction, displayCurrency, displayRates), displayCurrency)}</strong>
-              {getSecondaryAmountLabel(transaction, displayCurrency) ? <span className="sub-amount">{getSecondaryAmountLabel(transaction, displayCurrency)}</span> : null}
+              {transaction.drilldown_amount_mxn != null ? (
+                <>
+                  <strong className="amount-value">{formatMoney(getDisplayAmount({
+                    ...transaction,
+                    amount_mxn: transaction.drilldown_amount_mxn,
+                    amount_original: transaction.drilldown_amount_original ?? null,
+                  }, displayCurrency, displayRates), displayCurrency)}</strong>
+                  <span className="sub-amount drilldown-source-amount">
+                    Source total {formatMoney(getDisplayAmount({
+                      ...transaction,
+                      amount_mxn: transaction.source_amount_mxn ?? transaction.amount_mxn,
+                      amount_original: transaction.amount_original ?? null,
+                    }, displayCurrency, displayRates), displayCurrency)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <strong className="amount-value">{formatMoney(getDisplayAmount(transaction, displayCurrency, displayRates), displayCurrency)}</strong>
+                  {getSecondaryAmountLabel(transaction, displayCurrency) ? <span className="sub-amount">{getSecondaryAmountLabel(transaction, displayCurrency)}</span> : null}
+                </>
+              )}
             </div>
 
             <div className="transaction-notes">
@@ -211,6 +268,8 @@ export default function TransactionTable({
                   returnFocus={menuState.target}
                   onClose={onMenuClose}
                   onEdit={() => onEdit(transaction)}
+                  splitLabel={isSplitTransaction(transaction) ? 'Edit split' : 'Split transaction'}
+                  onSplit={onSplit && ['income', 'expense'].includes(transaction.type) ? () => onSplit(transaction) : null}
                   onMarkReviewed={onMarkReviewed ? () => onMarkReviewed(transaction.id) : null}
                   onDelete={() => onDelete(transaction.id)}
                 />

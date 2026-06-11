@@ -1018,6 +1018,36 @@ h3 {
   margin-top: 0.34rem;
 }
 
+.split-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 0.34rem;
+  padding: 0.18rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(17, 146, 117, 0.09);
+  color: #107765;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.allocation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-top: 0.34rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.allocation-summary span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(122, 129, 159, 0.1);
+}
+
 .transaction-category,
 .transaction-amount,
 .transaction-notes,
@@ -1027,7 +1057,15 @@ h3 {
 
 .transaction-category {
   display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
   align-items: center;
+}
+
+.drilldown-category-context {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
 }
 
 .pill {
@@ -1079,6 +1117,11 @@ h3 {
 
 .transaction-amount.ignored strong {
   color: #5c647f;
+}
+
+.drilldown-source-amount {
+  color: #59607a;
+  font-weight: 700;
 }
 
 .notes-input {

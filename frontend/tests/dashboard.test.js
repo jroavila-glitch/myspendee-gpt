@@ -123,6 +123,33 @@ test('filters compact preview by dashboard drilldown only', () => {
   )
 })
 
+test('filters split transaction drilldowns by allocation category with allocation context', () => {
+  const transaction = {
+    id: 'split-1',
+    type: 'expense',
+    amount_mxn: 100,
+    category: 'Other',
+    description: 'Big store run',
+    allocations: [
+      { category: 'Groceries', amount_mxn: 60 },
+      { category: 'Home', amount_mxn: 40 },
+    ],
+  }
+
+  const results = filterTransactionsByDrilldown([transaction], { category: 'Home', type: 'expense' })
+
+  assert.equal(results.length, 1)
+  assert.notEqual(results[0], transaction)
+  assert.equal(results[0].id, 'split-1')
+  assert.equal(results[0].description, 'Big store run')
+  assert.equal(results[0].type, 'expense')
+  assert.equal(results[0].amount_mxn, 100)
+  assert.equal(results[0].category, 'Other')
+  assert.equal(results[0].drilldown_category, 'Home')
+  assert.equal(results[0].drilldown_amount_mxn, 40)
+  assert.equal(results[0].source_amount_mxn, 100)
+})
+
 test('shows all matching transactions for a drilldown and limits the default preview', () => {
   const transactions = Array.from({ length: 12 }, (_, index) => ({ id: String(index) }))
 
@@ -152,6 +179,46 @@ test('filters an editable transaction workspace by category and search text', ()
   assert.deepEqual(filterTransactionsForWorkspace(transactions, 'Tennis', ''), [transactions[1]])
   assert.deepEqual(filterTransactionsForWorkspace(transactions, '', 'revolut'), [transactions[0]])
   assert.deepEqual(filterTransactionsForWorkspace(transactions, '', 'filip'), [transactions[1]])
+})
+
+test('filters an editable transaction workspace by allocation category and notes', () => {
+  const transaction = {
+    id: 'split-1',
+    description: 'Big store run',
+    category: 'Other',
+    bank_name: 'Nu',
+    notes: '',
+    allocations: [
+      { category: 'Groceries', amount_mxn: 60, notes: 'weekly pantry' },
+      { category: 'Home', amount_mxn: 40, notes: 'lamp shade' },
+    ],
+  }
+
+  assert.deepEqual(filterTransactionsForWorkspace([transaction], 'Home', ''), [transaction])
+  assert.deepEqual(filterTransactionsForWorkspace([transaction], '', 'lamp'), [transaction])
+})
+
+test('builds display analytics with split breakdowns without duplicating source summaries', () => {
+  const analytics = buildDisplayAnalytics([
+    {
+      id: 'split-1',
+      type: 'expense',
+      amount_mxn: 100,
+      category: 'Other',
+      currency_original: 'MXN',
+      allocations: [
+        { category: 'Groceries', amount_mxn: 60 },
+        { category: 'Home', amount_mxn: 40 },
+      ],
+    },
+    { id: 'income-1', type: 'income', amount_mxn: 200, category: 'Tennis Lessons', currency_original: 'MXN' },
+  ], 'MXN', rates)
+
+  assert.deepEqual(analytics.summary, { income: 200, expenses: 100, net: 100 })
+  assert.deepEqual(analytics.breakdown.expenses, [
+    { category: 'Groceries', type: 'expense', total: 60, count: 1 },
+    { category: 'Home', type: 'expense', total: 40, count: 1 },
+  ])
 })
 
 test('derives savings-rate previous and average comparisons from insights', () => {

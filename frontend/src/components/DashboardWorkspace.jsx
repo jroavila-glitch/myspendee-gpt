@@ -130,6 +130,7 @@ function RecentTransactionsPreview({
   onMenuOpen,
   onMenuClose,
   onEdit,
+  onSplit,
   onDelete,
 }) {
   const shownTransactions = getPreviewTransactions(transactions, showAll)
@@ -157,6 +158,7 @@ function RecentTransactionsPreview({
       onMenuOpen={onMenuOpen}
       onMenuClose={onMenuClose}
       onEdit={onEdit}
+      onSplit={onSplit}
       onDelete={onDelete}
       hideFilters
     />
@@ -179,6 +181,7 @@ export default function DashboardWorkspace({
   privacyMode,
   onPrivacyToggle,
   onEditTransaction,
+  onSplitTransaction,
   transactionTableProps,
 }) {
   const convertedInsights = useMemo(() => {
@@ -280,6 +283,7 @@ export default function DashboardWorkspace({
           displayRates={displayRates}
           showAll={hasDrilldown}
           onEdit={onEditTransaction}
+          onSplit={onSplitTransaction}
           {...transactionTableProps}
         />
       </div>

@@ -1,5 +1,57 @@
 import { getDisplayAmount } from './currency.js'
 
+function toNumber(value) {
+  return Number(value || 0)
+}
+
+function getAllocations(transaction) {
+  return Array.isArray(transaction.allocations) ? transaction.allocations : []
+}
+
+function hasAllocations(transaction) {
+  return getAllocations(transaction).length > 0
+}
+
+function hasFiniteValue(value) {
+  return value != null && value !== '' && Number.isFinite(Number(value))
+}
+
+function getAllocationDisplayAmount(transaction, allocation, displayCurrency, displayRates) {
+  const originalCurrency = (transaction.currency_original || 'MXN').toUpperCase()
+  if (displayCurrency === originalCurrency && hasFiniteValue(allocation.amount_original)) {
+    return toNumber(allocation.amount_original)
+  }
+  if (displayCurrency === 'MXN' && hasFiniteValue(allocation.amount_mxn)) {
+    return toNumber(allocation.amount_mxn)
+  }
+  if (displayCurrency === originalCurrency && hasFiniteValue(allocation.amount_mxn) && hasFiniteValue(transaction.exchange_rate_used)) {
+    return toNumber(allocation.amount_mxn) / toNumber(transaction.exchange_rate_used)
+  }
+  if (hasFiniteValue(allocation.amount_original) && hasFiniteValue(transaction.exchange_rate_used)) {
+    const amountMxn = toNumber(allocation.amount_original) * toNumber(transaction.exchange_rate_used)
+    if (displayCurrency === 'MXN') return amountMxn
+    const fallbackRate = toNumber(displayRates[displayCurrency])
+    return fallbackRate ? amountMxn / fallbackRate : null
+  }
+  if (hasFiniteValue(allocation.amount_mxn)) {
+    const fallbackRate = toNumber(displayRates[displayCurrency])
+    return fallbackRate ? toNumber(allocation.amount_mxn) / fallbackRate : null
+  }
+  return null
+}
+
+function cloneWithDrilldownAllocation(transaction, allocation) {
+  return {
+    ...transaction,
+    drilldown_category: allocation.category,
+    drilldown_amount_mxn: hasFiniteValue(allocation.amount_mxn) ? toNumber(allocation.amount_mxn) : null,
+    drilldown_amount_original: hasFiniteValue(allocation.amount_original) ? toNumber(allocation.amount_original) : null,
+    drilldown_notes: allocation.notes || '',
+    source_amount_mxn: transaction.amount_mxn,
+    source_category: transaction.category,
+  }
+}
+
 export function calculateSavingsRate({ income, net }) {
   return income > 0 ? Number(((net / income) * 100).toFixed(1)) : 0
 }
@@ -23,16 +75,25 @@ export function buildDisplayAnalytics(transactions, displayCurrency, displayRate
     }
     if (transaction.type === 'income') summary.income += amount
     if (transaction.type === 'expense') summary.expenses += amount
-    const key = `${transaction.type}::${transaction.category}`
-    const current = grouped.get(key) || {
-      category: transaction.category,
-      type: transaction.type,
-      total: 0,
-      count: 0,
+    const breakdownItems = hasAllocations(transaction)
+      ? getAllocations(transaction).map((allocation) => ({
+        category: allocation.category,
+        amount: getAllocationDisplayAmount(transaction, allocation, displayCurrency, displayRates),
+      }))
+      : [{ category: transaction.category, amount }]
+    for (const item of breakdownItems) {
+      if (!item.category || item.amount === null) continue
+      const key = `${transaction.type}::${item.category}`
+      const current = grouped.get(key) || {
+        category: item.category,
+        type: transaction.type,
+        total: 0,
+        count: 0,
+      }
+      current.total += item.amount
+      current.count += 1
+      grouped.set(key, current)
     }
-    current.total += amount
-    current.count += 1
-    grouped.set(key, current)
   }
   summary.income = Number(summary.income.toFixed(2))
   summary.expenses = Number(summary.expenses.toFixed(2))
@@ -62,10 +123,15 @@ export function mergeDrilldownFilters(currentFilters, drilldown) {
 }
 
 export function filterTransactionsByDrilldown(transactions, drilldown) {
-  return transactions.filter((transaction) => {
-    if (drilldown.category && transaction.category !== drilldown.category) return false
-    if (drilldown.type && transaction.type !== drilldown.type) return false
-    return true
+  return transactions.flatMap((transaction) => {
+    if (drilldown.type && transaction.type !== drilldown.type) return []
+    if (!drilldown.category) return [transaction]
+    const matchingAllocations = getAllocations(transaction)
+      .filter((allocation) => allocation.category === drilldown.category)
+    if (matchingAllocations.length) {
+      return matchingAllocations.map((allocation) => cloneWithDrilldownAllocation(transaction, allocation))
+    }
+    return transaction.category === drilldown.category ? [transaction] : []
   })
 }
 
@@ -81,7 +147,11 @@ export function shouldShowGlobalBulkBar(tab, selectedCount, showReviewModal) {
 export function filterTransactionsForWorkspace(transactions, category, searchText) {
   const normalizedSearch = searchText.trim().toLowerCase()
   return transactions.filter((transaction) => {
-    if (category && transaction.category !== category) return false
+    const allocationFields = getAllocations(transaction).flatMap((allocation) => [
+      allocation.category,
+      allocation.notes,
+    ])
+    if (category && transaction.category !== category && !getAllocations(transaction).some((allocation) => allocation.category === category)) return false
     if (!normalizedSearch) return true
 
     return [
@@ -91,6 +161,7 @@ export function filterTransactionsForWorkspace(transactions, category, searchTex
       transaction.bank_name,
       transaction.notes,
       transaction.original_amount_display,
+      ...allocationFields,
     ]
       .filter(Boolean)
       .join(' ')

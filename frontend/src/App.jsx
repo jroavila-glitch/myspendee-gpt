@@ -634,6 +634,7 @@ function App() {
             privacyMode={privacyMode}
             onPrivacyToggle={() => setPrivacyMode((current) => !current)}
             onEditTransaction={openEditFlow}
+            onSplitTransaction={openSplitModal}
             transactionTableProps={{
               selectedIds,
               categoryOptions,
@@ -675,6 +676,7 @@ function App() {
               onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
               onMenuClose={() => setMenuState(null)}
               onEdit={openEditFlow}
+              onSplit={openSplitModal}
               onMarkReviewed={handleMarkReviewed}
               onDelete={handleDeleteTransaction}
             />
@@ -739,6 +741,7 @@ function App() {
               onMenuOpen={(id, target) => setMenuState({ id, rect: target.getBoundingClientRect(), target })}
               onMenuClose={() => setMenuState(null)}
               onEdit={(transaction) => openEditFlow(transaction, { fromReviewModal: true })}
+              onSplit={(transaction) => openSplitModal(transaction, { fromReviewModal: true })}
               onMarkReviewed={handleMarkReviewed}
               onDelete={handleDeleteTransaction}
             />
