@@ -8,6 +8,7 @@ import {
   buildSavingsRateComparison,
   calculateSavingsRate,
   convertInsightMetric,
+  getBulkActionState,
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getPreviewTransactions,
@@ -169,6 +170,21 @@ test('hides the global bulk bar while the review modal owns bulk actions', () =>
   assert.equal(shouldShowGlobalBulkBar('dashboard', 2, false), true)
   assert.equal(shouldShowGlobalBulkBar('review', 2, false), true)
   assert.equal(shouldShowGlobalBulkBar('dashboard', 0, false), false)
+})
+
+test('marks bulk action controls busy while a request is pending', () => {
+  assert.deepEqual(getBulkActionState('reviewed'), {
+    disabled: true,
+    applyLabel: 'Apply',
+    reviewedLabel: 'Marking reviewed...',
+    deleteLabel: 'Delete selected',
+  })
+  assert.deepEqual(getBulkActionState(''), {
+    disabled: false,
+    applyLabel: 'Apply',
+    reviewedLabel: 'Mark selected reviewed',
+    deleteLabel: 'Delete selected',
+  })
 })
 
 test('filters an editable transaction workspace by category and search text', () => {

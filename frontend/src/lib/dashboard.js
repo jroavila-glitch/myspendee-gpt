@@ -144,6 +144,15 @@ export function shouldShowGlobalBulkBar(tab, selectedCount, showReviewModal) {
   return tab === 'review' || tab === 'dashboard'
 }
 
+export function getBulkActionState(pendingAction) {
+  return {
+    disabled: Boolean(pendingAction),
+    applyLabel: pendingAction === 'apply' ? 'Applying...' : 'Apply',
+    reviewedLabel: pendingAction === 'reviewed' ? 'Marking reviewed...' : 'Mark selected reviewed',
+    deleteLabel: pendingAction === 'delete' ? 'Deleting...' : 'Delete selected',
+  }
+}
+
 export function filterTransactionsForWorkspace(transactions, category, searchText) {
   const normalizedSearch = searchText.trim().toLowerCase()
   return transactions.filter((transaction) => {

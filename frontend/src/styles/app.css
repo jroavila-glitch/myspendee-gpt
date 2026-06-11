@@ -1580,6 +1580,12 @@ h3 {
   background: var(--red-soft);
 }
 
+.bulk-bar button:disabled,
+.bulk-bar select:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .error-banner {
   margin-top: 1rem;
   padding: 0.8rem 0.9rem;

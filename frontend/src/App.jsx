@@ -13,6 +13,7 @@ import {
   buildPeriodComparisonLabel,
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
+  getBulkActionState,
   getPreviewTransactions,
   joinReviewItems,
   mergeDrilldownFilters,
@@ -161,29 +162,30 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
   )
 }
 
-function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, onMarkReviewed, onDelete, contained = false }) {
+function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, onMarkReviewed, onDelete, pendingAction = '', contained = false }) {
   if (!selectedIds.length) return null
+  const bulkActionState = getBulkActionState(pendingAction)
 
   return (
-    <div className={`bulk-bar${contained ? ' bulk-bar-contained' : ''}`}>
+    <div className={`bulk-bar${contained ? ' bulk-bar-contained' : ''}`} aria-busy={bulkActionState.disabled}>
       <div className="bulk-summary">
         <strong>{selectedIds.length}</strong>
         <span>selected</span>
       </div>
       <div className="bulk-controls">
-        <select value={bulkCategory} onChange={(event) => onCategoryChange(event.target.value)}>
+        <select value={bulkCategory} onChange={(event) => onCategoryChange(event.target.value)} disabled={bulkActionState.disabled}>
           <option value="">Change category</option>
           {categoryOptions.map((category) => <option key={category}>{category}</option>)}
         </select>
-        <select value={bulkType} onChange={(event) => onTypeChange(event.target.value)}>
+        <select value={bulkType} onChange={(event) => onTypeChange(event.target.value)} disabled={bulkActionState.disabled}>
           <option value="">Change type</option>
           <option value="expense">Expense</option>
           <option value="income">Income</option>
           <option value="ignored">Ignored</option>
         </select>
-        <button className="bulk-apply" onClick={onApply}>Apply</button>
-        {onMarkReviewed ? <button className="bulk-reviewed" onClick={onMarkReviewed}>Mark selected reviewed</button> : null}
-        {onDelete ? <button className="ghost-button danger" onClick={onDelete}>Delete selected</button> : null}
+        <button className="bulk-apply" onClick={onApply} disabled={bulkActionState.disabled}>{bulkActionState.applyLabel}</button>
+        {onMarkReviewed ? <button className="bulk-reviewed" onClick={onMarkReviewed} disabled={bulkActionState.disabled}>{bulkActionState.reviewedLabel}</button> : null}
+        {onDelete ? <button className="ghost-button danger" onClick={onDelete} disabled={bulkActionState.disabled}>{bulkActionState.deleteLabel}</button> : null}
       </div>
     </div>
   )
@@ -204,6 +206,7 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkType, setBulkType] = useState('')
+  const [bulkActionPending, setBulkActionPending] = useState('')
   const [reviewCategory, setReviewCategory] = useState('')
   const [reviewSearchText, setReviewSearchText] = useState('')
   const [menuState, setMenuState] = useState(null)
@@ -230,6 +233,7 @@ function App() {
   const reviewSearchInputRef = useRef(null)
   const loadVersionRef = useRef(0)
   const mountedRef = useRef(true)
+  const bulkActionPendingRef = useRef('')
 
   const queryParams = useMemo(() => {
     const params = {
@@ -520,28 +524,52 @@ function App() {
   }
 
   async function handleBulkApply() {
-    await api.bulkUpdate({ ids: selectedIds, category: bulkCategory || null, type: bulkType || null })
-    setSelectedIds([])
-    setBulkCategory('')
-    setBulkType('')
-    await loadAll()
+    if (bulkActionPendingRef.current || !selectedIds.length) return
+    bulkActionPendingRef.current = 'apply'
+    setBulkActionPending('apply')
+    try {
+      await api.bulkUpdate({ ids: selectedIds, category: bulkCategory || null, type: bulkType || null })
+      setSelectedIds([])
+      setBulkCategory('')
+      setBulkType('')
+      await loadAll()
+    } finally {
+      bulkActionPendingRef.current = ''
+      setBulkActionPending('')
+    }
   }
 
   async function handleBulkMarkReviewed() {
-    await api.bulkUpdate({ ids: selectedIds, reviewed: true })
-    setSelectedIds([])
-    setBulkCategory('')
-    setBulkType('')
-    await loadAll()
+    if (bulkActionPendingRef.current || !selectedIds.length) return
+    bulkActionPendingRef.current = 'reviewed'
+    setBulkActionPending('reviewed')
+    try {
+      await api.bulkUpdate({ ids: selectedIds, reviewed: true })
+      setSelectedIds([])
+      setBulkCategory('')
+      setBulkType('')
+      await loadAll()
+    } finally {
+      bulkActionPendingRef.current = ''
+      setBulkActionPending('')
+    }
   }
 
   async function handleBulkDelete() {
+    if (bulkActionPendingRef.current || !selectedIds.length) return
     if (!window.confirm(`Delete ${selectedIds.length} selected transactions? This cannot be undone.`)) return
-    await api.bulkDelete({ ids: selectedIds })
-    setSelectedIds([])
-    setBulkCategory('')
-    setBulkType('')
-    await loadAll()
+    bulkActionPendingRef.current = 'delete'
+    setBulkActionPending('delete')
+    try {
+      await api.bulkDelete({ ids: selectedIds })
+      setSelectedIds([])
+      setBulkCategory('')
+      setBulkType('')
+      await loadAll()
+    } finally {
+      bulkActionPendingRef.current = ''
+      setBulkActionPending('')
+    }
   }
 
   async function handleMarkReviewed(id) {
@@ -697,6 +725,7 @@ function App() {
           onApply={handleBulkApply}
           onMarkReviewed={tab === 'review' ? handleBulkMarkReviewed : undefined}
           onDelete={handleBulkDelete}
+          pendingAction={bulkActionPending}
         />
       ) : null}
 
@@ -755,6 +784,7 @@ function App() {
               onApply={handleBulkApply}
               onMarkReviewed={handleBulkMarkReviewed}
               onDelete={handleBulkDelete}
+              pendingAction={bulkActionPending}
               contained
             />
           </div>
