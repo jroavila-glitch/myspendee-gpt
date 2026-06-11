@@ -195,6 +195,26 @@ Additional ignore behavior:
 - `Implemented`: Transactions shown by Dashboard category/type drilldowns can
   be selected, edited, bulk changed, or bulk deleted directly from the
   matching-transactions list.
+- `Implemented`: A single income or expense transaction can be split across
+  two or more unique same-type categories while remaining one source bank
+  record.
+- `Implemented`: Split allocation amounts must be positive and reconcile
+  exactly to the source transaction total. Canonical allocation storage uses
+  MXN, with original-currency allocation amounts preserved when available.
+- `Implemented`: Dashboard income, expense, net, and savings-rate summaries
+  count a split source transaction once. Category breakdowns, category
+  averages, and category drilldowns use allocation categories and allocation
+  amounts.
+- `Implemented`: Category filters include unsplit transactions by source
+  category and split transactions by allocation category, without duplicating
+  the source transaction in source-total summaries.
+- `Implemented`: Saving, editing, or undoing a split is an intentional manual
+  decision and marks the source transaction reviewed.
+- `Implemented`: Automatic category/type bulk changes and source total/type/
+  original-currency edits reject split transactions. Mark-reviewed-only bulk
+  actions remain allowed.
+- `Implemented`: Undo Split deletes allocation rows only after the user chooses
+  a single valid replacement category for the source transaction.
 - `Implemented`: Statement delete cascades to linked transactions
 
 ## Governance

@@ -12,6 +12,11 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added transaction splits, allowing one income or expense source transaction
+  to allocate its amount across multiple same-type categories while preserving
+  one bank record, reviewed-state intent, split-aware category analytics, and a
+  dedicated Split Transaction modal
+
 - Added deterministic Millennium statement parsing with balance-validated row
   amounts, preventing adjacent transactions from borrowing each other's values
 - Reconciled and replaced the five January-May 2026 Millennium imports from
