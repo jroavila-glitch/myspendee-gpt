@@ -88,6 +88,26 @@ class TransactionReviewTest(TestCase):
         self.assertEqual(Decimal("2365.50"), updated.amount_mxn)
         self.assertEqual(Decimal("21.500000"), updated.exchange_rate_used)
 
+    def test_manual_amount_edit_respects_explicit_amount_fields(self) -> None:
+        self.transaction.description = "Transfer to GONCALO DE CAMPOS MELO ANDREA MOUTINHO DE ALME"
+        self.transaction.category = "Rent"
+        self.db.commit()
+        self.db.refresh(self.transaction)
+
+        updated = update_transaction(
+            self.db,
+            self.transaction,
+            TransactionUpdate(
+                amount_original=Decimal("110.02"),
+                amount_mxn=Decimal("2365.50"),
+                exchange_rate_used=Decimal("21.500000"),
+            ),
+        )
+
+        self.assertEqual(Decimal("110.02"), updated.amount_original)
+        self.assertEqual(Decimal("2365.50"), updated.amount_mxn)
+        self.assertEqual(Decimal("21.500000"), updated.exchange_rate_used)
+
     def test_notes_only_edit_does_not_mark_transaction_reviewed(self) -> None:
         updated = update_transaction(
             self.db,

@@ -215,6 +215,9 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
     if not amount_fields_edited:
         for field in amount_fields:
             prepared[field] = getattr(transaction, field)
+    else:
+        for field in amount_fields & updated_values.keys():
+            prepared[field] = updated_values[field]
     # Edits from the dashboard are intentional overrides. The normalization
     # pipeline may still recompute amounts/dates, but it should not reclassify
     # a category/type the user explicitly selected in the edit modal.
