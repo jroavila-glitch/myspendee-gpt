@@ -25,6 +25,27 @@ def _format_original_amount(amount_original: Decimal | None, currency: str, amou
     return f"{currency} {amount_original:.2f}"
 
 
+def _next_month(tx_date: date) -> tuple[int, int]:
+    if tx_date.month == 12:
+        return 1, tx_date.year + 1
+    return tx_date.month + 1, tx_date.year
+
+
+def _previous_month(tx_date: date) -> tuple[int, int]:
+    if tx_date.month == 1:
+        return 12, tx_date.year - 1
+    return tx_date.month - 1, tx_date.year
+
+
+def suggest_assigned_period(tx_date: date, category: str, tx_type: str) -> tuple[int, int]:
+    if category == "Rent" and tx_type == "expense":
+        if tx_date.day >= 28:
+            return _next_month(tx_date)
+        if tx_date.day <= 3:
+            return _previous_month(tx_date)
+    return tx_date.month, tx_date.year
+
+
 def serialize_transaction(transaction: Transaction) -> dict:
     payload = {
         field: getattr(transaction, field)
@@ -41,6 +62,8 @@ def serialize_transaction(transaction: Transaction) -> dict:
             "bank_name",
             "month",
             "year",
+            "assigned_month",
+            "assigned_year",
             "manually_added",
             "notes",
             "reviewed_at",
@@ -100,6 +123,10 @@ def prepare_transaction_data(data: dict) -> dict:
         current_category=data.get("category"),
     )
     notes = data.get("notes") or renamed_notes or normalization_notes or fallback_notes
+    assigned_month = data.get("assigned_month")
+    assigned_year = data.get("assigned_year")
+    if assigned_month is None or assigned_year is None:
+        assigned_month, assigned_year = suggest_assigned_period(tx_date, category, tx_type)
     return {
         "date": tx_date,
         "description": description,
@@ -112,6 +139,8 @@ def prepare_transaction_data(data: dict) -> dict:
         "bank_name": bank_name,
         "month": tx_date.month,
         "year": tx_date.year,
+        "assigned_month": int(assigned_month),
+        "assigned_year": int(assigned_year),
         "manually_added": bool(data.get("manually_added", False)),
         "notes": notes,
         "statement_id": data.get("statement_id"),
@@ -135,9 +164,11 @@ def apply_transaction_filters(
         if date_to:
             stmt = stmt.where(Transaction.date <= date_to)
     else:
-        stmt = stmt.where(Transaction.year == year)
+        assigned_year = func.coalesce(Transaction.assigned_year, Transaction.year)
+        assigned_month = func.coalesce(Transaction.assigned_month, Transaction.month)
+        stmt = stmt.where(assigned_year == year)
         if month is not None:
-            stmt = stmt.where(Transaction.month == month)
+            stmt = stmt.where(assigned_month == month)
     if bank_name:
         stmt = stmt.where(Transaction.bank_name == bank_name)
     if category:

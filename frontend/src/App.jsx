@@ -23,6 +23,12 @@ import {
 } from './lib/dashboard'
 import { buildSplitPayload } from './lib/splits'
 
+const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
+const ASSIGNED_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => {
+  const month = index + 1
+  return { value: String(month), label: monthFormatter.format(new Date(2026, month - 1, 1)) }
+})
+
 function getCurrentMonthState() {
   const now = new Date()
   return { month: String(now.getMonth() + 1), year: now.getFullYear(), dateFrom: '', dateTo: '' }
@@ -107,6 +113,8 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
       category: 'Other',
       type: 'expense',
       bank_name: '',
+      assigned_month: '',
+      assigned_year: '',
       notes: '',
     },
   )
@@ -124,6 +132,8 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           ...form,
           amount_mxn: Number(form.amount_mxn),
           amount_original: form.amount_original ? Number(form.amount_original) : null,
+          assigned_month: form.assigned_month ? Number(form.assigned_month) : null,
+          assigned_year: form.assigned_year ? Number(form.assigned_year) : null,
           manually_added: true,
         })
       }}
@@ -151,6 +161,13 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           <option value="ignored">Ignored</option>
         </select>
       </label>
+      <label><span>Assigned month</span>
+        <select value={form.assigned_month ?? ''} onChange={(e) => updateField('assigned_month', e.target.value)}>
+          <option value="">Auto</option>
+          {ASSIGNED_MONTH_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </label>
+      <label><span>Assigned year</span><input type="number" placeholder="Auto" value={form.assigned_year ?? ''} onChange={(e) => updateField('assigned_year', e.target.value)} /></label>
       <label><span>Bank</span><input value={form.bank_name} onChange={(e) => updateField('bank_name', e.target.value)} /></label>
       <label className="full"><span>Notes</span><textarea rows="3" value={form.notes} onChange={(e) => updateField('notes', e.target.value)} /></label>
       <div className="form-actions full">

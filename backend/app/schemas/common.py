@@ -61,6 +61,8 @@ class TransactionBase(BaseModel):
     category: str
     type: str
     bank_name: str
+    assigned_month: int | None = None
+    assigned_year: int | None = None
     notes: str | None = None
 
 
@@ -79,6 +81,8 @@ class TransactionUpdate(BaseModel):
     category: str | None = None
     type: str | None = None
     bank_name: str | None = None
+    assigned_month: int | None = None
+    assigned_year: int | None = None
     notes: str | None = None
     reviewed: bool | None = None
 
@@ -124,6 +128,8 @@ class TransactionRead(TransactionBase):
     id: UUID
     month: int
     year: int
+    assigned_month: int | None = None
+    assigned_year: int | None = None
     manually_added: bool
     statement_id: UUID | None
     created_at: datetime_type

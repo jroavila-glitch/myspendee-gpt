@@ -23,6 +23,9 @@ When a new rule is added or changed, we should update:
   prior uploads using `bank_name + date + amount_mxn + description`, while
   preserving identical rows that are visibly repeated within one statement.
 - `Implemented`: Time filtering supports a specific month, `YTD`, and custom date ranges.
+- `Implemented`: Month and YTD dashboard filters use each transaction's assigned
+  month/year for reporting. The original bank transaction date is preserved for
+  audit/history. Custom date ranges use the bank transaction date.
 - `Implemented`: Summary and breakdown queries must respect active filters.
 
 ## Bank Name Normalization
@@ -103,6 +106,9 @@ Additional ignore behavior:
 - `Implemented`: `AMAZON` or `AMZN` except the ignored `149 MXN` case -> `Home`
 - `Implemented`: `ALMITAS INC INVEST` -> `Rent`
 - `Implemented`: `GONCALO DE CAMPOS MELO` transfers on Revolut -> `Rent`
+- `Implemented`: Rent expenses paid near month boundaries get an assigned
+  reporting month suggestion: day `28+` maps to the next month, and day `1-3`
+  maps to the previous month.
 - `Implemented`: `APARECIDA FERNANDA` -> `Home`
 - `Implemented`: `RITUALS`, `GBMD ... MEDICINA`, `TRF MB WAY P/ FERNANDO ALVES`, `Transfer to FERNANDO CARLOS TEIXEIRA ALVES`, `Transfer to FERNANDO MOTA` and close variants -> `Healthcare`
 - `Implemented`: `VODAFONE`, `TELCEL`, `REPAIR`, `M.REPAIR`, `ISHOP MIXUP`, `MACSTORE ...`, matching Apple service rows -> `Phone/Tech`
@@ -186,6 +192,8 @@ Additional ignore behavior:
 - `Implemented`: Dashboard includes a global display-currency dropdown for `MXN`, `EUR`, `USD`
 - `Implemented`: Notes autosave on blur/debounce
 - `Implemented`: Manual transaction edits for category/type override automatic classification.
+- `Implemented`: Manual transaction edits can override assigned month/year;
+  leaving assigned period blank lets backend rules suggest it.
 - `Implemented`: Bulk actions can change category and type
 - `Implemented`: Bulk type changes can set `income`, `expense`, or `ignored`
 - `Implemented`: Transactions with deterministic review reasons remain in Review

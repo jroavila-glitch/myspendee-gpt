@@ -5,9 +5,19 @@ import { getTransactionReviewReasons } from '../lib/dashboard'
 import { canSplitTransaction, getSplitActionLabel, isSplitTransaction } from '../lib/transactions'
 
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+const assignedPeriodFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 function formatShortDate(value) {
   return shortDateFormatter.format(new Date(`${value}T00:00:00`))
+}
+
+function getAssignedPeriodLabel(transaction) {
+  if (!transaction.assigned_month || !transaction.assigned_year) return ''
+  const txDate = new Date(`${transaction.date}T00:00:00`)
+  const actualMonth = txDate.getUTCMonth() + 1
+  const actualYear = txDate.getUTCFullYear()
+  if (Number(transaction.assigned_month) === actualMonth && Number(transaction.assigned_year) === actualYear) return ''
+  return assignedPeriodFormatter.format(new Date(Date.UTC(Number(transaction.assigned_year), Number(transaction.assigned_month) - 1, 1)))
 }
 
 export function getReviewReason(transaction) {
@@ -197,6 +207,7 @@ export default function TransactionTable({
         {transactions.map((transaction) => {
           const splitAction = onSplit && canSplitTransaction(transaction)
           const splitLabel = getSplitActionLabel(transaction)
+          const assignedPeriodLabel = getAssignedPeriodLabel(transaction)
           return (
             <div key={transaction.id} className="transaction-row transaction-grid">
             <div className="transaction-check">
@@ -209,6 +220,7 @@ export default function TransactionTable({
                 <span>{formatShortDate(transaction.date)}</span>
                 <span>{transaction.bank_name}</span>
               </div>
+              {assignedPeriodLabel ? <span className="row-meta">Assigned to {assignedPeriodLabel}</span> : null}
               <ReviewBadge transaction={transaction} />
               {isSplitTransaction(transaction) ? (
                 <span className="split-badge">Split · {getAllocations(transaction).length} categories</span>

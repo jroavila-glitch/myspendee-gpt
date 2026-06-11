@@ -36,6 +36,7 @@ class Transaction(Base):
     __tablename__ = "transactions"
     __table_args__ = (
         Index("ix_transactions_month_year_type", "month", "year", "type"),
+        Index("ix_transactions_assigned_month_year_type", "assigned_month", "assigned_year", "type"),
         Index("ix_transactions_bank_name", "bank_name"),
         Index("ix_transactions_category", "category"),
     )
@@ -52,6 +53,8 @@ class Transaction(Base):
     bank_name: Mapped[str] = mapped_column(String(120), nullable=False)
     month: Mapped[int] = mapped_column(Integer, nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
+    assigned_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    assigned_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     manually_added: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

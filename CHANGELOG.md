@@ -12,6 +12,11 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added assigned reporting month/year for transactions so rent paid around a
+  month boundary can count in the intended month without changing the bank
+  transaction date. Rent paid on days 28+ is suggested for the next month; rent
+  paid on days 1-3 is suggested for the previous month.
+
 - Added transaction splits, allowing one income or expense source transaction
   to allocate its amount across multiple same-type categories while preserving
   one bank record, reviewed-state intent, split-aware category analytics, and a

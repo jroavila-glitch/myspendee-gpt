@@ -11,7 +11,7 @@ from app.db import Base
 from app.models import Transaction, TransactionAllocation
 from app.main import bulk_delete, bulk_update, edit_transaction
 from app.schemas.common import TransactionBulkDelete, TransactionBulkUpdate, TransactionUpdate
-from app.services.transactions import update_transaction
+from app.services.transactions import get_summary, prepare_transaction_data, update_transaction
 
 
 class TransactionReviewTest(TestCase):
@@ -203,3 +203,63 @@ class TransactionReviewTest(TestCase):
 
         self.assertEqual(409, context.exception.status_code)
         self.assertIsNotNone(self.db.get(Transaction, self.transaction.id))
+
+    def test_rent_paid_at_month_end_is_assigned_to_next_month(self) -> None:
+        prepared = prepare_transaction_data({
+            "date": date(2026, 5, 30),
+            "description": "ALMITAS INC INVEST",
+            "amount_mxn": Decimal("12900"),
+            "amount_original": Decimal("600"),
+            "currency_original": "EUR",
+            "bank_name": "Revolut",
+            "type": "expense",
+            "category": "Rent",
+        })
+
+        self.assertEqual(5, prepared["month"])
+        self.assertEqual(2026, prepared["year"])
+        self.assertEqual(6, prepared["assigned_month"])
+        self.assertEqual(2026, prepared["assigned_year"])
+
+    def test_rent_paid_at_start_of_month_is_assigned_to_previous_month(self) -> None:
+        prepared = prepare_transaction_data({
+            "date": date(2026, 7, 1),
+            "description": "ALMITAS INC INVEST",
+            "amount_mxn": Decimal("12900"),
+            "amount_original": Decimal("600"),
+            "currency_original": "EUR",
+            "bank_name": "Revolut",
+            "type": "expense",
+            "category": "Rent",
+        })
+
+        self.assertEqual(7, prepared["month"])
+        self.assertEqual(2026, prepared["year"])
+        self.assertEqual(6, prepared["assigned_month"])
+        self.assertEqual(2026, prepared["assigned_year"])
+
+    def test_month_summary_uses_assigned_month_for_rent(self) -> None:
+        rent = Transaction(
+            date=date(2026, 5, 30),
+            description="Rent",
+            amount_original=Decimal("600"),
+            currency_original="EUR",
+            amount_mxn=Decimal("12900"),
+            exchange_rate_used=None,
+            category="Rent",
+            type="expense",
+            bank_name="Revolut",
+            month=5,
+            year=2026,
+            assigned_month=6,
+            assigned_year=2026,
+            manually_added=False,
+        )
+        self.db.add(rent)
+        self.db.commit()
+
+        may = get_summary(self.db, month=5, year=2026)
+        june = get_summary(self.db, month=6, year=2026)
+
+        self.assertEqual(Decimal("0.00"), may.expenses)
+        self.assertEqual(Decimal("12960.00"), june.expenses)
