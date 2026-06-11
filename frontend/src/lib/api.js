@@ -52,6 +52,8 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify({
       expected_amount_mxn: transaction.amount_mxn,
+      expected_amount_original: transaction.amount_original,
+      expected_currency_original: transaction.currency_original,
       expected_type: transaction.type,
       allocations,
     }),

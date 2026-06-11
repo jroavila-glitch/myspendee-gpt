@@ -347,6 +347,8 @@ class TransactionAllocationTest(TestCase):
             f"/transactions/{transaction.id}/allocations",
             json={
                 "expected_amount_mxn": "100.00",
+                "expected_amount_original": "100.00",
+                "expected_currency_original": "MXN",
                 "expected_type": "expense",
                 "allocations": [
                     {"category": "Food & Drink", "amount_original": "40.00", "notes": "Lunch"},
@@ -376,6 +378,8 @@ class TransactionAllocationTest(TestCase):
             f"/transactions/{stale_amount.id}/allocations",
             json={
                 "expected_amount_mxn": "99.99",
+                "expected_amount_original": "100.00",
+                "expected_currency_original": "MXN",
                 "expected_type": "expense",
                 "allocations": [
                     {"category": "Food & Drink", "amount_original": "40.00"},
@@ -390,6 +394,8 @@ class TransactionAllocationTest(TestCase):
             f"/transactions/{stale_type.id}/allocations",
             json={
                 "expected_amount_mxn": "100.00",
+                "expected_amount_original": "100.00",
+                "expected_currency_original": "MXN",
                 "expected_type": "income",
                 "allocations": [
                     {"category": "Food & Drink", "amount_original": "40.00"},
@@ -398,6 +404,38 @@ class TransactionAllocationTest(TestCase):
             },
         )
         self.assertEqual(409, type_response.status_code, type_response.text)
+
+        stale_original_amount = self.create_transaction(amount_original=Decimal("120.00"), amount_mxn=Decimal("120.00"))
+        original_amount_response = self.client.put(
+            f"/transactions/{stale_original_amount.id}/allocations",
+            json={
+                "expected_amount_mxn": "120.00",
+                "expected_amount_original": "100.00",
+                "expected_currency_original": "MXN",
+                "expected_type": "expense",
+                "allocations": [
+                    {"category": "Food & Drink", "amount_original": "50.00"},
+                    {"category": "Transport", "amount_original": "70.00"},
+                ],
+            },
+        )
+        self.assertEqual(409, original_amount_response.status_code, original_amount_response.text)
+
+        stale_currency = self.create_transaction(amount_original=Decimal("100.00"), currency_original="EUR")
+        currency_response = self.client.put(
+            f"/transactions/{stale_currency.id}/allocations",
+            json={
+                "expected_amount_mxn": "100.00",
+                "expected_amount_original": "100.00",
+                "expected_currency_original": "MXN",
+                "expected_type": "expense",
+                "allocations": [
+                    {"category": "Food & Drink", "amount_original": "40.00"},
+                    {"category": "Transport", "amount_original": "60.00"},
+                ],
+            },
+        )
+        self.assertEqual(409, currency_response.status_code, currency_response.text)
 
     def test_replace_replaces_existing_allocations_atomically(self) -> None:
         transaction = self.create_transaction()
@@ -467,7 +505,7 @@ class TransactionAllocationTest(TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid expense replacement category: Tennis Lessons"):
             remove_allocations(self.db, transaction, "Tennis Lessons")
 
-    def test_remove_clears_allocations_updates_category_and_preserves_reviewed_state(self) -> None:
+    def test_remove_clears_allocations_updates_category_and_marks_reviewed(self) -> None:
         reviewed_at = datetime(2026, 6, 10, 12, 0, 0)
         transaction = self.create_transaction(reviewed_at=reviewed_at)
         replace_allocations(
@@ -485,8 +523,25 @@ class TransactionAllocationTest(TestCase):
 
         self.assertEqual("Home", updated.category)
         self.assertEqual([], updated.allocations)
-        self.assertEqual(reviewed_at, updated.reviewed_at)
+        self.assertGreater(updated.reviewed_at, reviewed_at)
         self.assertEqual([], self.db.scalars(select(TransactionAllocation)).all())
+
+    def test_remove_marks_previously_unreviewed_split_reviewed(self) -> None:
+        transaction = self.create_transaction()
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Food & Drink", amount_original="40.00"),
+                self.allocation("Transport", amount_original="60.00"),
+            ],
+        )
+        transaction.reviewed_at = None
+        self.db.commit()
+
+        updated = remove_allocations(self.db, transaction, "Home")
+
+        self.assertIsNotNone(updated.reviewed_at)
 
     def test_delete_allocations_returns_unsplit_reviewed_transaction(self) -> None:
         transaction = self.create_transaction(category="Other")

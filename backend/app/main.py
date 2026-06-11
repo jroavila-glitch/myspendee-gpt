@@ -210,7 +210,12 @@ def put_transaction_allocations(
     transaction = db.get(Transaction, transaction_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    if transaction.amount_mxn != payload.expected_amount_mxn or transaction.type != payload.expected_type:
+    if (
+        transaction.amount_mxn != payload.expected_amount_mxn
+        or transaction.amount_original != payload.expected_amount_original
+        or transaction.currency_original != payload.expected_currency_original
+        or transaction.type != payload.expected_type
+    ):
         raise HTTPException(status_code=409, detail="Transaction changed since split editor opened")
     try:
         replace_allocations(db, transaction, payload.allocations)

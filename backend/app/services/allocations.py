@@ -132,6 +132,7 @@ def remove_allocations(
     _validate_category(transaction, replacement_category, "replacement")
     transaction.allocations = []
     transaction.category = replacement_category
+    transaction.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(transaction)
     return transaction

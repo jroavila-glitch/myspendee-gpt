@@ -103,6 +103,8 @@ class TransactionAllocationInput(BaseModel):
 class TransactionAllocationsUpdate(BaseModel):
     allocations: list[TransactionAllocationInput]
     expected_amount_mxn: Decimal
+    expected_amount_original: Decimal | None = None
+    expected_currency_original: str | None = None
     expected_type: str
 
 
