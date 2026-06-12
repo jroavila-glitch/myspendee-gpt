@@ -13,6 +13,7 @@ from app.services.allocations import replace_allocations
 from app.schemas.insights import ReviewItemInsight
 from app.services import insights as insights_service
 from app.services.insights import (
+    calculate_loan_papa_reconciliation,
     calculate_month_status,
     calculate_percent_change,
     get_insights,
@@ -438,6 +439,7 @@ class InsightsTest(TestCase):
             date_to=None,
             bank_name="Primary Bank",
             type="income",
+            today=date(2026, 6, 12),
         )
 
         self.assertEqual(Decimal("1000"), response.income.current)
@@ -445,6 +447,53 @@ class InsightsTest(TestCase):
         self.assertEqual(Decimal("750"), response.income.average)
         self.assertEqual(Decimal("0"), response.expenses.current)
         self.assertEqual(0, response.review_count)
+
+    def test_get_insights_includes_global_loan_papa_reconciliation(self) -> None:
+        self.add_transaction(
+            tx_date=date(2026, 7, 2),
+            description="Transfer to Jose Roberto Avila",
+            amount_mxn="5000.00",
+            category="Loan Papá",
+            tx_type="expense",
+            bank_name="ARQ",
+        )
+        self.add_transaction(
+            tx_date=date(2026, 7, 3),
+            description="Dinner",
+            amount_mxn="500.00",
+            category="Food & Drink",
+            tx_type="expense",
+            bank_name="ARQ",
+        )
+        self.db.commit()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type="income",
+        )
+
+        self.assertEqual(Decimal("458221.80"), response.loan_papa.total_amount_mxn)
+        self.assertEqual(Decimal("7637.03"), response.loan_papa.monthly_amount_mxn)
+        self.assertEqual(60, response.loan_papa.installment_count)
+        self.assertEqual(14, response.loan_papa.installments_due)
+        self.assertEqual(Decimal("106918.42"), response.loan_papa.total_due_mxn)
+        self.assertEqual(Decimal("98707.33"), response.loan_papa.paid_mxn)
+        self.assertEqual(Decimal("8211.09"), response.loan_papa.behind_mxn)
+        self.assertEqual(Decimal("359514.47"), response.loan_papa.remaining_balance_mxn)
+
+    def test_calculates_loan_papa_reconciliation_from_baseline_and_future_payments(self) -> None:
+        reconciliation = calculate_loan_papa_reconciliation(
+            extra_paid_mxn=Decimal("0"),
+            as_of=date(2026, 6, 12),
+        )
+
+        self.assertEqual(Decimal("93707.33"), reconciliation.paid_mxn)
+        self.assertEqual(Decimal("13211.09"), reconciliation.behind_mxn)
 
     def test_previous_month_preserves_full_month_bounds(self) -> None:
         current, previous = resolve_comparison_period(

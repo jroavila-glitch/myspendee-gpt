@@ -29,6 +29,20 @@ class ReviewItemInsight(BaseModel):
     reasons: list[str]
 
 
+class LoanPapaRead(BaseModel):
+    total_amount_mxn: Decimal
+    monthly_amount_mxn: Decimal
+    installment_count: int
+    installments_due: int
+    total_due_mxn: Decimal
+    paid_mxn: Decimal
+    behind_mxn: Decimal
+    remaining_balance_mxn: Decimal
+    start_date: str
+    end_date: str
+    baseline_as_of: str
+
+
 class InsightsResponse(BaseModel):
     income: MetricComparison
     expenses: MetricComparison
@@ -38,3 +52,4 @@ class InsightsResponse(BaseModel):
     review_amount_mxn: Decimal
     review_reasons: list[ReviewReasonSummary]
     review_items: list[ReviewItemInsight]
+    loan_papa: LoanPapaRead

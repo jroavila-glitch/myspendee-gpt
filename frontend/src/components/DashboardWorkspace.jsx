@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
+  buildLoanPapaSummary,
   buildReviewBannerSummary,
   buildSavingsRateComparison,
   calculateSavingsRate,
@@ -80,6 +81,35 @@ function SavingsKpi({ savingsRate, comparison, previousPeriodLabel, currentAvail
       </span>
       <p className="comparison-line">Recent 3-month average: {comparison.averageRate === null ? 'Unavailable' : formatPercent(comparison.averageRate)}</p>
     </div>
+  )
+}
+
+function LoanPapaCard({ loan }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!loan) return null
+  return (
+    <section className={`panel loan-papa-panel ${loan.isBehind ? 'behind' : 'current'}`} aria-label="Loan Papá reconciliation">
+      <div className="loan-papa-compact">
+        <div>
+          <span className="eyebrow">Loan Papá</span>
+          <h3>{loan.isBehind ? `${formatMoney(loan.behind, 'MXN')} behind` : 'Current'}</h3>
+          <p>{loan.installmentsDue} of {loan.installmentCount} installments due · {formatMoney(loan.monthlyAmount, 'MXN')} monthly</p>
+        </div>
+        <button type="button" className="ghost-button compact-button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
+          {expanded ? 'Hide details' : 'Open details'}
+        </button>
+      </div>
+      {expanded ? (
+        <div className="loan-papa-details">
+          <div><span>Total loan</span><strong>{formatMoney(loan.totalAmount, 'MXN')}</strong></div>
+          <div><span>Monthly amount</span><strong>{formatMoney(loan.monthlyAmount, 'MXN')}</strong></div>
+          <div><span>Total due so far</span><strong>{formatMoney(loan.totalDue, 'MXN')}</strong></div>
+          <div><span>Paid so far</span><strong>{formatMoney(loan.paid, 'MXN')}</strong></div>
+          <div><span>Behind</span><strong>{formatMoney(loan.behind, 'MXN')}</strong></div>
+          <div><span>Remaining balance</span><strong>{formatMoney(loan.remainingBalance, 'MXN')}</strong></div>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -198,6 +228,7 @@ export default function DashboardWorkspace({
   )
   const savingsRate = calculateSavingsRate(analytics.summary)
   const savingsComparison = useMemo(() => buildSavingsRateComparison(insights), [insights])
+  const loanPapa = useMemo(() => buildLoanPapaSummary(insights), [insights])
   const savingsTarget = Number(insights?.status?.target_savings_rate || 25)
   const hasInsights = Boolean(insights)
   const hasDrilldown = Boolean(drilldown.category || drilldown.type)
@@ -263,6 +294,8 @@ export default function DashboardWorkspace({
           <KpiCard label="Expenses" value={analytics.summary.expenses} currentAvailable={currentAvailable} displayCurrency={displayCurrency} metric={convertedInsights?.expenses} previousPeriodLabel={previousPeriodLabel} favorableWhenUp={false} onClick={() => onDrilldown({ category: '', type: 'expense' })} />
           <SavingsKpi savingsRate={savingsRate} comparison={savingsComparison} previousPeriodLabel={previousPeriodLabel} currentAvailable={currentAvailable} />
         </section>
+
+        <LoanPapaCard loan={loanPapa} />
 
         <section className="ranked-grid">
           <RankedList title="Top spending" items={analytics.breakdown.expenses} type="expense" displayCurrency={displayCurrency} conversionAvailable={currentAvailable} onDrilldown={onDrilldown} />

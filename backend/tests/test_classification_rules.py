@@ -181,6 +181,21 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("ignored", "ignored"), (tx_type, category))
 
+    def test_jose_roberto_arq_transfers_are_loan_papa_expenses(self) -> None:
+        for description in [
+            "Venta EURc - Jose Roberto Avila Mayor",
+            "Transfer to JOSE ROBERTO AVILA",
+        ]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("5000"),
+                    bank_name="ARQ",
+                    amount_original=Decimal("245.88"),
+                    currency_original="EUR",
+                )
+                self.assertEqual(("expense", "Loan Papá"), (tx_type, category))
+
     def test_unknown_imported_categories_fall_back_to_other(self) -> None:
         tx_type, category, notes = classify_transaction(
             description="Unrecognized merchant",

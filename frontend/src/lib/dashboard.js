@@ -250,6 +250,23 @@ export function buildReviewBannerSummary(insights, displayCurrency, displayRates
   }
 }
 
+export function buildLoanPapaSummary(insights) {
+  const loan = insights?.loan_papa
+  if (!loan) return null
+  const behind = toNumber(loan.behind_mxn)
+  return {
+    totalAmount: toNumber(loan.total_amount_mxn),
+    monthlyAmount: toNumber(loan.monthly_amount_mxn),
+    totalDue: toNumber(loan.total_due_mxn),
+    paid: toNumber(loan.paid_mxn),
+    behind,
+    remainingBalance: toNumber(loan.remaining_balance_mxn),
+    installmentsDue: Number(loan.installments_due || 0),
+    installmentCount: Number(loan.installment_count || 0),
+    isBehind: behind > 0,
+  }
+}
+
 export function convertInsightMetric(valueMxn, displayCurrency, displayRates) {
   if (displayCurrency === 'MXN') return Number(valueMxn || 0)
   const rate = Number(displayRates[displayCurrency] || 0)

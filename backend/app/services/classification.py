@@ -168,6 +168,9 @@ def classify_transaction(
     ):
         return "expense", "Healthcare", None
 
+    if "JOSE ROBERTO AVILA" in normalized and "ARQ" in normalized_bank:
+        return "expense", "Loan Papá", None
+
     for pattern, result in INCOME_RULES:
         if re.search(pattern, normalized, re.IGNORECASE):
             return result[0], result[1], None

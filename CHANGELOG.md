@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added a `Loan Papá` reconciliation card and deterministic ARQ/DolarApp
+  transfer classification for Jose Roberto Avila payments, with repayments
+  counted as normal expenses.
 - Added deterministic ARQ import audit tooling, surfaced statement import
   warnings in the Statements UI, and restored 16 confirmed missing
   January-May 2026 ARQ rows in production from the original PDFs.

@@ -4,6 +4,7 @@ import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
   buildPeriodComparisonLabel,
+  buildLoanPapaSummary,
   buildReviewBannerSummary,
   buildSavingsRateComparison,
   calculateSavingsRate,
@@ -90,6 +91,34 @@ test('prepares review banner summary from insight inputs', () => {
       affectedValue: 50,
       reasons: 'Unclassified 2 · Missing FX 1',
       conversionAvailable: true,
+    },
+  )
+})
+
+test('prepares Loan Papa summary from backend reconciliation values', () => {
+  assert.deepEqual(
+    buildLoanPapaSummary({
+      loan_papa: {
+        total_amount_mxn: '458221.80',
+        monthly_amount_mxn: '7637.03',
+        total_due_mxn: '106918.42',
+        paid_mxn: '93707.33',
+        behind_mxn: '13211.09',
+        remaining_balance_mxn: '364514.47',
+        installments_due: 14,
+        installment_count: 60,
+      },
+    }),
+    {
+      totalAmount: 458221.8,
+      monthlyAmount: 7637.03,
+      totalDue: 106918.42,
+      paid: 93707.33,
+      behind: 13211.09,
+      remainingBalance: 364514.47,
+      installmentsDue: 14,
+      installmentCount: 60,
+      isBehind: true,
     },
   )
 })

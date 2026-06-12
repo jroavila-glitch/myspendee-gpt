@@ -659,6 +659,71 @@ h3 {
   color: var(--green);
 }
 
+.loan-papa-panel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.loan-papa-panel.behind {
+  box-shadow: inset 3px 0 0 rgba(231, 157, 44, 0.62);
+}
+
+.loan-papa-panel.current {
+  box-shadow: inset 3px 0 0 rgba(31, 157, 114, 0.6);
+}
+
+.loan-papa-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.loan-papa-compact h3 {
+  margin: 0.16rem 0 0;
+  font-size: 1.18rem;
+  letter-spacing: -0.04em;
+}
+
+.loan-papa-compact p {
+  margin: 0.16rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.loan-papa-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.62rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(34, 41, 74, 0.08);
+}
+
+.loan-papa-details div {
+  padding: 0.68rem 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-strong);
+}
+
+.loan-papa-details span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.loan-papa-details strong {
+  display: block;
+  margin-top: 0.24rem;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
 .summary-card {
   border-radius: 14px;
   border: 1px solid var(--border);
@@ -2345,6 +2410,7 @@ textarea:focus-visible {
   .cashflow-hero,
   .dashboard-kpi-grid,
   .ranked-grid,
+  .loan-papa-details,
   .review-overview,
   .split-source-card,
   .split-undo-card {
@@ -2542,6 +2608,11 @@ textarea:focus-visible {
   .review-action {
     grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .loan-papa-compact {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .review-overview-stats {

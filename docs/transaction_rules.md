@@ -111,6 +111,8 @@ Additional ignore behavior:
   the next month; day `1-3` stays in the current transaction month. Smaller
   housing-related transfers, utilities, or shared-cost payments stay in their
   transaction month even when they are categorized as `Rent`.
+- `Implemented`: ARQ/DolarApp transfers to `JOSE ROBERTO AVILA` or
+  `JOSE ROBERTO AVILA MAYOR` -> `Loan Papá`. These count as normal expenses.
 - `Implemented`: `APARECIDA FERNANDA` -> `Home`
 - `Implemented`: `RITUALS`, `GBMD ... MEDICINA`, `TRF MB WAY P/ FERNANDO ALVES`, `Transfer to FERNANDO CARLOS TEIXEIRA ALVES`, `Transfer to FERNANDO MOTA` and close variants -> `Healthcare`
 - `Implemented`: `VODAFONE`, `TELCEL`, `REPAIR`, `M.REPAIR`, `ISHOP MIXUP`, `MACSTORE ...`, matching Apple service rows -> `Phone/Tech`
@@ -217,6 +219,11 @@ Additional ignore behavior:
   matching-transactions list.
 - `Implemented`: Any visible income or expense transaction row can open Split
   or Edit split, whether or not it is currently in the Review queue.
+- `Implemented`: Dashboard insights include a compact expandable `Loan Papá`
+  reconciliation card. It tracks a 60-installment MXN loan from 2025-05-01
+  through 2030-04-01 at `7637.03 MXN` per month. The baseline on 2026-06-12 is
+  `93707.33 MXN` paid and `13211.09 MXN` behind; future `Loan Papá` expense
+  transactions after that date reduce the behind/remaining balances.
 - `Implemented`: A single income or expense transaction can be split across
   two or more unique same-type categories while remaining one source bank
   record.

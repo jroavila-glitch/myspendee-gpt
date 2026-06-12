@@ -10,6 +10,7 @@ from sqlalchemy.sql import Select
 from app.models import Transaction, TransactionAllocation
 from app.schemas.insights import (
     InsightsResponse,
+    LoanPapaRead,
     MetricComparison,
     MonthStatusRead,
     ReviewItemInsight,
@@ -19,6 +20,12 @@ from app.services.transactions import apply_transaction_filters
 
 
 ZERO = Decimal("0")
+LOAN_PAPA_START = date(2025, 5, 1)
+LOAN_PAPA_END = date(2030, 4, 1)
+LOAN_PAPA_INSTALLMENTS = 60
+LOAN_PAPA_MONTHLY_MXN = Decimal("7637.03")
+LOAN_PAPA_BASELINE_AS_OF = date(2026, 6, 12)
+LOAN_PAPA_BASELINE_PAID_MXN = Decimal("93707.33")
 
 
 def get_insights(
@@ -30,12 +37,15 @@ def get_insights(
     date_to: date | None = None,
     bank_name: str | None = None,
     type: str | None = None,
+    today: date | None = None,
 ) -> InsightsResponse:
+    today = today or date.today()
     current_period, previous_period = resolve_comparison_period(
         year=year,
         month=month,
         date_from=date_from,
         date_to=date_to,
+        today=today,
     )
     average_period = _recent_complete_months(current_period[0])
 
@@ -122,7 +132,58 @@ def get_insights(
             )
         ],
         review_items=review_items,
+        loan_papa=calculate_loan_papa_reconciliation(
+            extra_paid_mxn=_loan_papa_extra_payments(db),
+            as_of=today,
+        ),
     )
+
+
+def _money(value: Decimal) -> Decimal:
+    return value.quantize(Decimal("0.01"))
+
+
+def _month_index(start: date, as_of: date) -> int:
+    return (as_of.year - start.year) * 12 + as_of.month - start.month + 1
+
+
+def calculate_loan_papa_reconciliation(
+    *,
+    extra_paid_mxn: Decimal,
+    as_of: date,
+) -> LoanPapaRead:
+    installments_due = min(
+        LOAN_PAPA_INSTALLMENTS,
+        max(0, _month_index(LOAN_PAPA_START, as_of)),
+    )
+    total_amount = _money(LOAN_PAPA_MONTHLY_MXN * LOAN_PAPA_INSTALLMENTS)
+    total_due = _money(LOAN_PAPA_MONTHLY_MXN * installments_due)
+    paid = _money(LOAN_PAPA_BASELINE_PAID_MXN + extra_paid_mxn)
+    behind = _money(max(ZERO, total_due - paid))
+    remaining = _money(max(ZERO, total_amount - paid))
+    return LoanPapaRead(
+        total_amount_mxn=total_amount,
+        monthly_amount_mxn=LOAN_PAPA_MONTHLY_MXN,
+        installment_count=LOAN_PAPA_INSTALLMENTS,
+        installments_due=installments_due,
+        total_due_mxn=total_due,
+        paid_mxn=paid,
+        behind_mxn=behind,
+        remaining_balance_mxn=remaining,
+        start_date=LOAN_PAPA_START.isoformat(),
+        end_date=LOAN_PAPA_END.isoformat(),
+        baseline_as_of=LOAN_PAPA_BASELINE_AS_OF.isoformat(),
+    )
+
+
+def _loan_papa_extra_payments(db: Session) -> Decimal:
+    total = db.scalar(
+        select(func.coalesce(func.sum(Transaction.amount_mxn), 0))
+        .where(Transaction.type == "expense")
+        .where(Transaction.category == "Loan Papá")
+        .where(Transaction.date > LOAN_PAPA_BASELINE_AS_OF)
+    )
+    return Decimal(total or 0)
 
 
 def _period_totals(
