@@ -254,16 +254,25 @@ export function buildLoanPapaSummary(insights) {
   const loan = insights?.loan_papa
   if (!loan) return null
   const behind = toNumber(loan.behind_mxn)
+  const paid = toNumber(loan.paid_mxn)
+  const totalAmount = toNumber(loan.total_amount_mxn)
+  const totalDue = toNumber(loan.total_due_mxn)
+  const monthlyAmount = toNumber(loan.monthly_amount_mxn)
+  const paidPercent = totalAmount > 0 ? Number(((paid / totalAmount) * 100).toFixed(1)) : 0
+  const expectedPercent = totalAmount > 0 ? Number(((totalDue / totalAmount) * 100).toFixed(1)) : 0
   return {
-    totalAmount: toNumber(loan.total_amount_mxn),
-    monthlyAmount: toNumber(loan.monthly_amount_mxn),
-    totalDue: toNumber(loan.total_due_mxn),
-    paid: toNumber(loan.paid_mxn),
+    totalAmount,
+    monthlyAmount,
+    totalDue,
+    paid,
     behind,
-    remainingBalance: toNumber(loan.remaining_balance_mxn),
+    behindInstallments: monthlyAmount > 0 ? Number((behind / monthlyAmount).toFixed(1)) : 0,
+    expectedPercent,
     installmentsDue: Number(loan.installments_due || 0),
     installmentCount: Number(loan.installment_count || 0),
     isBehind: behind > 0,
+    paidPercent,
+    remainingBalance: toNumber(loan.remaining_balance_mxn),
   }
 }
 

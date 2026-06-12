@@ -661,7 +661,10 @@ h3 {
 
 .loan-papa-panel {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.82rem;
+  background:
+    radial-gradient(circle at 7% 12%, rgba(31, 157, 114, 0.08), transparent 28%),
+    linear-gradient(135deg, rgba(31, 157, 114, 0.035), rgba(231, 157, 44, 0.045) 58%, rgba(255, 255, 255, 0.92));
 }
 
 .loan-papa-panel.behind {
@@ -679,9 +682,36 @@ h3 {
   gap: 1rem;
 }
 
+.loan-papa-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.loan-papa-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.2rem 0.52rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.loan-papa-status.behind {
+  background: rgba(231, 157, 44, 0.16);
+  color: #8d5b16;
+}
+
+.loan-papa-status.current {
+  background: rgba(31, 157, 114, 0.13);
+  color: var(--green);
+}
+
 .loan-papa-compact h3 {
   margin: 0.16rem 0 0;
-  font-size: 1.18rem;
+  font-size: 1.32rem;
   letter-spacing: -0.04em;
 }
 
@@ -689,6 +719,55 @@ h3 {
   margin: 0.16rem 0 0;
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.loan-papa-progress {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.loan-papa-progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(34, 41, 74, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(34, 41, 74, 0.04);
+}
+
+.loan-papa-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(31, 157, 114, 0.68), rgba(31, 157, 114, 0.94));
+}
+
+.loan-papa-progress-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  border-radius: 999px;
+  background: #d28b2d;
+  box-shadow: 0 0 0 3px rgba(231, 157, 44, 0.18);
+}
+
+.loan-papa-progress-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.loan-papa-progress-labels span:first-child {
+  color: var(--green);
+}
+
+.loan-papa-progress-labels span:last-child {
+  color: #8d5b16;
 }
 
 .loan-papa-details {
@@ -704,6 +783,16 @@ h3 {
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface-strong);
+}
+
+.loan-papa-details div.paid {
+  border-color: rgba(31, 157, 114, 0.18);
+  background: rgba(31, 157, 114, 0.065);
+}
+
+.loan-papa-details div.behind {
+  border-color: rgba(231, 157, 44, 0.22);
+  background: rgba(231, 157, 44, 0.08);
 }
 
 .loan-papa-details span {
@@ -2612,6 +2701,11 @@ textarea:focus-visible {
 
   .loan-papa-compact {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .loan-papa-progress-labels {
+    align-items: flex-start;
     flex-direction: column;
   }
 

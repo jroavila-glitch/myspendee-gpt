@@ -115,10 +115,13 @@ test('prepares Loan Papa summary from backend reconciliation values', () => {
       totalDue: 106918.42,
       paid: 93707.33,
       behind: 13211.09,
+      behindInstallments: 1.7,
+      expectedPercent: 23.3,
       remainingBalance: 364514.47,
       installmentsDue: 14,
       installmentCount: 60,
       isBehind: true,
+      paidPercent: 20.5,
     },
   )
 })

@@ -87,25 +87,43 @@ function SavingsKpi({ savingsRate, comparison, previousPeriodLabel, currentAvail
 function LoanPapaCard({ loan }) {
   const [expanded, setExpanded] = useState(false)
   if (!loan) return null
+  const paidWidth = `${Math.min(Math.max(loan.paidPercent, 0), 100)}%`
+  const expectedLeft = `${Math.min(Math.max(loan.expectedPercent, 0), 100)}%`
   return (
     <section className={`panel loan-papa-panel ${loan.isBehind ? 'behind' : 'current'}`} aria-label="Loan Papá reconciliation">
       <div className="loan-papa-compact">
         <div>
-          <span className="eyebrow">Loan Papá</span>
-          <h3>{loan.isBehind ? `${formatMoney(loan.behind, 'MXN')} behind` : 'Current'}</h3>
+          <div className="loan-papa-title-row">
+            <span className="eyebrow">Loan Papá</span>
+            <span className={`loan-papa-status ${loan.isBehind ? 'behind' : 'current'}`}>
+              {loan.isBehind ? `Behind · ${formatMoney(loan.behind, 'MXN')}` : 'Current'}
+            </span>
+          </div>
+          <h3>{loan.paidPercent.toFixed(1)}% paid</h3>
           <p>{loan.installmentsDue} of {loan.installmentCount} installments due · {formatMoney(loan.monthlyAmount, 'MXN')} monthly</p>
         </div>
         <button type="button" className="ghost-button compact-button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
           {expanded ? 'Hide details' : 'Open details'}
         </button>
       </div>
+      <div className="loan-papa-progress" aria-label={`${loan.paidPercent.toFixed(1)}% paid, ${loan.expectedPercent.toFixed(1)}% expected by now`}>
+        <div className="loan-papa-progress-track">
+          <span className="loan-papa-progress-fill" style={{ width: paidWidth }} />
+          <span className="loan-papa-progress-marker" style={{ left: expectedLeft }} />
+        </div>
+        <div className="loan-papa-progress-labels">
+          <span>{loan.paidPercent.toFixed(1)}% paid</span>
+          <span>{loan.expectedPercent.toFixed(1)}% expected by now</span>
+          <span>{loan.behindInstallments.toFixed(1)} installments behind</span>
+        </div>
+      </div>
       {expanded ? (
         <div className="loan-papa-details">
           <div><span>Total loan</span><strong>{formatMoney(loan.totalAmount, 'MXN')}</strong></div>
           <div><span>Monthly amount</span><strong>{formatMoney(loan.monthlyAmount, 'MXN')}</strong></div>
           <div><span>Total due so far</span><strong>{formatMoney(loan.totalDue, 'MXN')}</strong></div>
-          <div><span>Paid so far</span><strong>{formatMoney(loan.paid, 'MXN')}</strong></div>
-          <div><span>Behind</span><strong>{formatMoney(loan.behind, 'MXN')}</strong></div>
+          <div className="paid"><span>Paid so far</span><strong>{formatMoney(loan.paid, 'MXN')}</strong></div>
+          <div className="behind"><span>Behind</span><strong>{formatMoney(loan.behind, 'MXN')}</strong></div>
           <div><span>Remaining balance</span><strong>{formatMoney(loan.remainingBalance, 'MXN')}</strong></div>
         </div>
       ) : null}
