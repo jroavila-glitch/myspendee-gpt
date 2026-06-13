@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
 
+TRANSACTION_SOURCE_STATUSES = {"posted", "pending", "reconciled_pending"}
+
 INCOME_CATEGORIES = [
     "Tennis Lessons",
     "Tennis Rush",
@@ -63,6 +65,7 @@ class TransactionBase(BaseModel):
     bank_name: str
     assigned_month: int | None = None
     assigned_year: int | None = None
+    source_status: str = "posted"
     notes: str | None = None
 
 
@@ -83,6 +86,7 @@ class TransactionUpdate(BaseModel):
     bank_name: str | None = None
     assigned_month: int | None = None
     assigned_year: int | None = None
+    source_status: str | None = None
     notes: str | None = None
     reviewed: bool | None = None
 
@@ -131,6 +135,8 @@ class TransactionRead(TransactionBase):
     assigned_month: int | None = None
     assigned_year: int | None = None
     manually_added: bool
+    source_status: str = "posted"
+    matched_transaction_id: UUID | None = None
     statement_id: UUID | None
     created_at: datetime_type
     reviewed_at: datetime_type | None

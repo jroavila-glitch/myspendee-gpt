@@ -13,3 +13,9 @@ export function canSplitTransaction(transaction) {
 export function getSplitActionLabel(transaction) {
   return isSplitTransaction(transaction) ? 'Edit split' : 'Split'
 }
+
+export function getTransactionSourceStatusLabel(transaction) {
+  if (transaction?.source_status === 'pending') return 'Pending · waiting for statement'
+  if (transaction?.source_status === 'reconciled_pending') return 'Reconciled pending'
+  return ''
+}

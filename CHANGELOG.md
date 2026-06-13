@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added backend support for pending manual transactions, including a
+  `reconciled_pending` source state reserved for future statement matching and
+  hidden from normal analytics to avoid double counting.
 - Added a `Loan Papá` reconciliation card and deterministic ARQ/DolarApp
   transfer classification for Jose Roberto Avila payments, with repayments
   counted as normal expenses.

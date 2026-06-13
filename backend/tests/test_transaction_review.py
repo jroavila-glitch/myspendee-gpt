@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import Transaction, TransactionAllocation
-from app.main import bulk_delete, bulk_update, edit_transaction
-from app.schemas.common import TransactionBulkDelete, TransactionBulkUpdate, TransactionUpdate
-from app.services.transactions import get_summary, prepare_transaction_data, update_transaction
+from app.main import bulk_delete, bulk_update, edit_transaction, list_transactions
+from app.schemas.common import TransactionBulkDelete, TransactionBulkUpdate, TransactionCreate, TransactionUpdate
+from app.services.transactions import create_transaction, duplicate_exists, get_summary, prepare_transaction_data, update_transaction
 
 
 class TransactionReviewTest(TestCase):
@@ -149,6 +149,57 @@ class TransactionReviewTest(TestCase):
             TransactionUpdate(reviewed=False),
         )
         self.assertIsNone(reopened.reviewed_at)
+
+    def test_pending_manual_transaction_is_created_and_counted(self) -> None:
+        pending = create_transaction(
+            self.db,
+            TransactionCreate(
+                date=date(2026, 6, 12),
+                description="Pending grocery receipt",
+                amount_original=Decimal("42.50"),
+                currency_original="EUR",
+                amount_mxn=Decimal("913.75"),
+                exchange_rate_used=Decimal("21.50"),
+                category="Groceries",
+                type="expense",
+                bank_name="Revolut",
+                notes="Split when the statement arrives",
+                source_status="pending",
+            ),
+        )
+
+        self.assertEqual("pending", pending.source_status)
+        self.assertIsNone(pending.matched_transaction_id)
+
+        summary = get_summary(self.db, month=6, year=2026)
+        self.assertEqual(Decimal("973.75"), summary.expenses)
+
+        rows = list_transactions(year=2026, month=6, date_from=None, date_to=None, db=self.db)
+        self.assertIn(pending.id, {row.id for row in rows})
+
+    def test_reconciled_pending_transaction_is_hidden_from_normal_views(self) -> None:
+        self.transaction.source_status = "reconciled_pending"
+        self.db.commit()
+
+        summary = get_summary(self.db, month=6, year=2026)
+        rows = list_transactions(year=2026, month=6, date_from=None, date_to=None, db=self.db)
+
+        self.assertEqual(Decimal("0.00"), summary.expenses)
+        self.assertEqual([], rows)
+
+    def test_pending_transaction_does_not_block_statement_duplicate_check(self) -> None:
+        self.transaction.source_status = "pending"
+        self.db.commit()
+
+        self.assertFalse(
+            duplicate_exists(
+                self.db,
+                self.transaction.bank_name,
+                self.transaction.date,
+                self.transaction.amount_mxn,
+                self.transaction.description,
+            )
+        )
 
     def test_bulk_category_change_marks_transaction_reviewed(self) -> None:
         result = bulk_update(

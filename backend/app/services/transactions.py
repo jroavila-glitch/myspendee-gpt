@@ -6,13 +6,23 @@ from sqlalchemy.sql import Select
 from sqlalchemy.orm import Session
 
 from app.models import Statement, Transaction, TransactionAllocation
-from app.schemas.common import BreakdownItem, BreakdownResponse, SummaryResponse, TransactionCreate, TransactionUpdate
+from app.schemas.common import (
+    TRANSACTION_SOURCE_STATUSES,
+    BreakdownItem,
+    BreakdownResponse,
+    SummaryResponse,
+    TransactionCreate,
+    TransactionUpdate,
+)
 from app.services.classification import apply_special_description_rules, classify_transaction, normalize_category
 from app.services.normalization import normalize_bank_name, resolve_amounts
 
 
 class SplitTransactionMutationError(ValueError):
     pass
+
+
+VISIBLE_SOURCE_STATUS_FILTER = Transaction.source_status != "reconciled_pending"
 
 
 def _format_original_amount(amount_original: Decimal | None, currency: str, amount_mxn: Decimal, rate: Decimal | None) -> str | None:
@@ -64,6 +74,8 @@ def serialize_transaction(transaction: Transaction) -> dict:
             "assigned_month",
             "assigned_year",
             "manually_added",
+            "source_status",
+            "matched_transaction_id",
             "notes",
             "reviewed_at",
             "statement_id",
@@ -132,6 +144,9 @@ def prepare_transaction_data(data: dict) -> dict:
             amount_original,
             currency_original,
         )
+    source_status = data.get("source_status") or "posted"
+    if source_status not in TRANSACTION_SOURCE_STATUSES:
+        raise ValueError(f"Invalid transaction source_status: {source_status}")
     return {
         "date": tx_date,
         "description": description,
@@ -147,6 +162,8 @@ def prepare_transaction_data(data: dict) -> dict:
         "assigned_month": int(assigned_month),
         "assigned_year": int(assigned_year),
         "manually_added": bool(data.get("manually_added", False)),
+        "source_status": source_status,
+        "matched_transaction_id": data.get("matched_transaction_id"),
         "notes": notes,
         "statement_id": data.get("statement_id"),
     }
@@ -163,6 +180,7 @@ def apply_transaction_filters(
     category: str | None = None,
     type: str | None = None,
 ) -> Select:
+    stmt = stmt.where(VISIBLE_SOURCE_STATUS_FILTER)
     if date_from or date_to:
         if date_from:
             stmt = stmt.where(Transaction.date >= date_from)
@@ -259,6 +277,7 @@ def get_summary(
             func.coalesce(func.sum(case((Transaction.type == "expense", Transaction.amount_mxn), else_=0)), 0),
         )
         .where(Transaction.type != "ignored")
+        .where(VISIBLE_SOURCE_STATUS_FILTER)
     )
     stmt = apply_transaction_filters(
         stmt,
@@ -292,6 +311,7 @@ def get_breakdown(
             Transaction.id.label("source_id"),
         )
         .where(Transaction.type != "ignored")
+        .where(VISIBLE_SOURCE_STATUS_FILTER)
         .where(~Transaction.allocations.any())
     )
     unsplit_stmt = apply_transaction_filters(
@@ -316,6 +336,7 @@ def get_breakdown(
         )
         .join(TransactionAllocation, TransactionAllocation.transaction_id == Transaction.id)
         .where(Transaction.type != "ignored")
+        .where(VISIBLE_SOURCE_STATUS_FILTER)
     )
     split_stmt = apply_transaction_filters(
         split_stmt,
@@ -354,6 +375,7 @@ def duplicate_exists(db: Session, bank_name: str, tx_date: date, amount_mxn: Dec
             Transaction.date == tx_date,
             Transaction.amount_mxn == amount_mxn,
             Transaction.description == description,
+            Transaction.source_status == "posted",
         )
     )
     return db.execute(stmt).first() is not None

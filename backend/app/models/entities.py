@@ -40,6 +40,8 @@ class Transaction(Base):
         Index("ix_transactions_assigned_month_year_type", "assigned_month", "assigned_year", "type"),
         Index("ix_transactions_bank_name", "bank_name"),
         Index("ix_transactions_category", "category"),
+        Index("ix_transactions_source_status", "source_status"),
+        Index("ix_transactions_matched_transaction_id", "matched_transaction_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -57,6 +59,12 @@ class Transaction(Base):
     assigned_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     assigned_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     manually_added: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    source_status: Mapped[str] = mapped_column(String(24), default="posted", nullable=False)
+    matched_transaction_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     statement_id: Mapped[uuid.UUID | None] = mapped_column(

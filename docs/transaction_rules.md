@@ -207,6 +207,14 @@ Additional ignore behavior:
 - `Implemented`: Manual transaction edits for category/type override automatic classification.
 - `Implemented`: Manual transaction edits can override assigned month/year;
   leaving assigned period blank lets backend rules suggest it.
+- `Implemented`: Manual transactions can be marked with source status
+  `pending` when the real bank statement has not arrived yet. Pending rows are
+  included in normal transaction lists, summaries, category breakdowns, and
+  split workflows so receipts can be captured while they are still fresh.
+- `Implemented`: Source status `reconciled_pending` is reserved for a later
+  statement-matching workflow and is excluded from normal transaction lists and
+  analytics to prevent double counting once a pending capture has been replaced
+  by a statement-backed row.
 - `Implemented`: Bulk actions can change category and type
 - `Implemented`: Bulk type changes can set `income`, `expense`, or `ignored`
 - `Implemented`: Transactions with deterministic review reasons remain in Review

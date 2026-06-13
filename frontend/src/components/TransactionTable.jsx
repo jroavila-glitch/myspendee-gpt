@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from '../lib/currency'
 import { getTransactionReviewReasons } from '../lib/dashboard'
-import { canSplitTransaction, getSplitActionLabel, isSplitTransaction } from '../lib/transactions'
+import { canSplitTransaction, getSplitActionLabel, getTransactionSourceStatusLabel, isSplitTransaction } from '../lib/transactions'
 
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const assignedPeriodFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -208,6 +208,7 @@ export default function TransactionTable({
           const splitAction = onSplit && canSplitTransaction(transaction)
           const splitLabel = getSplitActionLabel(transaction)
           const assignedPeriodLabel = getAssignedPeriodLabel(transaction)
+          const sourceStatusLabel = getTransactionSourceStatusLabel(transaction)
           return (
             <div key={transaction.id} className="transaction-row transaction-grid">
             <div className="transaction-check">
@@ -221,6 +222,7 @@ export default function TransactionTable({
                 <span>{transaction.bank_name}</span>
               </div>
               {assignedPeriodLabel ? <span className="row-meta">Assigned to {assignedPeriodLabel}</span> : null}
+              {sourceStatusLabel ? <span className="pending-badge">{sourceStatusLabel}</span> : null}
               <ReviewBadge transaction={transaction} />
               {isSplitTransaction(transaction) ? (
                 <span className="split-badge">Split · {getAllocations(transaction).length} categories</span>

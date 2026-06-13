@@ -103,6 +103,7 @@ function Modal({ title, children, onClose, className = '', closeDisabled = false
 }
 
 function TransactionForm({ categories, initialValue, onSubmit, onCancel, secondaryAction }) {
+  const categoryOptions = dedupeCategories(categories)
   const [form, setForm] = useState(
     initialValue || {
       date: new Date().toISOString().slice(0, 10),
@@ -115,9 +116,11 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
       bank_name: '',
       assigned_month: '',
       assigned_year: '',
+      source_status: 'posted',
       notes: '',
     },
   )
+  const canMarkPending = !initialValue?.statement_id
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -134,6 +137,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           amount_original: form.amount_original ? Number(form.amount_original) : null,
           assigned_month: form.assigned_month ? Number(form.assigned_month) : null,
           assigned_year: form.assigned_year ? Number(form.assigned_year) : null,
+          source_status: form.source_status === 'pending' ? 'pending' : 'posted',
           manually_added: true,
         })
       }}
@@ -151,7 +155,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
       </label>
       <label><span>Category</span>
         <select value={form.category} onChange={(e) => updateField('category', e.target.value)}>
-          {[...categories.expense, ...categories.income].map((category) => <option key={category}>{category}</option>)}
+          {categoryOptions.map((category) => <option key={category}>{category}</option>)}
         </select>
       </label>
       <label><span>Type</span>
@@ -169,6 +173,19 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
       </label>
       <label><span>Assigned year</span><input type="number" placeholder="Auto" value={form.assigned_year ?? ''} onChange={(e) => updateField('assigned_year', e.target.value)} /></label>
       <label><span>Bank</span><input value={form.bank_name} onChange={(e) => updateField('bank_name', e.target.value)} /></label>
+      {canMarkPending ? (
+        <label className="pending-field full">
+          <input
+            type="checkbox"
+            checked={form.source_status === 'pending'}
+            onChange={(e) => updateField('source_status', e.target.checked ? 'pending' : 'posted')}
+          />
+          <span>
+            <strong>Pending / waiting for statement</strong>
+            <small>Use this for fresh receipts you want to split or categorize before the bank statement arrives.</small>
+          </span>
+        </label>
+      ) : null}
       <label className="full"><span>Notes</span><textarea rows="3" value={form.notes} onChange={(e) => updateField('notes', e.target.value)} /></label>
       <div className="form-actions full">
         {secondaryAction ? <button type="button" className="ghost-button" onClick={secondaryAction.onClick}>{secondaryAction.label}</button> : null}
