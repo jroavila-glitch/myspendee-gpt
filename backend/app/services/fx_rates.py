@@ -97,7 +97,10 @@ def get_banxico_rate(currency: str, target_date: date, lookback_days: int = 7) -
 
     for offset in range(0, lookback_days + 1):
         candidate_date = target_date - timedelta(days=offset)
-        rate = fetcher(candidate_date)
+        try:
+            rate = fetcher(candidate_date)
+        except httpx.HTTPError:
+            continue
         if rate is not None:
             return rate
     return None
