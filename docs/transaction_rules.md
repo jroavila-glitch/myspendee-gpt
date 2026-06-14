@@ -211,6 +211,10 @@ Additional ignore behavior:
   `pending` when the real bank statement has not arrived yet. Pending rows are
   included in normal transaction lists, summaries, category breakdowns, and
   split workflows so receipts can be captured while they are still fresh.
+- `Implemented`: Pending manual income/expense transactions can be split while
+  they are being added. The app creates one pending source transaction and then
+  saves the requested allocations immediately, so the receipt can be captured
+  before the bank statement arrives.
 - `Implemented`: Source status `reconciled_pending` is reserved for a later
   statement-matching workflow and is excluded from normal transaction lists and
   analytics to prevent double counting once a pending capture has been replaced
@@ -227,6 +231,9 @@ Additional ignore behavior:
   matching-transactions list.
 - `Implemented`: Any visible income or expense transaction row can open Split
   or Edit split, whether or not it is currently in the Review queue.
+- `Implemented`: `Tennis Smash & Social` is available as both an income
+  category and an expense category, so shared tennis/social costs can be tracked
+  separately from standard `Tennis` expenses.
 - `Implemented`: Dashboard insights include a compact expandable `Loan Papá`
   reconciliation card. It tracks a 60-installment MXN loan from 2025-05-01
   through 2030-04-01 at `7637.03 MXN` per month. The baseline on 2026-06-12 is

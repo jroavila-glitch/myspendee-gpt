@@ -372,6 +372,30 @@ class TransactionAllocationTest(TestCase):
         )
         self.assertEqual(2, len(self.db.scalars(select(TransactionAllocation)).all()))
 
+    def test_expense_allocations_accept_tennis_smash_and_social_category(self) -> None:
+        transaction = self.create_transaction(category="Other")
+
+        response = self.client.put(
+            f"/transactions/{transaction.id}/allocations",
+            json={
+                "expected_amount_mxn": "100.00",
+                "expected_amount_original": "100.00",
+                "expected_currency_original": "MXN",
+                "expected_type": "expense",
+                "allocations": [
+                    {"category": "Tennis Smash & Social", "amount_original": "60.00"},
+                    {"category": "Food & Drink", "amount_original": "40.00"},
+                ],
+            },
+        )
+
+        self.assertEqual(200, response.status_code, response.text)
+        data = response.json()
+        self.assertEqual(
+            ["Tennis Smash & Social", "Food & Drink"],
+            [row["category"] for row in data["allocations"]],
+        )
+
     def test_put_allocations_rejects_stale_expected_amount_or_type(self) -> None:
         stale_amount = self.create_transaction()
         amount_response = self.client.put(

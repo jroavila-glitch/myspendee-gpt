@@ -30,6 +30,7 @@ EXPENSE_CATEGORIES = [
     "Groceries",
     "Food & Drink",
     "Tennis",
+    "Tennis Smash & Social",
     "Monsanto courts",
     "Car",
     "Transport",

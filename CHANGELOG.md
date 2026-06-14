@@ -12,6 +12,8 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added `Tennis Smash & Social` as an expense category and allowed pending
+  manual transactions to be split directly while they are being added.
 - Added backend support for pending manual transactions, including a
   `reconciled_pending` source state reserved for future statement matching and
   hidden from normal analytics to avoid double counting.

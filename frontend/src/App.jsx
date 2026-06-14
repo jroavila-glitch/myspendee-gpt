@@ -7,6 +7,7 @@ import SplitTransactionModal from './components/SplitTransactionModal'
 import StatementsWorkspace from './components/StatementsWorkspace'
 import TransactionTable from './components/TransactionTable'
 import { api } from './lib/api'
+import { formatMoney } from './lib/currency'
 import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
@@ -21,7 +22,18 @@ import {
   shouldApplyRequestVersion,
   shouldShowGlobalBulkBar,
 } from './lib/dashboard'
-import { buildSplitPayload } from './lib/splits'
+import {
+  addSplitRow,
+  applyFinalRowRemainder,
+  buildSplitPayload,
+  createSplitModalState,
+  isSplitModalSaveValid,
+  removeSplitRow,
+  updateSplitRowAmount,
+  updateSplitRowCategory,
+  updateSplitRowNotes,
+  updateSplitRowPercent,
+} from './lib/splits'
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const ASSIGNED_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => {
@@ -36,6 +48,110 @@ function getCurrentMonthState() {
 
 function dedupeCategories(categories) {
   return Array.from(new Set([...categories.expense, ...categories.income]))
+}
+
+function formToDraftTransaction(form) {
+  return {
+    date: form.date,
+    description: form.description || 'Pending transaction',
+    amount_mxn: Number(form.amount_mxn || 0),
+    amount_original: form.amount_original ? Number(form.amount_original) : null,
+    currency_original: form.currency_original || 'MXN',
+    category: form.category || 'Other',
+    type: form.type || 'expense',
+    bank_name: form.bank_name || 'Manual',
+    allocations: [],
+  }
+}
+
+function getSplitBasisCurrency(transaction) {
+  return transaction.amount_original != null && transaction.amount_original !== '' ? transaction.currency_original || 'MXN' : 'MXN'
+}
+
+function getSplitAmountLabel(transaction) {
+  if (transaction.amount_original != null && transaction.amount_original !== '') {
+    return `Amount (${transaction.currency_original || 'original'})`
+  }
+  return 'Amount (MXN)'
+}
+
+function PendingSplitEditor({ transaction, categories, splitState, onSplitStateChange }) {
+  if (!splitState) return null
+  const typeCategories = categories[transaction.type] || []
+  const amountLabel = getSplitAmountLabel(transaction)
+  const splitCurrency = getSplitBasisCurrency(transaction)
+
+  return (
+    <section className="pending-split-editor full" aria-label="Pending transaction split">
+      <div className="split-editor-header">
+        <div>
+          <span className="eyebrow">Pending split</span>
+          <h3>Split this before saving</h3>
+          <p>The app will save one pending transaction, then attach these category allocations immediately.</p>
+        </div>
+        <div className="split-editor-actions">
+          <button type="button" className="ghost-button" onClick={() => onSplitStateChange((current) => addSplitRow(current))}>+ Add category</button>
+          <button type="button" className="ghost-button" onClick={() => onSplitStateChange((current) => applyFinalRowRemainder(current))}>Set final remainder</button>
+        </div>
+      </div>
+
+      <div className="split-grid split-grid-head">
+        <span>Category</span>
+        <span>{amountLabel}</span>
+        <span>Percent</span>
+        <span>Note</span>
+        <span></span>
+      </div>
+
+      <div className="split-row-list">
+        {splitState.rows.map((row, index) => (
+          <div key={index} className="split-grid split-row">
+            <label>
+              <span>Category</span>
+              <select value={row.category} onChange={(event) => onSplitStateChange((current) => updateSplitRowCategory(current, index, event.target.value))}>
+                <option value="">Choose category</option>
+                {typeCategories.map((category) => <option key={category}>{category}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>{amountLabel}</span>
+              <input type="number" min="0" step="0.01" value={row.amount} onChange={(event) => onSplitStateChange((current) => updateSplitRowAmount(current, index, event.target.value))} />
+            </label>
+            <label>
+              <span>Percent</span>
+              <input type="number" min="0" step="0.01" value={row.percent} onChange={(event) => onSplitStateChange((current) => updateSplitRowPercent(current, index, event.target.value))} />
+            </label>
+            <label>
+              <span>Note</span>
+              <input value={row.notes} placeholder="Optional" onChange={(event) => onSplitStateChange((current) => updateSplitRowNotes(current, index, event.target.value))} />
+            </label>
+            <button type="button" className="ghost-button danger" disabled={splitState.rows.length <= 2} onClick={() => onSplitStateChange((current) => removeSplitRow(current, index))}>Remove</button>
+          </div>
+        ))}
+      </div>
+
+      <div className="split-totals" aria-live="polite">
+        <div>
+          <span>Allocated</span>
+          <strong>{formatMoney(Number(splitState.total || 0) - Number(splitState.validation.remaining || 0), splitCurrency)}</strong>
+        </div>
+        <div className={splitState.validation.remaining === 0 ? 'balanced' : 'unbalanced'}>
+          <span>Remaining</span>
+          <strong>{formatMoney(splitState.validation.remaining, splitCurrency)}</strong>
+        </div>
+        <div>
+          <span>Percent total</span>
+          <strong>{splitState.rows.reduce((sum, row) => sum + Number(row.percent || 0), 0).toFixed(2)}%</strong>
+        </div>
+      </div>
+
+      {splitState.validation.errors.length ? (
+        <div className="split-errors">
+          {splitState.validation.errors.map((error) => <p key={error}>{error}</p>)}
+        </div>
+      ) : null}
+    </section>
+  )
 }
 
 function Modal({ title, children, onClose, className = '', closeDisabled = false }) {
@@ -120,10 +236,48 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
       notes: '',
     },
   )
+  const isCreatingTransaction = !initialValue
   const canMarkPending = !initialValue?.statement_id
+  const canSplitPending = isCreatingTransaction && canMarkPending && form.source_status === 'pending' && (form.type === 'expense' || form.type === 'income')
+  const draftTransaction = useMemo(() => formToDraftTransaction(form), [
+    form.amount_mxn,
+    form.amount_original,
+    form.bank_name,
+    form.category,
+    form.currency_original,
+    form.date,
+    form.description,
+    form.type,
+  ])
+  const splitResetKey = [
+    draftTransaction.amount_mxn,
+    draftTransaction.amount_original ?? '',
+    draftTransaction.currency_original,
+    draftTransaction.category,
+    draftTransaction.type,
+  ].join('|')
+  const [splitEnabled, setSplitEnabled] = useState(false)
+  const [pendingSplitState, setPendingSplitState] = useState(null)
+  const pendingSplitValid = !splitEnabled || (pendingSplitState && isSplitModalSaveValid(pendingSplitState))
+
+  useEffect(() => {
+    if (!canSplitPending) {
+      setSplitEnabled(false)
+      setPendingSplitState(null)
+      return
+    }
+    if (splitEnabled) {
+      setPendingSplitState(createSplitModalState(draftTransaction))
+    }
+  }, [canSplitPending, splitEnabled, splitResetKey])
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function startPendingSplit() {
+    setSplitEnabled(true)
+    setPendingSplitState(createSplitModalState(draftTransaction))
   }
 
   return (
@@ -131,7 +285,8 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
       className="form-grid"
       onSubmit={(event) => {
         event.preventDefault()
-        onSubmit({
+        if (!pendingSplitValid) return
+        const values = {
           ...form,
           amount_mxn: Number(form.amount_mxn),
           amount_original: form.amount_original ? Number(form.amount_original) : null,
@@ -139,7 +294,8 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           assigned_year: form.assigned_year ? Number(form.assigned_year) : null,
           source_status: form.source_status === 'pending' ? 'pending' : 'posted',
           manually_added: true,
-        })
+        }
+        onSubmit(values, splitEnabled ? pendingSplitState.rows : null)
       }}
     >
       <label><span>Date</span><input type="date" value={form.date} onChange={(e) => updateField('date', e.target.value)} /></label>
@@ -186,11 +342,37 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           </span>
         </label>
       ) : null}
+      {canSplitPending ? (
+        splitEnabled ? (
+          <>
+            <PendingSplitEditor
+              transaction={draftTransaction}
+              categories={categories}
+              splitState={pendingSplitState}
+              onSplitStateChange={setPendingSplitState}
+            />
+            <div className="pending-split-actions full">
+              <button type="button" className="ghost-button" onClick={() => {
+                setSplitEnabled(false)
+                setPendingSplitState(null)
+              }}>Do not split now</button>
+            </div>
+          </>
+        ) : (
+          <div className="pending-split-prompt full">
+            <div>
+              <strong>Need to split this receipt?</strong>
+              <span>Add the categories now, before the statement arrives.</span>
+            </div>
+            <button type="button" className="ghost-button" onClick={startPendingSplit}>Split now</button>
+          </div>
+        )
+      ) : null}
       <label className="full"><span>Notes</span><textarea rows="3" value={form.notes} onChange={(e) => updateField('notes', e.target.value)} /></label>
       <div className="form-actions full">
         {secondaryAction ? <button type="button" className="ghost-button" onClick={secondaryAction.onClick}>{secondaryAction.label}</button> : null}
         <button type="button" className="ghost-button" onClick={onCancel}>Cancel</button>
-        <button type="submit">Save</button>
+        <button type="submit" disabled={!pendingSplitValid}>Save</button>
       </div>
     </form>
   )
@@ -764,12 +946,16 @@ function App() {
       ) : null}
 
       {showCreateModal ? (
-        <Modal title="Add Transaction" onClose={() => setShowCreateModal(false)}>
+        <Modal title="Add Transaction" className="create-transaction-modal-card" onClose={() => setShowCreateModal(false)}>
           <TransactionForm
             categories={categories}
             onCancel={() => setShowCreateModal(false)}
-            onSubmit={async (values) => {
-              await api.addTransaction(values)
+            onSubmit={async (values, pendingSplitRows) => {
+              const created = await api.addTransaction(values)
+              if (pendingSplitRows?.length) {
+                const payload = buildSplitPayload({ transaction: created, rows: pendingSplitRows })
+                await api.setAllocations(created.id, created, payload.allocations)
+              }
               setShowCreateModal(false)
               await loadAll()
             }}

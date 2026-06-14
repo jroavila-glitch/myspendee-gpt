@@ -1551,6 +1551,12 @@ h3 {
   overflow: auto;
 }
 
+.create-transaction-modal-card {
+  width: min(1120px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
 .review-modal-card {
   width: min(1320px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
@@ -1601,6 +1607,43 @@ h3 {
   margin-top: 0.2rem;
   color: var(--muted);
   line-height: 1.4;
+}
+
+.pending-split-prompt,
+.pending-split-editor {
+  border: 1px solid rgba(95, 84, 247, 0.16);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(95, 84, 247, 0.07), rgba(78, 163, 116, 0.06));
+  padding: 0.85rem;
+}
+
+.pending-split-prompt {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pending-split-prompt strong,
+.pending-split-prompt span {
+  display: block;
+}
+
+.pending-split-prompt span,
+.pending-split-editor .split-editor-header p {
+  margin-top: 0.18rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.pending-split-editor {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.pending-split-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .form-actions {
