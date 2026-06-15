@@ -24,7 +24,7 @@ import {
 } from './lib/dashboard'
 import {
   addSplitRow,
-  applyFinalRowRemainder,
+  balanceFinalSplitRow,
   buildSplitPayload,
   createSplitModalState,
   isSplitModalSaveValid,
@@ -91,7 +91,7 @@ function PendingSplitEditor({ transaction, categories, splitState, onSplitStateC
         </div>
         <div className="split-editor-actions">
           <button type="button" className="ghost-button" onClick={() => onSplitStateChange((current) => addSplitRow(current))}>+ Add category</button>
-          <button type="button" className="ghost-button" onClick={() => onSplitStateChange((current) => applyFinalRowRemainder(current))}>Set final remainder</button>
+          <button type="button" className="ghost-button" onClick={() => onSplitStateChange((current) => balanceFinalSplitRow(current))}>Balance final row</button>
         </div>
       </div>
 

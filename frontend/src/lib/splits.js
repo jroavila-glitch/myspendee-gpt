@@ -214,15 +214,24 @@ export function removeSplitRow(state, index) {
 }
 
 export function applyFinalRowRemainder(state) {
-  const amounts = applyRemainder(state.total, state.rows.map((row) => row.amount))
-  return withValidation({
-    ...state,
-    rows: state.rows.map((row, index) => createRowFromAmount({
-      ...row,
-      amount: amounts[index],
-      total: state.total,
-    })),
-  })
+  return balanceFinalSplitRow(state)
+}
+
+export function balanceFinalSplitRow(state) {
+  const finalIndex = state.rows.length - 1
+  if (finalIndex < 0) return withValidation(state)
+
+  const totalCents = toCents(state.total)
+  const assignedBeforeFinalCents = state.rows
+    .slice(0, finalIndex)
+    .reduce((sum, row) => sum + toCents(row.amount), 0)
+  const finalAmount = fromCents(totalCents - assignedBeforeFinalCents)
+
+  return updateRow(state, finalIndex, (row) => createRowFromAmount({
+    ...row,
+    amount: finalAmount,
+    total: state.total,
+  }))
 }
 
 export function updateUndoReplacementCategory(state, replacementCategory) {

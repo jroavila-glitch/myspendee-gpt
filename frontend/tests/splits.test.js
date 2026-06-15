@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   allocateByPercent,
   amountToPercent,
+  balanceFinalSplitRow,
   buildSplitPayload,
   createSplitModalState,
   isSplitModalSaveValid,
@@ -216,6 +217,22 @@ test('editing percentage updates amount', () => {
 
   assert.equal(updated.rows[0].percent, 12.5)
   assert.equal(updated.rows[0].amount, 25)
+})
+
+test('balancing final row replaces the last amount with the remaining total', () => {
+  const state = createSplitModalState({
+    amount_mxn: '100.00',
+    amount_original: null,
+    category: 'Other',
+    type: 'expense',
+  })
+
+  const firstEdited = updateSplitRowAmount(state, 0, '47.62')
+  const balanced = balanceFinalSplitRow(firstEdited)
+
+  assert.equal(balanced.rows[1].amount, 52.38)
+  assert.equal(balanced.rows[1].percent, 52.38)
+  assert.equal(balanced.validation.remaining, 0)
 })
 
 test('save remains invalid until total reconciles', () => {

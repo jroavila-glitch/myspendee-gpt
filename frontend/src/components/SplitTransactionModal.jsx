@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { formatMoney } from '../lib/currency'
 import {
   addSplitRow,
-  applyFinalRowRemainder,
+  balanceFinalSplitRow,
   createSplitModalState,
   isSplitModalSaveValid,
   isUndoSplitValid,
@@ -112,7 +112,7 @@ export default function SplitTransactionModal({ transaction, categories, onCance
           </div>
           <div className="split-editor-actions">
             <button type="button" className="ghost-button" disabled={isSubmitting} onClick={() => setState((current) => addSplitRow(current))}>+ Add category</button>
-            <button type="button" className="ghost-button" disabled={isSubmitting} onClick={() => setState((current) => applyFinalRowRemainder(current))}>Set final remainder</button>
+            <button type="button" className="ghost-button" disabled={isSubmitting} onClick={() => setState((current) => balanceFinalSplitRow(current))}>Balance final row</button>
           </div>
         </div>
 
