@@ -54,7 +54,7 @@ function formToDraftTransaction(form) {
   return {
     date: form.date,
     description: form.description || 'Pending transaction',
-    amount_mxn: Number(form.amount_mxn || 0),
+    amount_mxn: form.amount_mxn === '' ? null : Number(form.amount_mxn),
     amount_original: form.amount_original ? Number(form.amount_original) : null,
     currency_original: form.currency_original || 'MXN',
     category: form.category || 'Other',
@@ -301,7 +301,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
         }
         const values = {
           ...form,
-          amount_mxn: Number(form.amount_mxn),
+          amount_mxn: form.amount_mxn === '' ? null : Number(form.amount_mxn),
           amount_original: form.amount_original ? Number(form.amount_original) : null,
           assigned_month: form.assigned_month ? Number(form.assigned_month) : null,
           assigned_year: form.assigned_year ? Number(form.assigned_year) : null,

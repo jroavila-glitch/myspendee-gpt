@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from unittest import TestCase
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
@@ -395,6 +396,49 @@ class TransactionAllocationTest(TestCase):
             ["Tennis Smash & Social", "Food & Drink"],
             [row["category"] for row in data["allocations"]],
         )
+
+    def test_pending_foreign_transaction_without_mxn_can_be_split(self) -> None:
+        with patch("app.services.normalization.get_banxico_rate", return_value=None):
+            create_response = self.client.post(
+                "/transactions",
+                json={
+                    "date": "2026-06-15",
+                    "description": "Fresh receipt before statement",
+                    "amount_original": "47.17",
+                    "currency_original": "EUR",
+                    "category": "Other",
+                    "type": "expense",
+                    "bank_name": "ARQ",
+                    "source_status": "pending",
+                    "manually_added": True,
+                },
+            )
+
+        self.assertEqual(200, create_response.status_code, create_response.text)
+        transaction = create_response.json()
+        self.assertEqual("47.17", transaction["amount_original"])
+        self.assertEqual("EUR", transaction["currency_original"])
+        self.assertEqual("1014.16", transaction["amount_mxn"])
+
+        split_response = self.client.put(
+            f"/transactions/{transaction['id']}/allocations",
+            json={
+                "expected_amount_mxn": transaction["amount_mxn"],
+                "expected_amount_original": transaction["amount_original"],
+                "expected_currency_original": transaction["currency_original"],
+                "expected_type": transaction["type"],
+                "allocations": [
+                    {"category": "Tennis Smash & Social", "amount_original": "22.70"},
+                    {"category": "Groceries", "amount_original": "24.47"},
+                ],
+            },
+        )
+
+        self.assertEqual(200, split_response.status_code, split_response.text)
+        allocations = split_response.json()["allocations"]
+        self.assertEqual(["Tennis Smash & Social", "Groceries"], [row["category"] for row in allocations])
+        self.assertEqual(["22.70", "24.47"], [row["amount_original"] for row in allocations])
+        self.assertTrue(all(Decimal(row["amount_mxn"]) > 0 for row in allocations))
 
     def test_put_allocations_rejects_stale_expected_amount_or_type(self) -> None:
         stale_amount = self.create_transaction()

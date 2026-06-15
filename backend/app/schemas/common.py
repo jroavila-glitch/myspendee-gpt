@@ -71,6 +71,7 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
+    amount_mxn: Decimal | None = None
     manually_added: bool = True
     statement_id: UUID | None = None
 

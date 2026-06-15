@@ -12,6 +12,8 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Fixed pending foreign-currency split creation so manually added EUR/USD
+  receipts can omit MXN and still save allocations after backend normalization.
 - Added `Tennis Smash & Social` as an expense category and allowed pending
   manual transactions to be split directly while they are being added.
 - Added backend support for pending manual transactions, including a
