@@ -1653,6 +1653,47 @@ h3 {
   gap: 0.75rem;
 }
 
+.form-submit-message {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(215, 154, 54, 0.25);
+  border-radius: 14px;
+  background: var(--amber-soft);
+  color: #8b5b16;
+}
+
+.form-submit-message.danger {
+  border-color: rgba(210, 76, 76, 0.26);
+  background: rgba(210, 76, 76, 0.08);
+  color: var(--danger);
+}
+
+.form-submit-message strong {
+  font-weight: 900;
+}
+
+.form-submit-message ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: inherit;
+}
+
+.form-submit-message li {
+  margin: 0.12rem 0;
+}
+
+.form-actions button.needs-attention {
+  border-color: rgba(215, 154, 54, 0.46);
+  background: rgba(215, 154, 54, 0.14);
+  color: #8b5b16;
+}
+
+.form-actions button.needs-attention:not(:disabled):hover {
+  border-color: rgba(215, 154, 54, 0.68);
+  background: rgba(215, 154, 54, 0.2);
+}
+
 .form-actions button:disabled,
 .split-editor-actions button:disabled,
 .split-row button:disabled,

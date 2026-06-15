@@ -258,7 +258,13 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
   ].join('|')
   const [splitEnabled, setSplitEnabled] = useState(false)
   const [pendingSplitState, setPendingSplitState] = useState(null)
-  const pendingSplitValid = !splitEnabled || (pendingSplitState && isSplitModalSaveValid(pendingSplitState))
+  const [saveAttempted, setSaveAttempted] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const pendingSplitValid = !splitEnabled || Boolean(pendingSplitState && isSplitModalSaveValid(pendingSplitState))
+  const splitSaveErrors = splitEnabled && pendingSplitState?.validation?.errors?.length
+    ? pendingSplitState.validation.errors
+    : []
 
   useEffect(() => {
     if (!canSplitPending) {
@@ -273,19 +279,26 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }))
+    setSubmitError('')
   }
 
   function startPendingSplit() {
     setSplitEnabled(true)
     setPendingSplitState(createSplitModalState(draftTransaction))
+    setSubmitError('')
   }
 
   return (
     <form
       className="form-grid"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault()
-        if (!pendingSplitValid) return
+        setSaveAttempted(true)
+        setSubmitError('')
+        if (!pendingSplitValid) {
+          setSubmitError('Complete the split before saving.')
+          return
+        }
         const values = {
           ...form,
           amount_mxn: Number(form.amount_mxn),
@@ -295,7 +308,14 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           source_status: form.source_status === 'pending' ? 'pending' : 'posted',
           manually_added: true,
         }
-        onSubmit(values, splitEnabled ? pendingSplitState.rows : null)
+        setSubmitting(true)
+        try {
+          await onSubmit(values, splitEnabled ? pendingSplitState.rows : null)
+        } catch (error) {
+          setSubmitError(error instanceof Error ? error.message : 'Could not save this transaction.')
+        } finally {
+          setSubmitting(false)
+        }
       }}
     >
       <label><span>Date</span><input type="date" value={form.date} onChange={(e) => updateField('date', e.target.value)} /></label>
@@ -355,6 +375,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
               <button type="button" className="ghost-button" onClick={() => {
                 setSplitEnabled(false)
                 setPendingSplitState(null)
+                setSubmitError('')
               }}>Do not split now</button>
             </div>
           </>
@@ -369,10 +390,22 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
         )
       ) : null}
       <label className="full"><span>Notes</span><textarea rows="3" value={form.notes} onChange={(e) => updateField('notes', e.target.value)} /></label>
+      {submitError ? (
+        <div className={`form-submit-message full${pendingSplitValid ? ' danger' : ''}`} role="alert">
+          <strong>{submitError}</strong>
+          {!pendingSplitValid && saveAttempted && splitSaveErrors.length ? (
+            <ul>
+              {splitSaveErrors.map((error) => <li key={error}>{error}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
       <div className="form-actions full">
         {secondaryAction ? <button type="button" className="ghost-button" onClick={secondaryAction.onClick}>{secondaryAction.label}</button> : null}
-        <button type="button" className="ghost-button" onClick={onCancel}>Cancel</button>
-        <button type="submit" disabled={!pendingSplitValid}>Save</button>
+        <button type="button" className="ghost-button" disabled={submitting} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={!pendingSplitValid ? 'needs-attention' : ''} disabled={submitting}>
+          {submitting ? 'Saving...' : 'Save'}
+        </button>
       </div>
     </form>
   )
