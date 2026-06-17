@@ -179,6 +179,9 @@ def insights(
 def add_transaction(payload: TransactionCreate, db: Session = Depends(get_db)) -> TransactionRead:
     try:
         transaction = create_transaction(db, payload)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Duplicate transaction") from exc

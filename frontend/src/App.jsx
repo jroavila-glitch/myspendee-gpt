@@ -64,6 +64,15 @@ function formToDraftTransaction(form) {
   }
 }
 
+function getManualTransactionExchangeRate(form, displayRates) {
+  const currency = String(form.currency_original || 'MXN').toUpperCase()
+  if (currency === 'MXN') return null
+  if (form.amount_mxn !== '' || !form.amount_original) return null
+
+  const rate = Number(displayRates?.[currency] || 0)
+  return rate > 0 ? rate : null
+}
+
 function getSplitBasisCurrency(transaction) {
   return transaction.amount_original != null && transaction.amount_original !== '' ? transaction.currency_original || 'MXN' : 'MXN'
 }
@@ -218,7 +227,7 @@ function Modal({ title, children, onClose, className = '', closeDisabled = false
   )
 }
 
-function TransactionForm({ categories, initialValue, onSubmit, onCancel, secondaryAction }) {
+function TransactionForm({ categories, initialValue, onSubmit, onCancel, secondaryAction, displayRates = { MXN: 1 } }) {
   const categoryOptions = dedupeCategories(categories)
   const [form, setForm] = useState(
     initialValue || {
@@ -303,6 +312,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
           ...form,
           amount_mxn: form.amount_mxn === '' ? null : Number(form.amount_mxn),
           amount_original: form.amount_original ? Number(form.amount_original) : null,
+          exchange_rate_used: getManualTransactionExchangeRate(form, displayRates),
           assigned_month: form.assigned_month ? Number(form.assigned_month) : null,
           assigned_year: form.assigned_year ? Number(form.assigned_year) : null,
           source_status: form.source_status === 'pending' ? 'pending' : 'posted',
@@ -982,6 +992,7 @@ function App() {
         <Modal title="Add Transaction" className="create-transaction-modal-card" onClose={() => setShowCreateModal(false)}>
           <TransactionForm
             categories={categories}
+            displayRates={displayRates}
             onCancel={() => setShowCreateModal(false)}
             onSubmit={async (values, pendingSplitRows) => {
               const created = await api.addTransaction(values)

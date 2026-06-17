@@ -440,6 +440,63 @@ class TransactionAllocationTest(TestCase):
         self.assertEqual(["22.70", "24.47"], [row["amount_original"] for row in allocations])
         self.assertTrue(all(Decimal(row["amount_mxn"]) > 0 for row in allocations))
 
+    def test_pending_foreign_transaction_with_explicit_rate_can_be_split(self) -> None:
+        create_response = self.client.post(
+            "/transactions",
+            json={
+                "date": "2026-06-15",
+                "description": "Fresh receipt before statement",
+                "amount_original": "47.17",
+                "currency_original": "EUR",
+                "exchange_rate_used": "20.00",
+                "category": "Other",
+                "type": "expense",
+                "bank_name": "Manual",
+                "source_status": "pending",
+                "manually_added": True,
+            },
+        )
+
+        self.assertEqual(200, create_response.status_code, create_response.text)
+        transaction = create_response.json()
+        self.assertEqual("943.40", transaction["amount_mxn"])
+
+        split_response = self.client.put(
+            f"/transactions/{transaction['id']}/allocations",
+            json={
+                "expected_amount_mxn": transaction["amount_mxn"],
+                "expected_amount_original": transaction["amount_original"],
+                "expected_currency_original": transaction["currency_original"],
+                "expected_type": transaction["type"],
+                "allocations": [
+                    {"category": "Tennis Smash & Social", "amount_original": "22.70"},
+                    {"category": "Groceries", "amount_original": "24.47"},
+                ],
+            },
+        )
+
+        self.assertEqual(200, split_response.status_code, split_response.text)
+        self.assertEqual(["454.00", "489.40"], [row["amount_mxn"] for row in split_response.json()["allocations"]])
+
+    def test_pending_foreign_transaction_without_rate_returns_422(self) -> None:
+        response = self.client.post(
+            "/transactions",
+            json={
+                "date": "2026-06-15",
+                "description": "Fresh receipt before statement",
+                "amount_original": "47.17",
+                "currency_original": "EUR",
+                "category": "Other",
+                "type": "expense",
+                "bank_name": "Manual",
+                "source_status": "pending",
+                "manually_added": True,
+            },
+        )
+
+        self.assertEqual(422, response.status_code, response.text)
+        self.assertEqual("Unable to resolve MXN amount for transaction", response.json()["detail"])
+
     def test_put_allocations_rejects_stale_expected_amount_or_type(self) -> None:
         stale_amount = self.create_transaction()
         amount_response = self.client.put(
