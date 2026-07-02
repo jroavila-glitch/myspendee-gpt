@@ -403,6 +403,11 @@ h3 {
   align-items: end;
 }
 
+.transaction-preview-toggle {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .transaction-select-all {
   display: none;
   align-items: center;

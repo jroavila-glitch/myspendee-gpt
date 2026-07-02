@@ -135,8 +135,18 @@ export function filterTransactionsByDrilldown(transactions, drilldown) {
   })
 }
 
-export function getPreviewTransactions(transactions, hasDrilldown) {
-  return hasDrilldown ? transactions : transactions.slice(0, 8)
+export const PREVIEW_TRANSACTION_LIMIT = 8
+
+export function getPreviewTransactions(transactions, showAll) {
+  return showAll ? transactions : transactions.slice(0, PREVIEW_TRANSACTION_LIMIT)
+}
+
+export function shouldShowPreviewToggle(transactions, forcedShowAll = false) {
+  return !forcedShowAll && transactions.length > PREVIEW_TRANSACTION_LIMIT
+}
+
+export function getPreviewToggleLabel(total, expanded) {
+  return expanded ? 'Show recent' : `Show all ${total}`
 }
 
 export function shouldShowGlobalBulkBar(tab, selectedCount, showReviewModal) {

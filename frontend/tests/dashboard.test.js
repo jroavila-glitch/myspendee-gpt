@@ -13,10 +13,12 @@ import {
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getPreviewTransactions,
+  getPreviewToggleLabel,
   getTransactionReviewReasons,
   joinReviewItems,
   mergeDrilldownFilters,
   replaceDisplayRatesFromFx,
+  shouldShowPreviewToggle,
   shouldShowGlobalBulkBar,
   shouldApplyRequestVersion,
 } from '../src/lib/dashboard.js'
@@ -189,6 +191,14 @@ test('shows all matching transactions for a drilldown and limits the default pre
 
   assert.equal(getPreviewTransactions(transactions, false).length, 8)
   assert.equal(getPreviewTransactions(transactions, true).length, 12)
+})
+
+test('shows a dashboard preview toggle only when extra transactions are hidden', () => {
+  assert.equal(shouldShowPreviewToggle(Array.from({ length: 8 })), false)
+  assert.equal(shouldShowPreviewToggle(Array.from({ length: 9 })), true)
+  assert.equal(shouldShowPreviewToggle(Array.from({ length: 9 }), true), false)
+  assert.equal(getPreviewToggleLabel(66, false), 'Show all 66')
+  assert.equal(getPreviewToggleLabel(66, true), 'Show recent')
 })
 
 test('keeps preview transaction records available for edit actions', () => {

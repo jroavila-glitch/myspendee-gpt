@@ -6,6 +6,8 @@ import {
   calculateSavingsRate,
   convertInsightMetric,
   getPreviewTransactions,
+  getPreviewToggleLabel,
+  shouldShowPreviewToggle,
 } from '../lib/dashboard'
 import { formatMoney } from '../lib/currency'
 import TransactionTable from './TransactionTable'
@@ -181,10 +183,23 @@ function RecentTransactionsPreview({
   onSplit,
   onDelete,
 }) {
-  const shownTransactions = getPreviewTransactions(transactions, showAll)
+  const [expanded, setExpanded] = useState(false)
+  const effectiveShowAll = showAll || expanded
+  const shownTransactions = getPreviewTransactions(transactions, effectiveShowAll)
+  const headerAction = shouldShowPreviewToggle(transactions, showAll) ? (
+    <button
+      type="button"
+      className="ghost-button compact-button transaction-preview-toggle"
+      onClick={() => setExpanded((value) => !value)}
+      aria-expanded={expanded}
+    >
+      {getPreviewToggleLabel(transactions.length, expanded)}
+    </button>
+  ) : null
+
   return (
     <TransactionTable
-      title={showAll ? 'Matching transactions' : 'Recent transactions'}
+      title={effectiveShowAll ? 'Transactions' : 'Recent transactions'}
       meta={`${shownTransactions.length} of ${transactions.length} shown · select rows for bulk actions`}
       transactions={shownTransactions}
       selectedIds={selectedIds}
@@ -209,6 +224,7 @@ function RecentTransactionsPreview({
       onSplit={onSplit}
       onDelete={onDelete}
       hideFilters
+      headerAction={headerAction}
     />
   )
 }

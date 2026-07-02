@@ -148,6 +148,7 @@ export default function TransactionTable({
   onSplit,
   onDelete,
   onMarkReviewed,
+  headerAction = null,
   hideFilters = false,
 }) {
   return (
@@ -157,6 +158,7 @@ export default function TransactionTable({
           <h3>{title}</h3>
           <p className="section-meta">{meta}</p>
         </div>
+        {headerAction}
         <label className="transaction-select-all">
           <input
             type="checkbox"
