@@ -110,3 +110,21 @@ class TransactionAllocation(Base):
     )
 
     transaction: Mapped[Transaction] = relationship(back_populates="allocations")
+
+
+class UserClassificationRule(Base):
+    __tablename__ = "user_classification_rules"
+    __table_args__ = (
+        Index("ix_user_classification_rules_enabled", "enabled"),
+        Index("ix_user_classification_rules_description_pattern", "description_pattern"),
+        Index("ix_user_classification_rules_bank_name", "bank_name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    description_pattern: Mapped[str] = mapped_column(String(120), nullable=False)
+    bank_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    match_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    target_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    target_category: Mapped[str] = mapped_column(String(80), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

@@ -267,9 +267,11 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
   ].join('|')
   const [splitEnabled, setSplitEnabled] = useState(false)
   const [pendingSplitState, setPendingSplitState] = useState(null)
+  const [rememberRule, setRememberRule] = useState(false)
   const [saveAttempted, setSaveAttempted] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const canRememberRule = Boolean(initialValue) && (form.type === 'expense' || form.type === 'income')
   const pendingSplitValid = !splitEnabled || Boolean(pendingSplitState && isSplitModalSaveValid(pendingSplitState))
   const splitSaveErrors = splitEnabled && pendingSplitState?.validation?.errors?.length
     ? pendingSplitState.validation.errors
@@ -320,7 +322,7 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
         }
         setSubmitting(true)
         try {
-          await onSubmit(values, splitEnabled ? pendingSplitState.rows : null)
+          await onSubmit(values, splitEnabled ? pendingSplitState.rows : null, { rememberRule: canRememberRule && rememberRule })
         } catch (error) {
           setSubmitError(error instanceof Error ? error.message : 'Could not save this transaction.')
         } finally {
@@ -398,6 +400,19 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
             <button type="button" className="ghost-button" onClick={startPendingSplit}>Split now</button>
           </div>
         )
+      ) : null}
+      {canRememberRule ? (
+        <label className="remember-rule-field full">
+          <input
+            type="checkbox"
+            checked={rememberRule}
+            onChange={(e) => setRememberRule(e.target.checked)}
+          />
+          <span>
+            <strong>Remember this selection for similar future transactions</strong>
+            <small>Moneo will use this merchant, bank, type, and category for future imports. It will not change old transactions automatically.</small>
+          </span>
+        </label>
       ) : null}
       <label className="full"><span>Notes</span><textarea rows="3" value={form.notes} onChange={(e) => updateField('notes', e.target.value)} /></label>
       {submitError ? (
@@ -1069,8 +1084,11 @@ function App() {
                 }
                 : null
             }
-            onSubmit={async (values) => {
-              await api.updateTransaction(editingTransaction.id, values)
+            onSubmit={async (values, _splitRows, options = {}) => {
+              const updated = await api.updateTransaction(editingTransaction.id, values)
+              if (options.rememberRule) {
+                await api.createClassificationRule(updated.id, { scope: 'bank' })
+              }
               setEditingTransaction(null)
               await loadAll()
               if (returnToReviewModal) setShowReviewModal(true)

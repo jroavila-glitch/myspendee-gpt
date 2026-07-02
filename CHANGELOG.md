@@ -12,6 +12,24 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added remembered personal classification rules from the transaction edit
+  modal, backed by a new `user_classification_rules` table and applied to
+  future transaction normalization without changing history automatically.
+- Added a Statements coverage matrix and filters so uploaded PDFs can be
+  checked by bank, month, year, warning state, and possible duplicates at a
+  glance.
+- Added deterministic classification for Spotify variants as `Entertainment`,
+  Obsidian variants as `IG Ro Project`, and Club7/Clube VII/Unitenis gym
+  memberships at exactly 120 EUR starting July while keeping 110 EUR support.
+- Fixed HSBC 2Now parsing for interest and IVA rows whose sign/amount is
+  extracted on the following PDF text line or only visible in image-based PDFs,
+  so June-style repeated `INTERESES SUJETOS A IVA PROMOCION` and `IVA SOBRE
+  COMISIONES E INTERESES` rows are imported.
+- Added `Ro App Studio`, a reusable solo-founder app-building operating kit
+  with agent protocols, lifecycle, design/UX standards, security rules, launch
+  checklist, copyable starter templates, app intake worksheet, Claude handoff
+  prompt, and a `create-app.sh` bootstrap script. Also installed a standalone
+  copy at `/Users/roavila/ro-app-studio`.
 - Fixed pending foreign-currency split creation so manually added EUR/USD
   receipts can omit MXN and still save allocations after backend normalization.
 - Fixed manual foreign-currency pending transactions with blank bank/MXN fields

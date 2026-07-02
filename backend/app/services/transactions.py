@@ -105,7 +105,7 @@ def serialize_transaction(transaction: Transaction) -> dict:
     return payload
 
 
-def prepare_transaction_data(data: dict) -> dict:
+def prepare_transaction_data(data: dict, db: Session | None = None) -> dict:
     tx_date: date = data["date"]
     bank_name = normalize_bank_name(data["bank_name"])
     raw_amount_mxn = Decimal(str(data["amount_mxn"])) if data.get("amount_mxn") is not None else None
@@ -133,6 +133,17 @@ def prepare_transaction_data(data: dict) -> dict:
         current_type=data.get("type"),
         current_category=data.get("category"),
     )
+    if db is not None:
+        from app.services.user_rules import apply_user_classification_rules
+
+        user_rule_match = apply_user_classification_rules(
+            db,
+            description=description,
+            bank_name=bank_name,
+            tx_type=tx_type,
+        )
+        if user_rule_match:
+            tx_type, category = user_rule_match
     notes = data.get("notes") or renamed_notes or normalization_notes or fallback_notes
     assigned_month = data.get("assigned_month")
     assigned_year = data.get("assigned_year")
@@ -207,7 +218,7 @@ def apply_transaction_filters(
 
 
 def create_transaction(db: Session, tx: TransactionCreate) -> Transaction:
-    prepared = prepare_transaction_data(tx.model_dump())
+    prepared = prepare_transaction_data(tx.model_dump(), db)
     transaction = Transaction(**prepared)
     db.add(transaction)
     db.commit()
@@ -234,7 +245,7 @@ def update_transaction(db: Session, transaction: Transaction, payload: Transacti
     amount_fields = {"amount_mxn", "amount_original", "currency_original", "exchange_rate_used"}
     amount_fields_edited = bool(amount_fields & updated_values.keys())
     raw_data = serialize_transaction(transaction) | updated_values
-    prepared = prepare_transaction_data(raw_data)
+    prepared = prepare_transaction_data(raw_data, db)
     if not amount_fields_edited:
         for field in amount_fields:
             prepared[field] = getattr(transaction, field)

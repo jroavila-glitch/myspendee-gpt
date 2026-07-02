@@ -1,4 +1,4 @@
-from app.models.entities import Statement, Transaction, TransactionAllocation
+from app.models.entities import Statement, Transaction, TransactionAllocation, UserClassificationRule
 
 
-__all__ = ["Statement", "Transaction", "TransactionAllocation"]
+__all__ = ["Statement", "Transaction", "TransactionAllocation", "UserClassificationRule"]

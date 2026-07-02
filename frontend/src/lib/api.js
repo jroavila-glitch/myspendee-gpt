@@ -47,6 +47,7 @@ export const api = {
   statements: () => request('/statements'),
   addTransaction: (body) => request('/transactions', { method: 'POST', body: JSON.stringify(body) }),
   updateTransaction: (id, body) => request(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  createClassificationRule: (id, body) => request(`/transactions/${id}/classification-rules`, { method: 'POST', body: JSON.stringify(body) }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
   setAllocations: (id, transaction, allocations) => request(`/transactions/${id}/allocations`, {
     method: 'PUT',

@@ -22,6 +22,8 @@ from app.schemas.common import (
     TransactionAllocationsUpdate,
     TransactionRead,
     TransactionUpdate,
+    UserClassificationRuleCreate,
+    UserClassificationRuleRead,
     UploadResult,
 )
 from app.schemas.insights import InsightsResponse
@@ -39,6 +41,7 @@ from app.services.transactions import apply_transaction_filters
 from app.services.fx_rates import get_display_rates
 from app.services.insights import get_insights
 from app.services.upload import process_uploaded_statement
+from app.services.user_rules import create_rule_from_transaction
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
@@ -48,6 +51,7 @@ def _allowed_origins() -> list[str]:
     raw = settings.frontend_url or ""
     origins = [item.strip() for item in raw.split(",") if item.strip()]
     origins.append("http://localhost:5173")
+    origins.append("http://127.0.0.1:5173")
     return list(dict.fromkeys(origins))
 
 app.add_middleware(
@@ -202,6 +206,32 @@ def edit_transaction(transaction_id: UUID, payload: TransactionUpdate, db: Sessi
         db.rollback()
         raise HTTPException(status_code=409, detail="Duplicate transaction after update") from exc
     return TransactionRead.model_validate(serialize_transaction(transaction))
+
+
+@app.post("/transactions/{transaction_id}/classification-rules", response_model=UserClassificationRuleRead)
+def create_classification_rule_from_transaction(
+    transaction_id: UUID,
+    payload: UserClassificationRuleCreate,
+    db: Session = Depends(get_db),
+) -> UserClassificationRuleRead:
+    transaction = db.get(Transaction, transaction_id)
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    try:
+        rule = create_rule_from_transaction(
+            db,
+            transaction,
+            description_pattern=payload.description_pattern,
+            bank_name=payload.bank_name,
+            match_type=payload.match_type,
+            target_type=payload.target_type,
+            target_category=payload.target_category,
+            scope=payload.scope,
+        )
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return UserClassificationRuleRead.model_validate(rule)
 
 
 @app.put("/transactions/{transaction_id}/allocations", response_model=TransactionRead)

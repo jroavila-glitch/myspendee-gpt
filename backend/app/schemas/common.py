@@ -104,6 +104,28 @@ class TransactionBulkDelete(BaseModel):
     ids: list[UUID]
 
 
+class UserClassificationRuleCreate(BaseModel):
+    description_pattern: str | None = None
+    bank_name: str | None = None
+    match_type: str | None = None
+    target_type: str | None = None
+    target_category: str | None = None
+    scope: str = "bank"
+
+
+class UserClassificationRuleRead(BaseModel):
+    id: UUID
+    description_pattern: str
+    bank_name: str | None
+    match_type: str | None
+    target_type: str
+    target_category: str
+    enabled: bool
+    created_at: datetime_type
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TransactionAllocationInput(BaseModel):
     category: str
     amount_original: Decimal | None = None

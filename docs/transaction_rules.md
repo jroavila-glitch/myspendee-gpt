@@ -116,11 +116,11 @@ Additional ignore behavior:
 - `Implemented`: `APARECIDA FERNANDA` -> `Home`
 - `Implemented`: `RITUALS`, `GBMD ... MEDICINA`, `TRF MB WAY P/ FERNANDO ALVES`, `Transfer to FERNANDO CARLOS TEIXEIRA ALVES`, `Transfer to FERNANDO MOTA` and close variants -> `Healthcare`
 - `Implemented`: `VODAFONE`, `TELCEL`, `REPAIR`, `M.REPAIR`, `ISHOP MIXUP`, `MACSTORE ...`, matching Apple service rows -> `Phone/Tech`
-- `Implemented`: `PAYU *GOOGLE CLOUD`, `ELEVENLABS`, `GOOGLE WORKSPACE`, `CLAUDE.AI`, `ANTHROPIC` -> `IG Ro Project`
+- `Implemented`: `PAYU *GOOGLE CLOUD`, `ELEVENLABS`, `GOOGLE WORKSPACE`, `CLAUDE.AI`, `ANTHROPIC`, `OBSIDIAN`, and close variants -> `IG Ro Project`
 - `Implemented`: `HIGHLEVEL AGENCY SUB`, `CALENDLY`, `PADDLE.NET* ELFSIGHT`, `ELFSIGHT` -> `Perenniam Agency`
-- `Implemented`: `NETFLIX`, `CINEMA`, `UCI CINEMAS`, `HBOMAX.COM` and variants -> `Entertainment`
+- `Implemented`: `NETFLIX`, `CINEMA`, `UCI CINEMAS`, `HBOMAX.COM`, `SPOTIFY`, `MUSICSPOTIFY`, and variants -> `Entertainment`
 - `Implemented`: `AEROMEXICO`, `AERO MEXICO`, `AEROVIAS DE MEXICO`, and close variants -> `Travel`
-- `Implemented`: `CLUBE VII LISBOA PT`, `UNITENIS LISBOA PT`, `CLUBE VII`, `Club7`, and similar variants -> `Gym` only when the original amount is exactly `110 EUR`; all other amounts -> `Food & Drink`
+- `Implemented`: `CLUBE VII LISBOA PT`, `UNITENIS LISBOA PT`, `CLUBE VII`, `Club7`, and similar variants -> `Gym` only when the original amount is exactly `110 EUR` or `120 EUR`; all other amounts -> `Food & Drink`
 - `Implemented`: `IVA POR INTERESES`, `IVA INTERES`, `INTERES EXENTO`, `INTERES GRAVABLE`, `INTERESES`, `INTERES`, `IMPOSTO SELO`, `COMISION`, `CONTA PACOTE PROGRAMA PRESTIGE` -> `Bills/Fees`
 - `Implemented`: `Compra EURc comisión` on ARQ is an expense in `Bills/Fees`
 - `Implemented`: `Compra USDc comisión` on ARQ is an expense in `Bills/Fees`
@@ -161,7 +161,10 @@ Additional ignore behavior:
 - `Implemented`: Deterministic parser for HSBC 2Now regular movement rows
 - `Implemented`: Uses operation date instead of charge date
 - `Implemented`: Keeps `MONEDA EXTRANJERA` lines as FX metadata attached to the merchant row, not separate transactions
-- `Implemented`: Extracts `INTERESES` and `IVA SOBRE COMISIONES E INTERESES` rows as `Bills/Fees`
+- `Implemented`: Extracts `INTERESES` and `IVA SOBRE COMISIONES E INTERESES` rows as `Bills/Fees`, including HSBC layouts where the sign/amount is extracted on the following line
+- `Implemented`: Image-only HSBC statements use a cropped vision pass over the
+  regular-movements table to recover repeated finance-charge rows that the
+  broad vision extraction may skip or collapse.
 
 ### Millennium
 
@@ -260,6 +263,16 @@ Additional ignore behavior:
 - `Implemented`: Undo Split deletes allocation rows only after the user chooses
   a single valid replacement category for the source transaction.
 - `Implemented`: Statement delete cascades to linked transactions
+
+## Remembered Personal Rules
+
+- `Implemented`: From the transaction edit modal, a user can choose
+  `Remember this selection for similar future transactions`.
+- `Implemented`: Moneo stores a personal classification rule using an inferred
+  merchant description pattern, the edited transaction's bank, current type,
+  and selected target type/category.
+- `Implemented`: Remembered rules apply to future transaction normalization and
+  imports. They do not automatically change historical transactions.
 
 ## Governance
 

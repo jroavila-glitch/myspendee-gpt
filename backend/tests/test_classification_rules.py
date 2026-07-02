@@ -110,6 +110,17 @@ class ClassificationRulesTest(TestCase):
         )
         self.assertEqual(("expense", "Gym"), (tx_type, category))
 
+    def test_club7_exactly_120_eur_is_gym(self) -> None:
+        tx_type, category, _ = classify_transaction(
+            description="Club7 monthly membership",
+            amount_mxn=Decimal("2580"),
+            bank_name="Revolut",
+            amount_original=Decimal("120"),
+            currency_original="EUR",
+            current_type="expense",
+        )
+        self.assertEqual(("expense", "Gym"), (tx_type, category))
+
     def test_kirah_hitchcock_is_tennis_smash_and_social(self) -> None:
         tx_type, category, _ = classify_transaction(
             description="TRF MB WAY DE KIRAH HITCHCOCK",
@@ -229,6 +240,28 @@ class ClassificationRulesTest(TestCase):
                     currency_original="USD",
                 )
                 self.assertEqual(("expense", "IG Ro Project"), (tx_type, category))
+
+    def test_obsidian_variants_are_ig_ro_project(self) -> None:
+        for description in ["OBSIDIAN", "OBSIDIAN.MD", "OBSIDIAN SYNC"]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("180"),
+                    bank_name="Oro Banamex",
+                    current_type="expense",
+                )
+                self.assertEqual(("expense", "IG Ro Project"), (tx_type, category))
+
+    def test_spotify_variants_are_entertainment(self) -> None:
+        for description in ["MUSICSPOTIFY", "SPOTIFY", "SPOTIFY P2D"]:
+            with self.subTest(description=description):
+                tx_type, category, _ = classify_transaction(
+                    description=description,
+                    amount_mxn=Decimal("129"),
+                    bank_name="Oro Banamex",
+                    current_type="expense",
+                )
+                self.assertEqual(("expense", "Entertainment"), (tx_type, category))
 
     def test_aeromexico_variants_are_travel(self) -> None:
         for description in ["AEROMEXICO", "AERO MEXICO", "AEROVIAS DE MEXICO"]:

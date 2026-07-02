@@ -54,9 +54,9 @@ EXPENSE_RULES = [
     (r"ALMITAS INC INVEST|GONCALO DE CAMPOS MELO", "Rent"),
     (r"RITUALS|GBMD.+MEDICINA|TRF MB WAY P/ FERNANDO ALVES|TRANSFER TO FERNANDO CARLOS TEIXEIRA ALVES|TRANSFER TO FERNANDO MOTA", "Healthcare"),
     (r"VODAFONE|TELCEL|REPAIR|M\.REPAIR|ISHOP MIXUP|MACSTORE FORUM CUERNAV|MACSTORE CIB III|APPLE\.COM/BILL", "Phone/Tech"),
-    (r"PAYU \*GOOGLE CLOUD|ELEVENLABS|GOOGLE WORKSPACE|GOOGLE \*WORKSPACE|CLAUDE\.AI|ANTHROPIC", "IG Ro Project"),
+    (r"PAYU \*GOOGLE CLOUD|ELEVENLABS|GOOGLE WORKSPACE|GOOGLE \*WORKSPACE|CLAUDE\.AI|ANTHROPIC|OBSIDIAN", "IG Ro Project"),
     (r"HIGHLEVEL AGENCY SUB|CALENDLY|PADDLE\.NET\* ELFSIGHT|ELFSIGHT", "Perenniam Agency"),
-    (r"NETFLIX|CINEMA|UCI CINEMAS|H[BE][A-Z]*\.?HBOMAX\.COM|HBOMAX\.COM", "Entertainment"),
+    (r"NETFLIX|CINEMA|UCI CINEMAS|H[BE][A-Z]*\.?HBOMAX\.COM|HBOMAX\.COM|MUSIC\s*SPOTIFY|SPOTIFY", "Entertainment"),
     (r"AERO\s*MEXICO|AEROVIAS DE MEXICO", "Travel"),
     (r"CONTA PACOTE PROGRAMA PRESTIGE|IVA POR INTERESES|IVA INTERES|INTERES EXENTO|INTERES GRAVABLE|INTERESES|INTERES|IMPOSTO SELO|COMISION", "Bills/Fees"),
     (r"ALGARVEKNOWHOW", "Visa Portugal"),
@@ -198,7 +198,7 @@ def classify_transaction(
         return "income", "Tennis Lessons", None
 
     if re.search(r"CLUB\s*7|CLUBE\s+VII|UNITENIS", normalized, re.IGNORECASE):
-        if normalized_currency == "EUR" and threshold_amount == Decimal("110"):
+        if normalized_currency == "EUR" and threshold_amount in {Decimal("110"), Decimal("120")}:
             return "expense", "Gym", None
         return "expense", "Food & Drink", None
 
