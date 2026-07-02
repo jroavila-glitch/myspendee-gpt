@@ -1320,6 +1320,11 @@ h3 {
   color: #59607a;
 }
 
+.pill.split {
+  background: rgba(17, 146, 117, 0.09);
+  color: #107765;
+}
+
 .transaction-amount {
   text-align: right;
   justify-self: end;

@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { formatMoney, getDisplayAmount, getSecondaryAmountLabel } from '../lib/currency'
 import { getTransactionReviewReasons } from '../lib/dashboard'
-import { canSplitTransaction, getSplitActionLabel, getTransactionSourceStatusLabel, isSplitTransaction } from '../lib/transactions'
+import {
+  canSplitTransaction,
+  getSplitActionLabel,
+  getTransactionCategoryDisplay,
+  getTransactionSourceStatusLabel,
+  isSplitTransaction,
+} from '../lib/transactions'
 
 const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 const assignedPeriodFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -211,6 +217,7 @@ export default function TransactionTable({
           const splitLabel = getSplitActionLabel(transaction)
           const assignedPeriodLabel = getAssignedPeriodLabel(transaction)
           const sourceStatusLabel = getTransactionSourceStatusLabel(transaction)
+          const categoryDisplay = getTransactionCategoryDisplay(transaction)
           return (
             <div key={transaction.id} className="transaction-row transaction-grid">
             <div className="transaction-check">
@@ -234,8 +241,8 @@ export default function TransactionTable({
             </div>
 
             <div className="transaction-category">
-              <span className={`pill ${transaction.type}`}>{transaction.category}</span>
-              {transaction.drilldown_category ? <span className="drilldown-category-context">{transaction.drilldown_category}</span> : null}
+              <span className={`pill ${categoryDisplay.tone}`}>{categoryDisplay.label}</span>
+              {categoryDisplay.context ? <span className="drilldown-category-context">{categoryDisplay.context}</span> : null}
             </div>
 
             <div className={`transaction-amount ${transaction.type}`}>

@@ -280,6 +280,30 @@ test('builds display analytics with split breakdowns without duplicating source 
   ])
 })
 
+test('counts split income under allocation categories instead of the source category', () => {
+  const analytics = buildDisplayAnalytics([
+    {
+      id: 'split-income-1',
+      type: 'income',
+      amount_mxn: 1182.5,
+      category: 'Tennis Lessons',
+      currency_original: 'EUR',
+      amount_original: 55,
+      allocations: [
+        { category: 'Tennis Rush', amount_mxn: 537.5, amount_original: 25 },
+        { category: 'Tennis Smash & Social', amount_mxn: 645, amount_original: 30 },
+      ],
+    },
+  ], 'MXN', rates)
+
+  assert.deepEqual(analytics.summary, { income: 1182.5, expenses: 0, net: 1182.5 })
+  assert.deepEqual(analytics.breakdown.income, [
+    { category: 'Tennis Smash & Social', type: 'income', total: 645, count: 1 },
+    { category: 'Tennis Rush', type: 'income', total: 537.5, count: 1 },
+  ])
+  assert.equal(analytics.breakdown.income.some((item) => item.category === 'Tennis Lessons'), false)
+})
+
 test('builds split breakdowns from canonical allocation amounts for third-currency display', () => {
   const analytics = buildDisplayAnalytics([
     {
