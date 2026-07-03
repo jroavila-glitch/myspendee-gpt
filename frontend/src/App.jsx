@@ -1107,7 +1107,7 @@ function App() {
       ) : null}
 
       {editingTransaction ? (
-        <Modal title="Edit Transaction" onClose={closeEditModal}>
+        <Modal title="Edit Transaction" className="transaction-form-modal-card" onClose={closeEditModal}>
           <TransactionForm
             categories={categories}
             initialValue={editingTransaction}

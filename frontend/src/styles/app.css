@@ -1752,6 +1752,14 @@ h3 {
   box-shadow: var(--shadow-lg);
 }
 
+.transaction-form-modal-card {
+  width: min(1120px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .split-modal-card {
   width: min(1120px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
@@ -1761,7 +1769,9 @@ h3 {
 .create-transaction-modal-card {
   width: min(1120px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .review-modal-card {
@@ -1783,6 +1793,12 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
+}
+
+.transaction-form-modal-card .form-grid,
+.create-transaction-modal-card .form-grid {
+  overflow: auto;
+  padding-right: 0.2rem;
 }
 
 .form-grid .full,
@@ -1884,6 +1900,18 @@ h3 {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.transaction-form-modal-card .form-actions,
+.create-transaction-modal-card .form-actions {
+  position: sticky;
+  bottom: -0.95rem;
+  z-index: 2;
+  margin: 0 -0.95rem -0.95rem;
+  padding: 0.85rem 0.95rem 0.95rem;
+  border-top: 1px solid rgba(34, 41, 74, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
 }
 
 .form-submit-message {
