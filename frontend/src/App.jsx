@@ -889,6 +889,7 @@ function App() {
   }
 
   async function handleDeleteTransaction(id) {
+    if (!window.confirm('Delete this transaction? This cannot be undone.')) return
     await api.deleteTransaction(id)
     setMenuState(null)
     await loadAll()
