@@ -12,6 +12,7 @@ import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
   buildPeriodComparisonLabel,
+  excludeTransactionsById,
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getBulkActionState,
@@ -563,6 +564,10 @@ function App() {
     () => filterTransactionsByDrilldown(transactions, dashboardDrilldown),
     [transactions, dashboardDrilldown],
   )
+  const visibleDashboardTransactions = useMemo(
+    () => excludeTransactionsById(previewTransactions, pendingReminderTransactions),
+    [previewTransactions, pendingReminderTransactions],
+  )
   const allVisibleEditableTransactions = useMemo(() => {
     const byId = new Map()
     for (const transaction of [...transactions, ...pendingReminderTransactions]) {
@@ -662,12 +667,12 @@ function App() {
       : tab === 'dashboard'
         ? [
           ...pendingReminderTransactions,
-          ...getPreviewTransactions(previewTransactions, Boolean(dashboardDrilldown.category || dashboardDrilldown.type)),
+          ...getPreviewTransactions(visibleDashboardTransactions, Boolean(dashboardDrilldown.category || dashboardDrilldown.type)),
         ]
         : []
     const selectableIds = new Set(selectableTransactions.map((item) => item.id))
     setSelectedIds((current) => current.filter((id) => selectableIds.has(id)))
-  }, [dashboardDrilldown, pendingReminderTransactions, previewTransactions, showReviewModal, tab, visibleReviewItems])
+  }, [dashboardDrilldown, pendingReminderTransactions, showReviewModal, tab, visibleDashboardTransactions, visibleReviewItems])
 
   useEffect(() => {
     setNotesDrafts(Object.fromEntries(allVisibleEditableTransactions.map((transaction) => {
@@ -958,7 +963,7 @@ function App() {
             loadError={dashboardError}
             displayCurrency={displayCurrency}
             displayRates={displayRates}
-            visibleTransactions={previewTransactions}
+            visibleTransactions={visibleDashboardTransactions}
             pendingReminderTransactions={pendingReminderTransactions}
             onRetry={loadAll}
             onOpenReview={() => setShowReviewModal(true)}

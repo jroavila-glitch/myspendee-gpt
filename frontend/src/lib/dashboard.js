@@ -141,6 +141,11 @@ export function getPreviewTransactions(transactions, showAll) {
   return showAll ? transactions : transactions.slice(0, PREVIEW_TRANSACTION_LIMIT)
 }
 
+export function excludeTransactionsById(transactions, excludedTransactions) {
+  const excludedIds = new Set(excludedTransactions.map((transaction) => transaction.id))
+  return transactions.filter((transaction) => !excludedIds.has(transaction.id))
+}
+
 export function shouldShowPreviewToggle(transactions, forcedShowAll = false) {
   return !forcedShowAll && transactions.length > PREVIEW_TRANSACTION_LIMIT
 }

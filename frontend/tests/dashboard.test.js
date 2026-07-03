@@ -9,6 +9,7 @@ import {
   buildSavingsRateComparison,
   calculateSavingsRate,
   convertInsightMetric,
+  excludeTransactionsById,
   getBulkActionState,
   getPendingReminderTransactions,
   filterTransactionsByDrilldown,
@@ -192,6 +193,15 @@ test('shows all matching transactions for a drilldown and limits the default pre
 
   assert.equal(getPreviewTransactions(transactions, false).length, 8)
   assert.equal(getPreviewTransactions(transactions, true).length, 12)
+})
+
+test('excludes reminder transactions from the normal dashboard preview', () => {
+  const transactions = [
+    { id: 'pending', description: 'Amazon' },
+    { id: 'posted', description: 'Coffee' },
+  ]
+
+  assert.deepEqual(excludeTransactionsById(transactions, [{ id: 'pending' }]), [transactions[1]])
 })
 
 test('shows a dashboard preview toggle only when extra transactions are hidden', () => {
