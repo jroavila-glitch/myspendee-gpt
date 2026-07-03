@@ -218,6 +218,11 @@ Additional ignore behavior:
   they are being added. The app creates one pending source transaction and then
   saves the requested allocations immediately, so the receipt can be captured
   before the bank statement arrives.
+- `Implemented`: Future-dated manual pending transactions appear in a compact
+  Dashboard reminder card named `Upcoming / waiting for statement`, regardless
+  of the selected month. The reminder card is for duplicate prevention and
+  editing convenience; it does not change selected-period totals, insights, or
+  breakdowns.
 - `Implemented`: Source status `reconciled_pending` is reserved for a later
   statement-matching workflow and is excluded from normal transaction lists and
   analytics to prevent double counting once a pending capture has been replaced

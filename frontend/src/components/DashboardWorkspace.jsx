@@ -229,6 +229,60 @@ function RecentTransactionsPreview({
   )
 }
 
+function FuturePendingTransactions({
+  transactions,
+  displayCurrency,
+  displayRates,
+  selectedIds,
+  categoryOptions,
+  notesDrafts,
+  savingNotesIds,
+  menuState,
+  onToggleSelected,
+  onToggleAll,
+  onNotesChange,
+  onNotesBlur,
+  onMenuOpen,
+  onMenuClose,
+  onEdit,
+  onSplit,
+  onDelete,
+}) {
+  if (!transactions.length) return null
+
+  return (
+    <div className="future-pending-card">
+      <TransactionTable
+        title="Upcoming / waiting for statement"
+        meta={`${transactions.length} future pending transaction${transactions.length === 1 ? '' : 's'} · edit before the statement arrives`}
+        transactions={transactions}
+        selectedIds={selectedIds}
+        categoryOptions={categoryOptions}
+        category=""
+        searchText=""
+        displayCurrency={displayCurrency}
+        displayRates={displayRates}
+        notesDrafts={notesDrafts}
+        savingNotesIds={savingNotesIds}
+        menuState={menuState}
+        emptyMessage="No future pending transactions."
+        onCategoryChange={() => {}}
+        onSearchChange={() => {}}
+        onToggleSelected={onToggleSelected}
+        onToggleAll={onToggleAll}
+        onNotesChange={onNotesChange}
+        onNotesBlur={onNotesBlur}
+        onMenuOpen={onMenuOpen}
+        onMenuClose={onMenuClose}
+        onEdit={onEdit}
+        onSplit={onSplit}
+        onDelete={onDelete}
+        hideFilters
+      />
+    </div>
+  )
+}
+
 export default function DashboardWorkspace({
   insights,
   analytics,
@@ -238,6 +292,7 @@ export default function DashboardWorkspace({
   displayCurrency,
   displayRates,
   visibleTransactions,
+  futurePendingTransactions,
   onOpenReview,
   onRetry,
   onDrilldown,
@@ -343,6 +398,15 @@ export default function DashboardWorkspace({
             <p>Period, display currency, and bank stay unchanged.</p>
           </section>
         ) : null}
+
+        <FuturePendingTransactions
+          transactions={futurePendingTransactions}
+          displayCurrency={displayCurrency}
+          displayRates={displayRates}
+          onEdit={onEditTransaction}
+          onSplit={onSplitTransaction}
+          {...transactionTableProps}
+        />
 
         <RecentTransactionsPreview
           transactions={visibleTransactions}

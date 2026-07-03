@@ -1014,6 +1014,26 @@ h3 {
   overflow: hidden;
 }
 
+.future-pending-card .transaction-panel {
+  border-color: rgba(215, 154, 54, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 234, 0.9), rgba(255, 255, 255, 0.96)),
+    var(--surface);
+  box-shadow: 0 16px 44px rgba(154, 110, 42, 0.12);
+}
+
+.future-pending-card .transaction-panel-header h3::before {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.42rem;
+  border-radius: 999px;
+  background: #d79a36;
+  box-shadow: 0 0 0 4px rgba(215, 154, 54, 0.16);
+  vertical-align: 0.05rem;
+}
+
 .transaction-head,
 .transaction-row {
   display: grid;

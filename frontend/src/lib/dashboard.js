@@ -189,6 +189,22 @@ export function filterTransactionsForWorkspace(transactions, category, searchTex
   })
 }
 
+export function getFuturePendingTransactions(transactions, todayIso) {
+  return transactions
+    .filter((transaction) => (
+      transaction.manually_added
+      && transaction.source_status === 'pending'
+      && typeof transaction.date === 'string'
+      && transaction.date > todayIso
+    ))
+    .slice()
+    .sort((a, b) => {
+      const dateComparison = a.date.localeCompare(b.date)
+      if (dateComparison !== 0) return dateComparison
+      return String(a.description || '').localeCompare(String(b.description || ''))
+    })
+}
+
 export function joinReviewItems(transactions, reviewItems) {
   const transactionsById = new Map(transactions.map((transaction) => [String(transaction.id), transaction]))
   return reviewItems.flatMap((item) => {

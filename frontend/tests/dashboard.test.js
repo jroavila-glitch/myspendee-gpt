@@ -10,6 +10,7 @@ import {
   calculateSavingsRate,
   convertInsightMetric,
   getBulkActionState,
+  getFuturePendingTransactions,
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getPreviewTransactions,
@@ -255,6 +256,23 @@ test('filters an editable transaction workspace by allocation category and notes
 
   assert.deepEqual(filterTransactionsForWorkspace([transaction], 'Home', ''), [transaction])
   assert.deepEqual(filterTransactionsForWorkspace([transaction], '', 'lamp'), [transaction])
+})
+
+test('selects future manual pending transactions sorted by soonest date', () => {
+  const transactions = [
+    { id: 'later', date: '2026-07-20', source_status: 'pending', manually_added: true },
+    { id: 'posted-future', date: '2026-07-08', source_status: 'posted', manually_added: true },
+    { id: 'statement-future', date: '2026-07-09', source_status: 'pending', manually_added: false },
+    { id: 'today', date: '2026-07-03', source_status: 'pending', manually_added: true },
+    { id: 'past', date: '2026-07-02', source_status: 'pending', manually_added: true },
+    { id: 'soon', date: '2026-07-05', source_status: 'pending', manually_added: true },
+    { id: 'reconciled', date: '2026-07-06', source_status: 'reconciled_pending', manually_added: true },
+  ]
+
+  assert.deepEqual(
+    getFuturePendingTransactions(transactions, '2026-07-03').map((transaction) => transaction.id),
+    ['soon', 'later'],
+  )
 })
 
 test('builds display analytics with split breakdowns without duplicating source summaries', () => {
