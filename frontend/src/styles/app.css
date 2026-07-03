@@ -1014,7 +1014,7 @@ h3 {
   overflow: hidden;
 }
 
-.future-pending-card .transaction-panel {
+.pending-reminder-card .transaction-panel {
   border-color: rgba(215, 154, 54, 0.34);
   background:
     linear-gradient(135deg, rgba(255, 248, 234, 0.9), rgba(255, 255, 255, 0.96)),
@@ -1022,7 +1022,7 @@ h3 {
   box-shadow: 0 16px 44px rgba(154, 110, 42, 0.12);
 }
 
-.future-pending-card .transaction-panel-header h3::before {
+.pending-reminder-card .transaction-panel-header h3::before {
   content: '';
   display: inline-block;
   width: 0.55rem;

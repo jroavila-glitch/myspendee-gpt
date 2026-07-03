@@ -177,6 +177,17 @@ class TransactionReviewTest(TestCase):
         rows = list_transactions(year=2026, month=6, date_from=None, date_to=None, db=self.db)
         self.assertIn(pending.id, {row.id for row in rows})
 
+        pending_rows = list_transactions(
+            year=2026,
+            month=None,
+            date_from=date(2026, 1, 1),
+            date_to=date(2026, 12, 31),
+            source_status="pending",
+            manually_added=True,
+            db=self.db,
+        )
+        self.assertEqual([pending.id], [row.id for row in pending_rows])
+
     def test_reconciled_pending_transaction_is_hidden_from_normal_views(self) -> None:
         self.transaction.source_status = "reconciled_pending"
         self.db.commit()

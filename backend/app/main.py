@@ -109,6 +109,8 @@ def list_transactions(
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
+    source_status: str | None = None,
+    manually_added: bool | None = None,
     db: Session = Depends(get_db),
 ) -> list[TransactionRead]:
     stmt = select(Transaction)
@@ -121,6 +123,8 @@ def list_transactions(
         bank_name=bank_name,
         category=category,
         type=type,
+        source_status=source_status,
+        manually_added=manually_added,
     )
     stmt = stmt.order_by(Transaction.date.desc(), Transaction.created_at.desc())
     transactions = db.scalars(stmt).all()

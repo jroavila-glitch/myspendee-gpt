@@ -15,7 +15,7 @@ import {
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getBulkActionState,
-  getFuturePendingTransactions,
+  getPendingReminderTransactions,
   getPreviewTransactions,
   joinReviewItems,
   mergeDrilldownFilters,
@@ -45,12 +45,6 @@ const ASSIGNED_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => {
 function getCurrentMonthState() {
   const now = new Date()
   return { month: String(now.getMonth() + 1), year: now.getFullYear(), dateFrom: '', dateTo: '' }
-}
-
-function getTodayIso() {
-  const now = new Date()
-  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-  return localDate.toISOString().slice(0, 10)
 }
 
 function dedupeCategories(categories) {
@@ -480,7 +474,7 @@ function App() {
   const [displayCurrency, setDisplayCurrency] = useState('MXN')
   const [displayRates, setDisplayRates] = useState({ MXN: 1 })
   const [transactions, setTransactions] = useState([])
-  const [futurePendingTransactions, setFuturePendingTransactions] = useState([])
+  const [pendingReminderTransactions, setPendingReminderTransactions] = useState([])
   const [insights, setInsights] = useState(null)
   const [statements, setStatements] = useState([])
   const [banks, setBanks] = useState([])
@@ -571,11 +565,11 @@ function App() {
   )
   const allVisibleEditableTransactions = useMemo(() => {
     const byId = new Map()
-    for (const transaction of [...transactions, ...futurePendingTransactions]) {
+    for (const transaction of [...transactions, ...pendingReminderTransactions]) {
       byId.set(transaction.id, transaction)
     }
     return [...byId.values()]
-  }, [transactions, futurePendingTransactions])
+  }, [transactions, pendingReminderTransactions])
   const previousPeriodLabel = useMemo(() => buildPeriodComparisonLabel(period), [period])
   const workflowDisplayCurrency = displayCurrency === 'MXN' || Number(displayRates[displayCurrency]) > 0
     ? displayCurrency
@@ -598,10 +592,12 @@ function App() {
       api.fxRates(),
     ])
 
-    const futurePendingPromise = api.listTransactions({
+    const pendingReminderPromise = api.listTransactions({
       year: String(period.year),
-      date_from: getTodayIso(),
+      date_from: `${period.year}-01-01`,
       date_to: `${period.year}-12-31`,
+      source_status: 'pending',
+      manually_added: 'true',
     })
 
     try {
@@ -615,18 +611,18 @@ function App() {
     } catch (err) {
       if (!canApply()) return
       setTransactions([])
-      setFuturePendingTransactions([])
+      setPendingReminderTransactions([])
       setInsights(null)
       setDashboardError(err.message)
     }
 
     try {
-      const yearTransactionsRes = await futurePendingPromise
+      const yearTransactionsRes = await pendingReminderPromise
       if (!canApply()) return
-      setFuturePendingTransactions(getFuturePendingTransactions(yearTransactionsRes, getTodayIso()))
+      setPendingReminderTransactions(getPendingReminderTransactions(yearTransactionsRes))
     } catch {
       if (!canApply()) return
-      setFuturePendingTransactions([])
+      setPendingReminderTransactions([])
     }
 
     const metadataResults = await metadataPromise
@@ -665,13 +661,13 @@ function App() {
       ? visibleReviewItems
       : tab === 'dashboard'
         ? [
-          ...futurePendingTransactions,
+          ...pendingReminderTransactions,
           ...getPreviewTransactions(previewTransactions, Boolean(dashboardDrilldown.category || dashboardDrilldown.type)),
         ]
         : []
     const selectableIds = new Set(selectableTransactions.map((item) => item.id))
     setSelectedIds((current) => current.filter((id) => selectableIds.has(id)))
-  }, [dashboardDrilldown, futurePendingTransactions, previewTransactions, showReviewModal, tab, visibleReviewItems])
+  }, [dashboardDrilldown, pendingReminderTransactions, previewTransactions, showReviewModal, tab, visibleReviewItems])
 
   useEffect(() => {
     setNotesDrafts(Object.fromEntries(allVisibleEditableTransactions.map((transaction) => {
@@ -963,7 +959,7 @@ function App() {
             displayCurrency={displayCurrency}
             displayRates={displayRates}
             visibleTransactions={previewTransactions}
-            futurePendingTransactions={futurePendingTransactions}
+            pendingReminderTransactions={pendingReminderTransactions}
             onRetry={loadAll}
             onOpenReview={() => setShowReviewModal(true)}
             onDrilldown={handleDashboardDrilldown}

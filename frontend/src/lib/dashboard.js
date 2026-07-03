@@ -189,17 +189,16 @@ export function filterTransactionsForWorkspace(transactions, category, searchTex
   })
 }
 
-export function getFuturePendingTransactions(transactions, todayIso) {
+export function getPendingReminderTransactions(transactions) {
   return transactions
     .filter((transaction) => (
       transaction.manually_added
       && transaction.source_status === 'pending'
       && typeof transaction.date === 'string'
-      && transaction.date > todayIso
     ))
     .slice()
     .sort((a, b) => {
-      const dateComparison = a.date.localeCompare(b.date)
+      const dateComparison = b.date.localeCompare(a.date)
       if (dateComparison !== 0) return dateComparison
       return String(a.description || '').localeCompare(String(b.description || ''))
     })

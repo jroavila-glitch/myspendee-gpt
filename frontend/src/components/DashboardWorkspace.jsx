@@ -229,7 +229,7 @@ function RecentTransactionsPreview({
   )
 }
 
-function FuturePendingTransactions({
+function PendingReminderTransactions({
   transactions,
   displayCurrency,
   displayRates,
@@ -251,10 +251,10 @@ function FuturePendingTransactions({
   if (!transactions.length) return null
 
   return (
-    <div className="future-pending-card">
+    <div className="pending-reminder-card">
       <TransactionTable
-        title="Upcoming / waiting for statement"
-        meta={`${transactions.length} future pending transaction${transactions.length === 1 ? '' : 's'} · edit before the statement arrives`}
+        title="Pending / waiting for statement"
+        meta={`${transactions.length} pending capture${transactions.length === 1 ? '' : 's'} · edit before the statement arrives`}
         transactions={transactions}
         selectedIds={selectedIds}
         categoryOptions={categoryOptions}
@@ -265,7 +265,7 @@ function FuturePendingTransactions({
         notesDrafts={notesDrafts}
         savingNotesIds={savingNotesIds}
         menuState={menuState}
-        emptyMessage="No future pending transactions."
+        emptyMessage="No pending captures are waiting for a statement."
         onCategoryChange={() => {}}
         onSearchChange={() => {}}
         onToggleSelected={onToggleSelected}
@@ -292,7 +292,7 @@ export default function DashboardWorkspace({
   displayCurrency,
   displayRates,
   visibleTransactions,
-  futurePendingTransactions,
+  pendingReminderTransactions,
   onOpenReview,
   onRetry,
   onDrilldown,
@@ -399,8 +399,8 @@ export default function DashboardWorkspace({
           </section>
         ) : null}
 
-        <FuturePendingTransactions
-          transactions={futurePendingTransactions}
+        <PendingReminderTransactions
+          transactions={pendingReminderTransactions}
           displayCurrency={displayCurrency}
           displayRates={displayRates}
           onEdit={onEditTransaction}

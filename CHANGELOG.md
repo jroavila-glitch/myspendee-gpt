@@ -12,9 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
-- Added a Dashboard `Upcoming / waiting for statement` card for future manual
-  pending transactions, keeping them editable and visible before their bank
-  statements arrive without changing period totals.
+- Added a Dashboard `Pending / waiting for statement` card for manual pending
+  transactions, keeping them editable and visible before their bank statements
+  arrive without changing period totals.
 - Added remembered personal classification rules from the transaction edit
   modal, backed by a new `user_classification_rules` table and applied to
   future transaction normalization without changing history automatically.

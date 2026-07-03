@@ -190,6 +190,8 @@ def apply_transaction_filters(
     bank_name: str | None = None,
     category: str | None = None,
     type: str | None = None,
+    source_status: str | None = None,
+    manually_added: bool | None = None,
 ) -> Select:
     stmt = stmt.where(VISIBLE_SOURCE_STATUS_FILTER)
     if date_from or date_to:
@@ -214,6 +216,10 @@ def apply_transaction_filters(
         )
     if type:
         stmt = stmt.where(Transaction.type == type)
+    if source_status:
+        stmt = stmt.where(Transaction.source_status == source_status)
+    if manually_added is not None:
+        stmt = stmt.where(Transaction.manually_added.is_(manually_added))
     return stmt
 
 
