@@ -520,6 +520,8 @@ def _status_values(
 ) -> str:
     if average_expenses is None:
         spending = "no spending baseline yet"
+    elif spending_ratio < Decimal("0.1"):
+        spending = f"spending is {(spending_ratio * Decimal("100")):.1f}% of the recent baseline"
     else:
         spending = f"spending is {spending_ratio:.1f}x the recent baseline"
     transaction_label = "transaction" if review_count == 1 else "transactions"

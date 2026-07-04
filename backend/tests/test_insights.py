@@ -722,6 +722,19 @@ class InsightsTest(TestCase):
         self.assertIn("200.00", status.explanation)
         self.assertIn("-20", status.explanation)
 
+    def test_status_explanation_formats_tiny_spending_ratio_as_percent(self) -> None:
+        status = calculate_month_status(
+            income=Decimal("550"),
+            expenses=Decimal("655.33"),
+            average_expenses=Decimal("87731.98"),
+            review_count=0,
+            review_amount=Decimal("0"),
+        )
+
+        self.assertEqual("Needs Attention", status.label)
+        self.assertIn("0.7% of the recent baseline", status.explanation)
+        self.assertNotIn("0.0x", status.explanation)
+
     def test_status_explanation_formats_no_income_without_raw_ratios(self) -> None:
         status = calculate_month_status(
             income=Decimal("0"),
