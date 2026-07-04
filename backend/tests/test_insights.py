@@ -288,6 +288,53 @@ class InsightsTest(TestCase):
             [(item.transaction_id, item.reasons) for item in response.review_items],
         )
 
+    def test_get_insights_excludes_reimbursement_neutral_categories_from_totals(self) -> None:
+        self.add_transaction(
+            tx_date=date(2026, 4, 5),
+            description="Baseline income",
+            amount_mxn="1000.00",
+            category="Tennis Lessons",
+            tx_type="income",
+        )
+        shared_order = self.add_transaction(
+            tx_date=date(2026, 5, 4),
+            description="Uber Eats shared dinner",
+            amount_mxn="1600.00",
+            category="Food & Drink",
+            tx_type="expense",
+            amount_original=None,
+        )
+        replace_allocations(
+            self.db,
+            shared_order,
+            [
+                self.allocation("Food & Drink", "600.00"),
+                self.allocation("Reimbursement expected", "1000.00"),
+            ],
+        )
+        self.add_transaction(
+            tx_date=date(2026, 5, 6),
+            description="Friend repayment",
+            amount_mxn="1000.00",
+            category="Reimbursement received",
+            tx_type="income",
+        )
+        self.db.commit()
+
+        response = get_insights(
+            self.db,
+            month=5,
+            year=2026,
+            date_from=None,
+            date_to=None,
+            bank_name="Primary Bank",
+            type=None,
+        )
+
+        self.assertEqual(Decimal("0"), response.income.current)
+        self.assertEqual(Decimal("600.00"), response.expenses.current)
+        self.assertEqual(Decimal("-600.00"), response.net.current)
+
     def test_get_insights_aggregates_multiple_reasons_with_deterministic_ties(self) -> None:
         for month in [2, 3, 4]:
             self.add_transaction(
@@ -475,6 +522,7 @@ class InsightsTest(TestCase):
             date_to=None,
             bank_name="Primary Bank",
             type="income",
+            today=date(2026, 6, 12),
         )
 
         self.assertEqual(Decimal("458221.80"), response.loan_papa.total_amount_mxn)

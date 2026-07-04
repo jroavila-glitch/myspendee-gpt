@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added reimbursement/shared-expense accounting with neutral
+  `Reimbursement expected` and `Reimbursement received` categories, so shared
+  food/orders can reduce real category spending without inflating income.
 - Added safe single-transaction delete undo and pending-to-statement
   reconciliation so manual pending captures can be matched to posted statement
   rows and hidden from analytics after reconciliation.

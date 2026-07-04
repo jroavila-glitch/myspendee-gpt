@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Statement, Transaction, TransactionAllocation
 from app.schemas.common import (
+    NEUTRAL_CATEGORIES,
     TRANSACTION_SOURCE_STATUSES,
     BreakdownItem,
     BreakdownResponse,
@@ -388,23 +389,60 @@ def get_summary(
     category: str | None = None,
     type: str | None = None,
 ) -> SummaryResponse:
-    stmt = (
+    neutral_categories = list(NEUTRAL_CATEGORIES)
+    unsplit_stmt = (
         select(
-            func.coalesce(func.sum(case((Transaction.type == "income", Transaction.amount_mxn), else_=0)), 0),
-            func.coalesce(func.sum(case((Transaction.type == "expense", Transaction.amount_mxn), else_=0)), 0),
+            Transaction.type.label("type"),
+            Transaction.amount_mxn.label("amount_mxn"),
         )
         .where(Transaction.type != "ignored")
+        .where(~Transaction.category.in_(neutral_categories))
         .where(VISIBLE_SOURCE_STATUS_FILTER)
+        .where(~Transaction.allocations.any())
     )
-    stmt = apply_transaction_filters(
-        stmt,
+    unsplit_stmt = apply_transaction_filters(
+        unsplit_stmt,
         month=month,
         year=year,
         date_from=date_from,
         date_to=date_to,
         bank_name=bank_name,
-        category=category,
+        category=None,
         type=type,
+    )
+    if category:
+        unsplit_stmt = unsplit_stmt.where(Transaction.category == category)
+
+    split_stmt = (
+        select(
+            Transaction.type.label("type"),
+            TransactionAllocation.amount_mxn.label("amount_mxn"),
+        )
+        .join(TransactionAllocation, TransactionAllocation.transaction_id == Transaction.id)
+        .where(Transaction.type != "ignored")
+        .where(~TransactionAllocation.category.in_(neutral_categories))
+        .where(VISIBLE_SOURCE_STATUS_FILTER)
+    )
+    split_stmt = apply_transaction_filters(
+        split_stmt,
+        month=month,
+        year=year,
+        date_from=date_from,
+        date_to=date_to,
+        bank_name=bank_name,
+        category=None,
+        type=type,
+    )
+    if category:
+        split_stmt = split_stmt.where(TransactionAllocation.category == category)
+
+    accounting_rows = union_all(unsplit_stmt, split_stmt).subquery()
+    stmt = (
+        select(
+            func.coalesce(func.sum(case((accounting_rows.c.type == "income", accounting_rows.c.amount_mxn), else_=0)), 0),
+            func.coalesce(func.sum(case((accounting_rows.c.type == "expense", accounting_rows.c.amount_mxn), else_=0)), 0),
+        )
+        .select_from(accounting_rows)
     )
     income, expenses = db.execute(stmt).one()
     return SummaryResponse(income=income, expenses=expenses, net=income - expenses)
@@ -420,6 +458,7 @@ def get_breakdown(
     category: str | None = None,
     type: str | None = None,
 ) -> BreakdownResponse:
+    neutral_categories = list(NEUTRAL_CATEGORIES)
     unsplit_stmt = (
         select(
             Transaction.category.label("category"),
@@ -428,6 +467,7 @@ def get_breakdown(
             Transaction.id.label("source_id"),
         )
         .where(Transaction.type != "ignored")
+        .where(~Transaction.category.in_(neutral_categories))
         .where(VISIBLE_SOURCE_STATUS_FILTER)
         .where(~Transaction.allocations.any())
     )
@@ -453,6 +493,7 @@ def get_breakdown(
         )
         .join(TransactionAllocation, TransactionAllocation.transaction_id == Transaction.id)
         .where(Transaction.type != "ignored")
+        .where(~TransactionAllocation.category.in_(neutral_categories))
         .where(VISIBLE_SOURCE_STATUS_FILTER)
     )
     split_stmt = apply_transaction_filters(

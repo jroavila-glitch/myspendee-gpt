@@ -19,6 +19,13 @@ When a new rule is added or changed, we should update:
 - `Implemented`: The UI allows switching display currency between `MXN`, `EUR`, and `USD` for dashboard totals and transaction views.
 - `Implemented`: Non-MXN transactions keep their original currency amount for display.
 - `Implemented`: Ignored transactions are stored but excluded from dashboard metrics.
+- `Implemented`: Reimbursement/shared-expense neutral categories are visible for
+  audit but excluded from income, expenses, net cash flow, category rankings,
+  and comparison insights:
+  - `Reimbursement expected`: use as an expense split allocation for the part
+    of a shared expense that friends should repay.
+  - `Reimbursement received`: use for incoming repayment transfers that should
+    not count as income.
 - `Implemented`: Duplicate detection blocks transactions already stored from
   prior uploads using `bank_name + date + amount_mxn + description`, while
   preserving identical rows that are visibly repeated within one statement.
@@ -218,6 +225,12 @@ Additional ignore behavior:
   they are being added. The app creates one pending source transaction and then
   saves the requested allocations immediately, so the receipt can be captured
   before the bank statement arrives.
+- `Implemented`: Shared expenses should be modeled as one source transaction
+  split into the user's real category amount plus `Reimbursement expected`.
+  Example: an `80 EUR` Uber Eats order where the user's portion is `30 EUR`
+  should be split as `Food & Drink 30 EUR` and `Reimbursement expected 50 EUR`.
+  When friends pay back the `50 EUR`, their incoming transfers should be
+  categorized as `Reimbursement received`, not income.
 - `Implemented`: Deleting a single transaction returns the deleted transaction
   payload to the UI, allowing a short-lived Undo action that recreates the
   transaction and restores split allocations when present.

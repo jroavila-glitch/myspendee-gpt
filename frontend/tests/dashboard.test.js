@@ -367,6 +367,35 @@ test('builds display analytics with split breakdowns without duplicating source 
   ])
 })
 
+test('excludes reimbursement neutral categories from display analytics totals', () => {
+  const analytics = buildDisplayAnalytics([
+    {
+      id: 'shared-dinner',
+      type: 'expense',
+      amount_mxn: 1600,
+      category: 'Food & Drink',
+      currency_original: 'MXN',
+      allocations: [
+        { category: 'Food & Drink', amount_mxn: 600 },
+        { category: 'Reimbursement expected', amount_mxn: 1000 },
+      ],
+    },
+    {
+      id: 'friend-repaid',
+      type: 'income',
+      amount_mxn: 1000,
+      category: 'Reimbursement received',
+      currency_original: 'MXN',
+    },
+  ], 'MXN', rates)
+
+  assert.deepEqual(analytics.summary, { income: 0, expenses: 600, net: -600 })
+  assert.deepEqual(analytics.breakdown.expenses, [
+    { category: 'Food & Drink', type: 'expense', total: 600, count: 1 },
+  ])
+  assert.deepEqual(analytics.breakdown.income, [])
+})
+
 test('counts split income under allocation categories instead of the source category', () => {
   const analytics = buildDisplayAnalytics([
     {

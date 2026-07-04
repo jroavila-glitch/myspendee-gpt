@@ -727,6 +727,55 @@ class TransactionAllocationTest(TestCase):
             [(row.category, row.total, row.count) for row in groceries_breakdown.expenses],
         )
 
+    def test_reimbursement_allocations_are_excluded_from_expense_totals(self) -> None:
+        transaction = self.create_transaction(
+            amount_original=Decimal("80.00"),
+            amount_mxn=Decimal("1600.00"),
+            category="Food & Drink",
+        )
+        replace_allocations(
+            self.db,
+            transaction,
+            [
+                self.allocation("Food & Drink", amount_original="30.00"),
+                self.allocation("Reimbursement expected", amount_original="50.00"),
+            ],
+        )
+
+        summary = get_summary(self.db, month=6, year=2026)
+        breakdown = get_breakdown(self.db, month=6, year=2026)
+
+        self.assertEqual(Decimal("600.00"), summary.expenses)
+        self.assertEqual(Decimal("-600.00"), summary.net)
+        self.assertEqual(
+            [("Food & Drink", Decimal("600.00"), 1)],
+            [(row.category, row.total, row.count) for row in breakdown.expenses],
+        )
+
+    def test_reimbursement_received_is_excluded_from_income_totals(self) -> None:
+        self.create_transaction(
+            amount_original=Decimal("50.00"),
+            amount_mxn=Decimal("1000.00"),
+            category="Reimbursement received",
+            tx_type="income",
+        )
+        self.create_transaction(
+            amount_original=Decimal("25.00"),
+            amount_mxn=Decimal("500.00"),
+            category="Tennis Rush",
+            tx_type="income",
+        )
+
+        summary = get_summary(self.db, month=6, year=2026)
+        breakdown = get_breakdown(self.db, month=6, year=2026)
+
+        self.assertEqual(Decimal("500.00"), summary.income)
+        self.assertEqual(Decimal("500.00"), summary.net)
+        self.assertEqual(
+            [("Tennis Rush", Decimal("500.00"), 1)],
+            [(row.category, row.total, row.count) for row in breakdown.income],
+        )
+
     def test_category_summary_includes_split_sources_by_allocation_category_once(self) -> None:
         split_with_groceries = self.create_transaction(category="Other", amount_mxn=Decimal("100.00"))
         replace_allocations(
@@ -755,8 +804,8 @@ class TransactionAllocationTest(TestCase):
 
         summary = get_summary(self.db, month=6, year=2026, category="Groceries")
 
-        self.assertEqual(Decimal("130.00"), summary.expenses)
-        self.assertEqual(Decimal("-130.00"), summary.net)
+        self.assertEqual(Decimal("70.00"), summary.expenses)
+        self.assertEqual(Decimal("-70.00"), summary.net)
         self.assertEqual("Groceries", unsplit_groceries.category)
 
     def test_category_transaction_list_includes_split_sources_by_allocation_category_once(self) -> None:

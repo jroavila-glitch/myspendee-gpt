@@ -1,5 +1,7 @@
 import { getDisplayAmount } from './currency.js'
 
+export const NEUTRAL_CATEGORIES = new Set(['Reimbursement expected', 'Reimbursement received'])
+
 function toNumber(value) {
   return Number(value || 0)
 }
@@ -10,6 +12,10 @@ function getAllocations(transaction) {
 
 function hasAllocations(transaction) {
   return getAllocations(transaction).length > 0
+}
+
+function isNeutralCategory(category) {
+  return NEUTRAL_CATEGORIES.has(category)
 }
 
 function hasFiniteValue(value) {
@@ -73,16 +79,23 @@ export function buildDisplayAnalytics(transactions, displayCurrency, displayRate
       conversionAvailable = false
       continue
     }
-    if (transaction.type === 'income') summary.income += amount
-    if (transaction.type === 'expense') summary.expenses += amount
     const breakdownItems = hasAllocations(transaction)
       ? getAllocations(transaction).map((allocation) => ({
         category: allocation.category,
         amount: getAllocationDisplayAmount(transaction, allocation, displayCurrency, displayRates),
       }))
       : [{ category: transaction.category, amount }]
+    const accountingItems = breakdownItems.filter((item) => item.category && !isNeutralCategory(item.category))
+    if (accountingItems.some((item) => item.amount === null)) {
+      conversionAvailable = false
+      continue
+    }
+    const accountingAmount = accountingItems.reduce((sum, item) => (item.amount === null ? sum : sum + item.amount), 0)
+    if (transaction.type === 'income') summary.income += accountingAmount
+    if (transaction.type === 'expense') summary.expenses += accountingAmount
     for (const item of breakdownItems) {
       if (!item.category || item.amount === null) continue
+      if (isNeutralCategory(item.category)) continue
       const key = `${transaction.type}::${item.category}`
       const current = grouped.get(key) || {
         category: item.category,

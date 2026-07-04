@@ -9,6 +9,9 @@ from pydantic.config import ConfigDict
 
 
 TRANSACTION_SOURCE_STATUSES = {"posted", "pending", "reconciled_pending"}
+REIMBURSEMENT_EXPECTED_CATEGORY = "Reimbursement expected"
+REIMBURSEMENT_RECEIVED_CATEGORY = "Reimbursement received"
+NEUTRAL_CATEGORIES = {REIMBURSEMENT_EXPECTED_CATEGORY, REIMBURSEMENT_RECEIVED_CATEGORY}
 
 INCOME_CATEGORIES = [
     "Tennis Lessons",
@@ -21,6 +24,7 @@ INCOME_CATEGORIES = [
     "Azulik",
     "Investments",
     "Gifts",
+    REIMBURSEMENT_RECEIVED_CATEGORY,
     "Other",
 ]
 
@@ -50,6 +54,7 @@ EXPENSE_CATEGORIES = [
     "Beauty",
     "Investments",
     "Loan Papá",
+    REIMBURSEMENT_EXPECTED_CATEGORY,
     "Other",
 ]
 
