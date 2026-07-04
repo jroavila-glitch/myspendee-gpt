@@ -459,7 +459,7 @@ def calculate_month_status(
     net = income - expenses
     savings_rate = (net / income) * Decimal("100") if income > 0 else Decimal("0")
     has_spending_baseline = average_expenses is not None and average_expenses > 0
-    spending_ratio = expenses / average_expenses if has_spending_baseline else Decimal("1")
+    spending_ratio = expenses / average_expenses if has_spending_baseline else Decimal("0")
     review_risk = review_amount / income if income > 0 else Decimal("0")
 
     values = _status_values(
@@ -473,7 +473,7 @@ def calculate_month_status(
 
     if net < 0:
         label = "Needs Attention"
-        reason = f"negative net cash flow {net}"
+        reason = f"spending is above income by {_money(abs(net))}"
     elif (
         savings_rate >= 35
         and spending_ratio <= Decimal("1.05")
@@ -519,14 +519,14 @@ def _status_values(
     review_amount: Decimal,
 ) -> str:
     if average_expenses is None:
-        spending = f"no spending baseline; spending ratio defaults to {spending_ratio:.2f}"
+        spending = "no spending baseline yet"
     else:
-        spending = f"spending ratio {spending_ratio:.2f} against baseline {average_expenses}"
+        spending = f"spending is {spending_ratio:.1f}x the recent baseline"
     transaction_label = "transaction" if review_count == 1 else "transactions"
     return (
         f"Savings rate {savings_rate:.1f}%; {spending}; "
         f"review risk {(review_risk * Decimal("100")):.1f}% from "
-        f"{review_count} {transaction_label} totaling {review_amount}."
+        f"{review_count} {transaction_label} totaling {_money(review_amount)}."
     )
 
 

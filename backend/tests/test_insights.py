@@ -718,9 +718,25 @@ class InsightsTest(TestCase):
             review_amount=Decimal("0"),
         )
         self.assertEqual("Needs Attention", status.label)
-        self.assertIn("negative net", status.explanation.lower())
-        self.assertIn("-200", status.explanation)
+        self.assertIn("spending is above income", status.explanation.lower())
+        self.assertIn("200.00", status.explanation)
         self.assertIn("-20", status.explanation)
+
+    def test_status_explanation_formats_no_income_without_raw_ratios(self) -> None:
+        status = calculate_month_status(
+            income=Decimal("0"),
+            expenses=Decimal("335.33"),
+            average_expenses=None,
+            review_count=0,
+            review_amount=Decimal("0"),
+        )
+
+        self.assertEqual("Needs Attention", status.label)
+        self.assertIn("spending is above income by 335.33", status.explanation)
+        self.assertIn("no spending baseline yet", status.explanation)
+        self.assertNotIn("87731", status.explanation)
+        self.assertNotIn("666666", status.explanation)
+        self.assertNotIn("spending ratio", status.explanation.lower())
 
     def test_status_is_excellent_when_all_thresholds_are_met(self) -> None:
         status = calculate_month_status(
@@ -733,7 +749,7 @@ class InsightsTest(TestCase):
         self.assertEqual("Excellent", status.label)
         self.assertEqual(Decimal("40.0"), status.savings_rate)
         self.assertIn("40", status.explanation)
-        self.assertIn("1.00", status.explanation)
+        self.assertIn("1.0x", status.explanation)
         self.assertIn("4", status.explanation)
         self.assertIn("1 transaction", status.explanation)
 
@@ -747,7 +763,7 @@ class InsightsTest(TestCase):
         )
         self.assertEqual("Healthy", status.label)
         self.assertIn("30", status.explanation)
-        self.assertIn("1.08", status.explanation)
+        self.assertIn("1.1x", status.explanation)
         self.assertIn("6", status.explanation)
         self.assertIn("healthy thresholds", status.explanation.lower())
 

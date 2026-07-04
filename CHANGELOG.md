@@ -12,6 +12,8 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Cleaned up Month Status explanations so low/no-income periods no longer show
+  raw spending-ratio decimals or noisy diagnostic text.
 - Added reimbursement/shared-expense accounting with neutral
   `Reimbursement expected` and `Reimbursement received` categories, so shared
   food/orders can reduce real category spending without inflating income.
