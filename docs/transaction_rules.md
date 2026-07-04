@@ -218,6 +218,20 @@ Additional ignore behavior:
   they are being added. The app creates one pending source transaction and then
   saves the requested allocations immediately, so the receipt can be captured
   before the bank statement arrives.
+- `Implemented`: Deleting a single transaction returns the deleted transaction
+  payload to the UI, allowing a short-lived Undo action that recreates the
+  transaction and restores split allocations when present.
+- `Implemented`: Pending manual transactions are checked against posted
+  statement transactions for likely matches. A match requires a manual
+  `pending` source transaction, a `posted` candidate, the same transaction type,
+  matching original amount/currency when available or matching MXN amount,
+  posted date within 45 days after the pending capture, matching bank when both
+  rows have one, and overlapping merchant-description tokens.
+- `Implemented`: Reconciling a pending/manual transaction against its posted
+  statement match changes the pending row to `reconciled_pending` and stores the
+  posted transaction id in `matched_transaction_id`. Reconciled pending rows are
+  hidden from normal transaction lists and analytics so the same purchase is not
+  counted twice.
 - `Implemented`: Manual pending transactions appear in a compact Dashboard
   reminder card named `Pending / waiting for statement`, regardless of the
   selected month. The reminder card is for duplicate prevention and editing

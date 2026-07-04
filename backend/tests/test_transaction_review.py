@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import Transaction, TransactionAllocation
-from app.main import bulk_delete, bulk_update, edit_transaction, list_transactions
+from app.main import bulk_delete, bulk_update, edit_transaction, list_pending_matches, list_transactions, reconcile_pending_transaction, remove_transaction
 from app.schemas.common import TransactionBulkDelete, TransactionBulkUpdate, TransactionCreate, TransactionUpdate
 from app.services.transactions import create_transaction, duplicate_exists, get_summary, prepare_transaction_data, update_transaction
 
@@ -306,6 +306,14 @@ class TransactionReviewTest(TestCase):
         self.assertEqual({"deleted": 1}, result)
         self.assertIsNone(self.db.get(Transaction, self.transaction.id))
 
+    def test_single_delete_returns_deleted_transaction_for_undo(self) -> None:
+        deleted = remove_transaction(self.transaction.id, self.db)
+
+        self.assertEqual(self.transaction.id, deleted.id)
+        self.assertEqual("Coffee", deleted.description)
+        self.assertEqual("Other", deleted.category)
+        self.assertIsNone(self.db.get(Transaction, self.transaction.id))
+
     def test_bulk_delete_rejects_stale_partial_selection(self) -> None:
         with self.assertRaises(HTTPException) as context:
             bulk_delete(
@@ -392,3 +400,110 @@ class TransactionReviewTest(TestCase):
 
         self.assertEqual(Decimal("0.00"), may.expenses)
         self.assertEqual(Decimal("12960.00"), june.expenses)
+
+    def test_pending_matches_find_likely_posted_statement_transaction(self) -> None:
+        pending = Transaction(
+            date=date(2026, 7, 1),
+            description="Uber Eats dinner",
+            amount_original=Decimal("45.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("967.50"),
+            exchange_rate_used=Decimal("21.50"),
+            category="Food & Drink",
+            type="expense",
+            bank_name="Revolut",
+            month=7,
+            year=2026,
+            assigned_month=7,
+            assigned_year=2026,
+            manually_added=True,
+            source_status="pending",
+        )
+        posted = Transaction(
+            date=date(2026, 7, 3),
+            description="UBER EATS HELP.UBER.COM",
+            amount_original=Decimal("45.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("967.50"),
+            exchange_rate_used=Decimal("21.50"),
+            category="Food & Drink",
+            type="expense",
+            bank_name="Revolut",
+            month=7,
+            year=2026,
+            assigned_month=7,
+            assigned_year=2026,
+            manually_added=False,
+            source_status="posted",
+        )
+        unrelated = Transaction(
+            date=date(2026, 7, 3),
+            description="UBER EATS HELP.UBER.COM",
+            amount_original=Decimal("12.00"),
+            currency_original="EUR",
+            amount_mxn=Decimal("258.00"),
+            exchange_rate_used=Decimal("21.50"),
+            category="Food & Drink",
+            type="expense",
+            bank_name="Revolut",
+            month=7,
+            year=2026,
+            assigned_month=7,
+            assigned_year=2026,
+            manually_added=False,
+            source_status="posted",
+        )
+        self.db.add_all([pending, posted, unrelated])
+        self.db.commit()
+
+        matches = list_pending_matches(year=2026, db=self.db)
+
+        self.assertEqual(1, len(matches))
+        self.assertEqual(pending.id, matches[0].pending_transaction.id)
+        self.assertEqual([posted.id], [candidate.id for candidate in matches[0].candidates])
+
+    def test_reconcile_pending_transaction_hides_pending_row_and_records_match(self) -> None:
+        pending = Transaction(
+            date=date(2026, 7, 1),
+            description="Amazon",
+            amount_original=Decimal("335.33"),
+            currency_original="MXN",
+            amount_mxn=Decimal("335.33"),
+            exchange_rate_used=Decimal("1"),
+            category="Home",
+            type="expense",
+            bank_name="",
+            month=7,
+            year=2026,
+            assigned_month=7,
+            assigned_year=2026,
+            manually_added=True,
+            source_status="pending",
+        )
+        posted = Transaction(
+            date=date(2026, 7, 5),
+            description="AMAZON MX",
+            amount_original=Decimal("335.33"),
+            currency_original="MXN",
+            amount_mxn=Decimal("335.33"),
+            exchange_rate_used=Decimal("1"),
+            category="Home",
+            type="expense",
+            bank_name="Oro Banamex",
+            month=7,
+            year=2026,
+            assigned_month=7,
+            assigned_year=2026,
+            manually_added=False,
+            source_status="posted",
+        )
+        self.db.add_all([pending, posted])
+        self.db.commit()
+
+        reconciled = reconcile_pending_transaction(pending.id, posted.id, self.db)
+        self.db.refresh(pending)
+
+        self.assertEqual("reconciled_pending", reconciled.source_status)
+        self.assertEqual(posted.id, reconciled.matched_transaction_id)
+        rows = list_transactions(year=2026, month=7, date_from=None, date_to=None, db=self.db)
+        self.assertNotIn(pending.id, {row.id for row in rows})

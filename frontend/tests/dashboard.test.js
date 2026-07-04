@@ -7,9 +7,11 @@ import {
   buildLoanPapaSummary,
   buildReviewBannerSummary,
   buildSavingsRateComparison,
+  buildUndoTransactionPayload,
   calculateSavingsRate,
   convertInsightMetric,
   excludeTransactionsById,
+  indexPendingMatchesByPendingId,
   getBulkActionState,
   getPendingReminderTransactions,
   filterTransactionsByDrilldown,
@@ -283,6 +285,63 @@ test('selects manual pending reminder transactions sorted by most recent capture
     getPendingReminderTransactions(transactions).map((transaction) => transaction.id),
     ['later', 'soon', 'today', 'past'],
   )
+})
+
+test('builds an undo payload from a deleted transaction without volatile backend fields', () => {
+  const payload = buildUndoTransactionPayload({
+    id: 'old-id',
+    date: '2026-07-01',
+    description: 'Amazon',
+    amount_original: '335.33',
+    currency_original: 'MXN',
+    amount_mxn: '335.33',
+    exchange_rate_used: '1.000000',
+    category: 'Groceries',
+    type: 'expense',
+    bank_name: '',
+    assigned_month: 7,
+    assigned_year: 2026,
+    source_status: 'pending',
+    manually_added: true,
+    notes: null,
+    statement_id: null,
+    created_at: '2026-07-04T10:00:00',
+  })
+
+  assert.deepEqual(payload, {
+    date: '2026-07-01',
+    description: 'Amazon',
+    amount_original: '335.33',
+    currency_original: 'MXN',
+    amount_mxn: '335.33',
+    exchange_rate_used: '1.000000',
+    category: 'Groceries',
+    type: 'expense',
+    bank_name: '',
+    assigned_month: 7,
+    assigned_year: 2026,
+    source_status: 'pending',
+    manually_added: true,
+    notes: null,
+  })
+})
+
+test('indexes pending matches by pending transaction id', () => {
+  const matches = [
+    {
+      pending_transaction: { id: 'pending-1' },
+      candidates: [{ id: 'posted-1' }],
+    },
+    {
+      pending_transaction: { id: 'pending-2' },
+      candidates: [{ id: 'posted-2' }],
+    },
+  ]
+
+  assert.deepEqual(indexPendingMatchesByPendingId(matches), {
+    'pending-1': matches[0],
+    'pending-2': matches[1],
+  })
 })
 
 test('builds display analytics with split breakdowns without duplicating source summaries', () => {

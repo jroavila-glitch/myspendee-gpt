@@ -22,6 +22,7 @@ from app.schemas.common import (
     TransactionAllocationsUpdate,
     TransactionRead,
     TransactionUpdate,
+    PendingMatchRead,
     UserClassificationRuleCreate,
     UserClassificationRuleRead,
     UploadResult,
@@ -32,8 +33,10 @@ from app.services.transactions import (
     SplitTransactionMutationError,
     create_transaction,
     delete_statement,
+    get_pending_matches,
     get_breakdown,
     get_summary,
+    reconcile_pending_with_posted,
     serialize_transaction,
     update_transaction,
 )
@@ -212,6 +215,34 @@ def edit_transaction(transaction_id: UUID, payload: TransactionUpdate, db: Sessi
     return TransactionRead.model_validate(serialize_transaction(transaction))
 
 
+@app.get("/pending-matches", response_model=list[PendingMatchRead])
+def list_pending_matches(
+    year: int = Query(...),
+    db: Session = Depends(get_db),
+) -> list[PendingMatchRead]:
+    return [PendingMatchRead.model_validate(match) for match in get_pending_matches(db, year=year)]
+
+
+@app.post("/transactions/{pending_id}/reconcile/{posted_id}", response_model=TransactionRead)
+def reconcile_pending_transaction(
+    pending_id: UUID,
+    posted_id: UUID,
+    db: Session = Depends(get_db),
+) -> TransactionRead:
+    pending = db.get(Transaction, pending_id)
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending transaction not found")
+    posted = db.get(Transaction, posted_id)
+    if not posted:
+        raise HTTPException(status_code=404, detail="Posted transaction not found")
+    try:
+        reconciled = reconcile_pending_with_posted(db, pending, posted)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return TransactionRead.model_validate(serialize_transaction(reconciled))
+
+
 @app.post("/transactions/{transaction_id}/classification-rules", response_model=UserClassificationRuleRead)
 def create_classification_rule_from_transaction(
     transaction_id: UUID,
@@ -279,14 +310,15 @@ def delete_transaction_allocations(
     return TransactionRead.model_validate(serialize_transaction(transaction))
 
 
-@app.delete("/transactions/{transaction_id}")
-def remove_transaction(transaction_id: UUID, db: Session = Depends(get_db)) -> dict:
+@app.delete("/transactions/{transaction_id}", response_model=TransactionRead)
+def remove_transaction(transaction_id: UUID, db: Session = Depends(get_db)) -> TransactionRead:
     transaction = db.get(Transaction, transaction_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
+    deleted = TransactionRead.model_validate(serialize_transaction(transaction))
     db.delete(transaction)
     db.commit()
-    return {"ok": True}
+    return deleted
 
 
 @app.post("/transactions/bulk-update")

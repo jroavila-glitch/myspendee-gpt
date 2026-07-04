@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added safe single-transaction delete undo and pending-to-statement
+  reconciliation so manual pending captures can be matched to posted statement
+  rows and hidden from analytics after reconciliation.
 - Added a Dashboard `Pending / waiting for statement` card for manual pending
   transactions, keeping them editable and visible before their bank statements
   arrive without changing period totals.

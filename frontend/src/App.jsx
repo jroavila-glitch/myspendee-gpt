@@ -12,12 +12,14 @@ import {
   buildDisplayAnalytics,
   buildDrilldownFilter,
   buildPeriodComparisonLabel,
+  buildUndoTransactionPayload,
   excludeTransactionsById,
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getBulkActionState,
   getPendingReminderTransactions,
   getPreviewTransactions,
+  indexPendingMatchesByPendingId,
   joinReviewItems,
   mergeDrilldownFilters,
   replaceDisplayRatesFromFx,
@@ -476,6 +478,7 @@ function App() {
   const [displayRates, setDisplayRates] = useState({ MXN: 1 })
   const [transactions, setTransactions] = useState([])
   const [pendingReminderTransactions, setPendingReminderTransactions] = useState([])
+  const [pendingMatchesById, setPendingMatchesById] = useState({})
   const [insights, setInsights] = useState(null)
   const [statements, setStatements] = useState([])
   const [banks, setBanks] = useState([])
@@ -499,6 +502,7 @@ function App() {
   const [dashboardError, setDashboardError] = useState('')
   const [notesDrafts, setNotesDrafts] = useState({})
   const [savingNotesIds, setSavingNotesIds] = useState([])
+  const [undoToast, setUndoToast] = useState(null)
   const [density, setDensity] = useState('comfortable')
   const notesTimers = useRef({})
   const notesSaveChains = useRef({})
@@ -511,6 +515,7 @@ function App() {
   const loadVersionRef = useRef(0)
   const mountedRef = useRef(true)
   const bulkActionPendingRef = useRef('')
+  const undoToastTimerRef = useRef(null)
 
   const queryParams = useMemo(() => {
     const params = {
@@ -604,6 +609,7 @@ function App() {
       source_status: 'pending',
       manually_added: 'true',
     })
+    const pendingMatchesPromise = api.pendingMatches({ year: String(period.year) })
 
     try {
       const [transactionsRes, insightsRes] = await Promise.all([
@@ -617,6 +623,7 @@ function App() {
       if (!canApply()) return
       setTransactions([])
       setPendingReminderTransactions([])
+      setPendingMatchesById({})
       setInsights(null)
       setDashboardError(err.message)
     }
@@ -628,6 +635,15 @@ function App() {
     } catch {
       if (!canApply()) return
       setPendingReminderTransactions([])
+    }
+
+    try {
+      const pendingMatchesRes = await pendingMatchesPromise
+      if (!canApply()) return
+      setPendingMatchesById(indexPendingMatchesByPendingId(pendingMatchesRes))
+    } catch {
+      if (!canApply()) return
+      setPendingMatchesById({})
     }
 
     const metadataResults = await metadataPromise
@@ -684,6 +700,7 @@ function App() {
 
   useEffect(() => () => {
     Object.values(notesTimers.current).forEach(clearTimeout)
+    if (undoToastTimerRef.current) window.clearTimeout(undoToastTimerRef.current)
   }, [])
 
   useEffect(() => {
@@ -890,8 +907,63 @@ function App() {
 
   async function handleDeleteTransaction(id) {
     if (!window.confirm('Delete this transaction? This cannot be undone.')) return
-    await api.deleteTransaction(id)
+    const deleted = await api.deleteTransaction(id)
     setMenuState(null)
+    setSelectedIds((current) => current.filter((selectedId) => selectedId !== id))
+    await loadAll()
+    showUndoToast(deleted)
+  }
+
+  function showUndoToast(transaction) {
+    if (undoToastTimerRef.current) window.clearTimeout(undoToastTimerRef.current)
+    setUndoToast({ transaction, status: 'ready' })
+    undoToastTimerRef.current = window.setTimeout(() => {
+      setUndoToast(null)
+      undoToastTimerRef.current = null
+    }, 15000)
+  }
+
+  async function handleUndoDelete() {
+    if (!undoToast?.transaction || undoToast.status === 'restoring') return
+    const deleted = undoToast.transaction
+    setUndoToast({ transaction: deleted, status: 'restoring' })
+    try {
+      let restored = await api.addTransaction(buildUndoTransactionPayload(deleted))
+      restored = await api.updateTransaction(restored.id, {
+        date: deleted.date,
+        description: deleted.description,
+        amount_original: deleted.amount_original,
+        currency_original: deleted.currency_original,
+        amount_mxn: deleted.amount_mxn,
+        exchange_rate_used: deleted.exchange_rate_used,
+        category: deleted.category,
+        type: deleted.type,
+        bank_name: deleted.bank_name,
+        assigned_month: deleted.assigned_month,
+        assigned_year: deleted.assigned_year,
+        source_status: deleted.source_status,
+        notes: deleted.notes,
+      })
+      if (deleted.allocations?.length) {
+        await api.setAllocations(restored.id, restored, deleted.allocations.map((allocation) => ({
+          category: allocation.category,
+          amount_original: allocation.amount_original,
+          amount_mxn: allocation.amount_mxn,
+          notes: allocation.notes,
+        })))
+      }
+      if (undoToastTimerRef.current) window.clearTimeout(undoToastTimerRef.current)
+      undoToastTimerRef.current = null
+      setUndoToast(null)
+      await loadAll()
+    } catch (err) {
+      setUndoToast({ transaction: deleted, status: 'error', message: err.message || 'Could not restore transaction.' })
+    }
+  }
+
+  async function handleReconcilePending(pendingId, postedId) {
+    await api.reconcilePending(pendingId, postedId)
+    setSelectedIds((current) => current.filter((selectedId) => selectedId !== pendingId))
     await loadAll()
   }
 
@@ -966,6 +1038,7 @@ function App() {
             displayRates={displayRates}
             visibleTransactions={visibleDashboardTransactions}
             pendingReminderTransactions={pendingReminderTransactions}
+            pendingMatchesById={pendingMatchesById}
             onRetry={loadAll}
             onOpenReview={() => setShowReviewModal(true)}
             onDrilldown={handleDashboardDrilldown}
@@ -974,6 +1047,7 @@ function App() {
             onPrivacyToggle={() => setPrivacyMode((current) => !current)}
             onEditTransaction={openEditFlow}
             onSplitTransaction={openSplitModal}
+            onReconcilePending={handleReconcilePending}
             transactionTableProps={{
               selectedIds,
               categoryOptions,
@@ -1159,6 +1233,18 @@ function App() {
             }}
           />
         </Modal>
+      ) : null}
+
+      {undoToast ? (
+        <div className={`undo-toast ${undoToast.status === 'error' ? 'undo-toast-error' : ''}`} role="status">
+          <div>
+            <strong>{undoToast.status === 'error' ? 'Could not restore transaction' : 'Transaction deleted'}</strong>
+            <span>{undoToast.status === 'error' ? undoToast.message : undoToast.transaction.description}</span>
+          </div>
+          <button type="button" className="ghost-button" onClick={handleUndoDelete} disabled={undoToast.status === 'restoring'}>
+            {undoToast.status === 'restoring' ? 'Restoring...' : 'Undo'}
+          </button>
+        </div>
       ) : null}
     </div>
   )

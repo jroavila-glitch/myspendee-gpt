@@ -209,6 +209,29 @@ export function getPendingReminderTransactions(transactions) {
     })
 }
 
+export function buildUndoTransactionPayload(transaction) {
+  return {
+    date: transaction.date,
+    description: transaction.description,
+    amount_original: transaction.amount_original,
+    currency_original: transaction.currency_original,
+    amount_mxn: transaction.amount_mxn,
+    exchange_rate_used: transaction.exchange_rate_used,
+    category: transaction.category,
+    type: transaction.type,
+    bank_name: transaction.bank_name,
+    assigned_month: transaction.assigned_month,
+    assigned_year: transaction.assigned_year,
+    source_status: transaction.source_status,
+    manually_added: transaction.manually_added,
+    notes: transaction.notes,
+  }
+}
+
+export function indexPendingMatchesByPendingId(matches) {
+  return Object.fromEntries(matches.map((match) => [match.pending_transaction.id, match]))
+}
+
 export function joinReviewItems(transactions, reviewItems) {
   const transactionsById = new Map(transactions.map((transaction) => [String(transaction.id), transaction]))
   return reviewItems.flatMap((item) => {

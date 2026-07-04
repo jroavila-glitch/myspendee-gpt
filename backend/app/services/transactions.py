@@ -1,5 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+import re
 
 from sqlalchemy import and_, case, func, or_, select, union_all
 from sqlalchemy.sql import Select
@@ -23,6 +24,18 @@ class SplitTransactionMutationError(ValueError):
 
 
 VISIBLE_SOURCE_STATUS_FILTER = Transaction.source_status != "reconciled_pending"
+MERCHANT_TOKEN_RE = re.compile(r"[a-z0-9]+")
+MERCHANT_STOPWORDS = {
+    "com",
+    "help",
+    "www",
+    "the",
+    "and",
+    "transfer",
+    "from",
+    "to",
+    "payment",
+}
 
 
 def _format_original_amount(amount_original: Decimal | None, currency: str, amount_mxn: Decimal, rate: Decimal | None) -> str | None:
@@ -221,6 +234,93 @@ def apply_transaction_filters(
     if manually_added is not None:
         stmt = stmt.where(Transaction.manually_added.is_(manually_added))
     return stmt
+
+
+def _merchant_tokens(description: str) -> set[str]:
+    return {
+        token
+        for token in MERCHANT_TOKEN_RE.findall(description.lower())
+        if len(token) >= 3 and token not in MERCHANT_STOPWORDS
+    }
+
+
+def _amounts_match(pending: Transaction, posted: Transaction) -> bool:
+    if (
+        pending.amount_original is not None
+        and posted.amount_original is not None
+        and pending.currency_original == posted.currency_original
+    ):
+        return pending.amount_original == posted.amount_original
+    return pending.amount_mxn == posted.amount_mxn
+
+
+def is_likely_pending_match(pending: Transaction, posted: Transaction, *, date_window_days: int = 45) -> bool:
+    if not pending.manually_added or pending.source_status != "pending":
+        return False
+    if posted.source_status != "posted":
+        return False
+    if pending.type != posted.type:
+        return False
+    if not _amounts_match(pending, posted):
+        return False
+    days_apart = (posted.date - pending.date).days
+    if days_apart < 0 or days_apart > date_window_days:
+        return False
+    if pending.bank_name and posted.bank_name and pending.bank_name != posted.bank_name:
+        return False
+    pending_tokens = _merchant_tokens(pending.description)
+    posted_tokens = _merchant_tokens(posted.description)
+    return bool(pending_tokens & posted_tokens)
+
+
+def get_pending_matches(db: Session, *, year: int) -> list[dict]:
+    pending_rows = db.scalars(
+        select(Transaction)
+        .where(Transaction.source_status == "pending")
+        .where(Transaction.manually_added.is_(True))
+        .where(Transaction.year == year)
+        .order_by(Transaction.date.desc(), Transaction.created_at.desc())
+    ).all()
+    if not pending_rows:
+        return []
+
+    min_date = min(transaction.date for transaction in pending_rows)
+    max_date = max(transaction.date for transaction in pending_rows) + timedelta(days=45)
+    posted_rows = db.scalars(
+        select(Transaction)
+        .where(Transaction.source_status == "posted")
+        .where(Transaction.date >= min_date)
+        .where(Transaction.date <= max_date)
+        .order_by(Transaction.date.asc(), Transaction.created_at.asc())
+    ).all()
+
+    matches = []
+    for pending in pending_rows:
+        candidates = [
+            posted
+            for posted in posted_rows
+            if is_likely_pending_match(pending, posted)
+        ]
+        if candidates:
+            matches.append({
+                "pending_transaction": serialize_transaction(pending),
+                "candidates": [serialize_transaction(candidate) for candidate in candidates],
+            })
+    return matches
+
+
+def reconcile_pending_with_posted(db: Session, pending: Transaction, posted: Transaction) -> Transaction:
+    if pending.source_status != "pending" or not pending.manually_added:
+        raise ValueError("Only manual pending transactions can be reconciled")
+    if posted.source_status != "posted":
+        raise ValueError("Pending transactions can only reconcile with posted statement transactions")
+    if not is_likely_pending_match(pending, posted):
+        raise ValueError("Transactions are not a likely pending match")
+    pending.source_status = "reconciled_pending"
+    pending.matched_transaction_id = posted.id
+    db.commit()
+    db.refresh(pending)
+    return pending
 
 
 def create_transaction(db: Session, tx: TransactionCreate) -> Transaction:

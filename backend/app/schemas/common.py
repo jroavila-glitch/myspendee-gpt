@@ -172,6 +172,11 @@ class TransactionRead(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PendingMatchRead(BaseModel):
+    pending_transaction: TransactionRead
+    candidates: list[TransactionRead] = Field(default_factory=list)
+
+
 class StatementRead(BaseModel):
     id: UUID
     filename: str

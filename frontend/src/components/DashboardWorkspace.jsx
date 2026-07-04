@@ -182,6 +182,8 @@ function RecentTransactionsPreview({
   onEdit,
   onSplit,
   onDelete,
+  pendingMatchesById,
+  onReconcilePending,
 }) {
   const [expanded, setExpanded] = useState(false)
   const effectiveShowAll = showAll || expanded
@@ -247,6 +249,8 @@ function PendingReminderTransactions({
   onEdit,
   onSplit,
   onDelete,
+  pendingMatchesById,
+  onReconcilePending,
 }) {
   if (!transactions.length) return null
 
@@ -277,6 +281,8 @@ function PendingReminderTransactions({
         onEdit={onEdit}
         onSplit={onSplit}
         onDelete={onDelete}
+        pendingMatchesById={pendingMatchesById}
+        onReconcilePending={onReconcilePending}
         hideFilters
       />
     </div>
@@ -293,6 +299,7 @@ export default function DashboardWorkspace({
   displayRates,
   visibleTransactions,
   pendingReminderTransactions,
+  pendingMatchesById,
   onOpenReview,
   onRetry,
   onDrilldown,
@@ -301,6 +308,7 @@ export default function DashboardWorkspace({
   onPrivacyToggle,
   onEditTransaction,
   onSplitTransaction,
+  onReconcilePending,
   transactionTableProps,
 }) {
   const convertedInsights = useMemo(() => {
@@ -405,6 +413,8 @@ export default function DashboardWorkspace({
           displayRates={displayRates}
           onEdit={onEditTransaction}
           onSplit={onSplitTransaction}
+          pendingMatchesById={pendingMatchesById}
+          onReconcilePending={onReconcilePending}
           {...transactionTableProps}
         />
 

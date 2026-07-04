@@ -38,6 +38,7 @@ async function request(path, options = {}) {
 
 export const api = {
   listTransactions: (params) => request(`/transactions?${new URLSearchParams(params).toString()}`),
+  pendingMatches: (params) => request(`/pending-matches?${new URLSearchParams(params).toString()}`),
   summary: (params) => request(`/summary?${new URLSearchParams(params).toString()}`),
   breakdown: (params) => request(`/breakdown?${new URLSearchParams(params).toString()}`),
   insights: (params) => request(`/insights?${new URLSearchParams(params).toString()}`),
@@ -48,6 +49,7 @@ export const api = {
   addTransaction: (body) => request('/transactions', { method: 'POST', body: JSON.stringify(body) }),
   updateTransaction: (id, body) => request(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   createClassificationRule: (id, body) => request(`/transactions/${id}/classification-rules`, { method: 'POST', body: JSON.stringify(body) }),
+  reconcilePending: (pendingId, postedId) => request(`/transactions/${pendingId}/reconcile/${postedId}`, { method: 'POST' }),
   deleteTransaction: (id) => request(`/transactions/${id}`, { method: 'DELETE' }),
   setAllocations: (id, transaction, allocations) => request(`/transactions/${id}/allocations`, {
     method: 'PUT',

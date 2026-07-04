@@ -154,6 +154,8 @@ export default function TransactionTable({
   onSplit,
   onDelete,
   onMarkReviewed,
+  pendingMatchesById = {},
+  onReconcilePending,
   headerAction = null,
   hideFilters = false,
 }) {
@@ -218,6 +220,8 @@ export default function TransactionTable({
           const assignedPeriodLabel = getAssignedPeriodLabel(transaction)
           const sourceStatusLabel = getTransactionSourceStatusLabel(transaction)
           const categoryDisplay = getTransactionCategoryDisplay(transaction)
+          const pendingMatch = pendingMatchesById[transaction.id]
+          const pendingCandidate = pendingMatch?.candidates?.[0]
           return (
             <div key={transaction.id} className="transaction-row transaction-grid">
             <div className="transaction-check">
@@ -238,6 +242,18 @@ export default function TransactionTable({
               ) : null}
               <AllocationSummary transaction={transaction} displayCurrency={displayCurrency} displayRates={displayRates} />
               {transaction.manually_added ? <span className="row-meta">Manual entry</span> : null}
+              {pendingCandidate ? (
+                <div className="pending-match-card">
+                  <span>Likely statement match</span>
+                  <strong>{pendingCandidate.description}</strong>
+                  <small>{formatShortDate(pendingCandidate.date)} · {pendingCandidate.bank_name || 'No bank'} · {formatMoney(getDisplayAmount(pendingCandidate, displayCurrency, displayRates), displayCurrency)}</small>
+                  {onReconcilePending ? (
+                    <button type="button" className="ghost-button" onClick={() => onReconcilePending(transaction.id, pendingCandidate.id)}>
+                      Reconcile
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="transaction-category">
