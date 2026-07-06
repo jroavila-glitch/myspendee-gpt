@@ -5,6 +5,7 @@ import {
   canSplitTransaction,
   getSplitActionLabel,
   getTransactionCategoryDisplay,
+  getTransactionDescriptionLabel,
   getTransactionSourceStatusLabel,
 } from '../src/lib/transactions.js'
 
@@ -63,4 +64,10 @@ test('shows drilldown allocation category instead of the source split category',
 test('labels pending transactions as waiting for statement', () => {
   assert.equal(getTransactionSourceStatusLabel({ source_status: 'pending' }), 'Pending · waiting for statement')
   assert.equal(getTransactionSourceStatusLabel({ source_status: 'posted' }), '')
+})
+
+test('shows an explicit fallback for blank transaction descriptions', () => {
+  assert.equal(getTransactionDescriptionLabel({ description: '' }), 'Untitled transaction')
+  assert.equal(getTransactionDescriptionLabel({ description: '   ' }), 'Untitled transaction')
+  assert.equal(getTransactionDescriptionLabel({ description: 'Amazon' }), 'Amazon')
 })

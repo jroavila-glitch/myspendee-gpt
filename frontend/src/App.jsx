@@ -310,12 +310,17 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
         event.preventDefault()
         setSaveAttempted(true)
         setSubmitError('')
+        if (!form.description.trim()) {
+          setSubmitError('Add a description so this transaction is easy to recognize later.')
+          return
+        }
         if (!pendingSplitValid) {
           setSubmitError('Complete the split before saving.')
           return
         }
         const values = {
           ...form,
+          description: form.description.trim(),
           amount_mxn: form.amount_mxn === '' ? null : Number(form.amount_mxn),
           amount_original: form.amount_original ? Number(form.amount_original) : null,
           exchange_rate_used: getManualTransactionExchangeRate(form, displayRates),

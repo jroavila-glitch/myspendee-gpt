@@ -6,6 +6,7 @@ import {
   canSplitTransaction,
   getSplitActionLabel,
   getTransactionCategoryDisplay,
+  getTransactionDescriptionLabel,
   getTransactionSourceStatusLabel,
   isSplitTransaction,
 } from '../lib/transactions'
@@ -220,16 +221,18 @@ export default function TransactionTable({
           const assignedPeriodLabel = getAssignedPeriodLabel(transaction)
           const sourceStatusLabel = getTransactionSourceStatusLabel(transaction)
           const categoryDisplay = getTransactionCategoryDisplay(transaction)
+          const descriptionLabel = getTransactionDescriptionLabel(transaction)
+          const hasDescription = Boolean(String(transaction.description || '').trim())
           const pendingMatch = pendingMatchesById[transaction.id]
           const pendingCandidate = pendingMatch?.candidates?.[0]
           return (
             <div key={transaction.id} className="transaction-row transaction-grid">
             <div className="transaction-check">
-              <input aria-label={`Select ${transaction.description}`} type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => onToggleSelected(transaction.id)} />
+              <input aria-label={`Select ${descriptionLabel}`} type="checkbox" checked={selectedIds.includes(transaction.id)} onChange={() => onToggleSelected(transaction.id)} />
             </div>
 
             <div className="transaction-primary">
-              <strong>{transaction.description}</strong>
+              <strong className={hasDescription ? undefined : 'transaction-title-missing'}>{descriptionLabel}</strong>
               <div className="transaction-meta">
                 <span>{formatShortDate(transaction.date)}</span>
                 <span>{transaction.bank_name}</span>
@@ -316,7 +319,7 @@ export default function TransactionTable({
                 </button>
               ) : null}
               <button
-                aria-label={`Actions for ${transaction.description}`}
+                aria-label={`Actions for ${descriptionLabel}`}
                 aria-haspopup="menu"
                 aria-expanded={menuState?.id === transaction.id}
                 aria-controls={menuState?.id === transaction.id ? `transaction-menu-${transaction.id}` : undefined}

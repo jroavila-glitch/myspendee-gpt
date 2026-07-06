@@ -44,3 +44,8 @@ export function getTransactionSourceStatusLabel(transaction) {
   if (transaction?.source_status === 'reconciled_pending') return 'Reconciled pending'
   return ''
 }
+
+export function getTransactionDescriptionLabel(transaction) {
+  const description = String(transaction?.description || '').trim()
+  return description || 'Untitled transaction'
+}
