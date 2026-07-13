@@ -65,3 +65,25 @@ Each entry should answer:
   - keep the Railway Python runtime pinned in repo
   - wait for both Railway `SUCCESS` and Uvicorn startup logs before smoke tests
   - avoid removing a successful deployment until logs prove the app is stuck
+
+## 2026-07-13: Vercel Frontend Deployment Returned NOT_FOUND
+
+- Impact: `moneoapp.vercel.app` reached Vercel Authentication, but the protected
+  deployment root returned `NOT_FOUND` after login/bypass, so the app appeared
+  down.
+- Root cause: the latest production deployment for `moneoapp` had been created
+  from the repository root instead of the Vite `frontend/` app directory,
+  producing an invalid frontend artifact. During diagnosis, unlinked Vercel CLI
+  commands also auto-created accidental `moneo` and `frontend` projects, both
+  of which were removed.
+- Resolution: explicitly linked `frontend/` to the existing `moneoapp` Vercel
+  project, redeployed the Vite app from `frontend/`, reassigned
+  `moneoapp.vercel.app` to the restored deployment, and verified the protected
+  root returns the Moneo HTML while Railway `/health` returns OK.
+- Prevention:
+  - deploy the frontend only from `frontend/` after confirming `.vercel` points
+    to `moneoapp`
+  - do not run Vercel commands from unlinked directories unless the project is
+    specified and confirmed
+  - add a frontend deploy guard that fails if the linked Vercel project is not
+    `moneoapp`

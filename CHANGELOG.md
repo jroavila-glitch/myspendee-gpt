@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Restored the production Vercel frontend after a root-level deploy produced a
+  protected `NOT_FOUND` response, and documented the Vercel project-linking
+  incident plus prevention steps.
 - Cleaned up Month Status explanations so low/no-income periods no longer show
   raw spending-ratio decimals or noisy diagnostic text.
 - Added reimbursement/shared-expense accounting with neutral
