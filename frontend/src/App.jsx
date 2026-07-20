@@ -17,6 +17,7 @@ import {
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
   getBulkActionState,
+  getBulkRememberEligibility,
   getPendingReminderTransactions,
   getPreviewTransactions,
   indexPendingMatchesByPendingId,
@@ -445,7 +446,23 @@ function TransactionForm({ categories, initialValue, onSubmit, onCancel, seconda
   )
 }
 
-function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCategoryChange, onTypeChange, onApply, onMarkReviewed, onDelete, pendingAction = '', contained = false }) {
+function BulkBar({
+  selectedIds,
+  bulkCategory,
+  bulkType,
+  bulkRememberRule,
+  canBulkRememberRule,
+  bulkRememberCount,
+  categoryOptions,
+  onCategoryChange,
+  onTypeChange,
+  onRememberRuleChange,
+  onApply,
+  onMarkReviewed,
+  onDelete,
+  pendingAction = '',
+  contained = false,
+}) {
   if (!selectedIds.length) return null
   const bulkActionState = getBulkActionState(pendingAction)
 
@@ -466,6 +483,18 @@ function BulkBar({ selectedIds, bulkCategory, bulkType, categoryOptions, onCateg
           <option value="income">Income</option>
           <option value="ignored">Ignored</option>
         </select>
+        <label
+          className={`bulk-remember-rule${canBulkRememberRule ? '' : ' disabled'}`}
+          title={canBulkRememberRule ? 'Create future import rules for eligible selected transactions.' : 'Choose a valid category for income or expense transactions first.'}
+        >
+          <input
+            type="checkbox"
+            checked={bulkRememberRule}
+            disabled={bulkActionState.disabled || !canBulkRememberRule}
+            onChange={(event) => onRememberRuleChange(event.target.checked)}
+          />
+          <span>{canBulkRememberRule ? `Remember ${bulkRememberCount} future ${bulkRememberCount === 1 ? 'pattern' : 'patterns'}` : 'Remember future patterns'}</span>
+        </label>
         <button className="bulk-apply" onClick={onApply} disabled={bulkActionState.disabled}>{bulkActionState.applyLabel}</button>
         {onMarkReviewed ? <button className="bulk-reviewed" onClick={onMarkReviewed} disabled={bulkActionState.disabled}>{bulkActionState.reviewedLabel}</button> : null}
         {onDelete ? <button className="ghost-button danger" onClick={onDelete} disabled={bulkActionState.disabled}>{bulkActionState.deleteLabel}</button> : null}
@@ -491,6 +520,7 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkType, setBulkType] = useState('')
+  const [bulkRememberRule, setBulkRememberRule] = useState(false)
   const [bulkActionPending, setBulkActionPending] = useState('')
   const [reviewCategory, setReviewCategory] = useState('')
   const [reviewSearchText, setReviewSearchText] = useState('')
@@ -585,6 +615,19 @@ function App() {
     }
     return [...byId.values()]
   }, [transactions, pendingReminderTransactions])
+  const selectedTransactions = useMemo(() => {
+    const byId = new Map(allVisibleEditableTransactions.map((transaction) => [transaction.id, transaction]))
+    return selectedIds.flatMap((id) => byId.get(id) ? [byId.get(id)] : [])
+  }, [allVisibleEditableTransactions, selectedIds])
+  const bulkRememberEligibility = useMemo(
+    () => getBulkRememberEligibility(selectedTransactions, bulkCategory, bulkType, categories),
+    [bulkCategory, bulkType, categories, selectedTransactions],
+  )
+  useEffect(() => {
+    if (bulkRememberRule && !bulkRememberEligibility.enabled) {
+      setBulkRememberRule(false)
+    }
+  }, [bulkRememberEligibility.enabled, bulkRememberRule])
   const previousPeriodLabel = useMemo(() => buildPeriodComparisonLabel(period), [period])
   const workflowDisplayCurrency = displayCurrency === 'MXN' || Number(displayRates[displayCurrency]) > 0
     ? displayCurrency
@@ -745,6 +788,7 @@ function App() {
     setSelectedIds([])
     setBulkCategory('')
     setBulkType('')
+    setBulkRememberRule(false)
     setMenuState(null)
   }
 
@@ -860,9 +904,15 @@ function App() {
     setBulkActionPending('apply')
     try {
       await api.bulkUpdate({ ids: selectedIds, category: bulkCategory || null, type: bulkType || null })
+      if (bulkRememberRule && bulkRememberEligibility.enabled) {
+        await Promise.all(
+          bulkRememberEligibility.eligibleIds.map((id) => api.createClassificationRule(id, { scope: 'bank' })),
+        )
+      }
       setSelectedIds([])
       setBulkCategory('')
       setBulkType('')
+      setBulkRememberRule(false)
       await loadAll()
     } finally {
       bulkActionPendingRef.current = ''
@@ -879,6 +929,7 @@ function App() {
       setSelectedIds([])
       setBulkCategory('')
       setBulkType('')
+      setBulkRememberRule(false)
       await loadAll()
     } finally {
       bulkActionPendingRef.current = ''
@@ -896,6 +947,7 @@ function App() {
       setSelectedIds([])
       setBulkCategory('')
       setBulkType('')
+      setBulkRememberRule(false)
       await loadAll()
     } finally {
       bulkActionPendingRef.current = ''
@@ -1109,9 +1161,13 @@ function App() {
           selectedIds={selectedIds}
           bulkCategory={bulkCategory}
           bulkType={bulkType}
+          bulkRememberRule={bulkRememberRule && bulkRememberEligibility.enabled}
+          canBulkRememberRule={bulkRememberEligibility.enabled}
+          bulkRememberCount={bulkRememberEligibility.eligibleIds.length}
           categoryOptions={categoryOptions}
           onCategoryChange={setBulkCategory}
           onTypeChange={setBulkType}
+          onRememberRuleChange={setBulkRememberRule}
           onApply={handleBulkApply}
           onMarkReviewed={tab === 'review' ? handleBulkMarkReviewed : undefined}
           onDelete={handleBulkDelete}
@@ -1173,9 +1229,13 @@ function App() {
               selectedIds={selectedIds}
               bulkCategory={bulkCategory}
               bulkType={bulkType}
+              bulkRememberRule={bulkRememberRule && bulkRememberEligibility.enabled}
+              canBulkRememberRule={bulkRememberEligibility.enabled}
+              bulkRememberCount={bulkRememberEligibility.eligibleIds.length}
               categoryOptions={categoryOptions}
               onCategoryChange={setBulkCategory}
               onTypeChange={setBulkType}
+              onRememberRuleChange={setBulkRememberRule}
               onApply={handleBulkApply}
               onMarkReviewed={handleBulkMarkReviewed}
               onDelete={handleBulkDelete}

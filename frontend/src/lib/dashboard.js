@@ -181,6 +181,23 @@ export function getBulkActionState(pendingAction) {
   }
 }
 
+export function getBulkRememberEligibility(selectedTransactions, bulkCategory, bulkType, categories = {}) {
+  if (!bulkCategory) return { enabled: false, eligibleIds: [] }
+  const targetType = bulkType || ''
+  const eligibleIds = selectedTransactions
+    .filter((transaction) => {
+      const effectiveType = targetType || transaction.type
+      if (effectiveType !== 'income' && effectiveType !== 'expense') return false
+      const validCategories = categories[effectiveType]
+      return !Array.isArray(validCategories) || validCategories.includes(bulkCategory)
+    })
+    .map((transaction) => transaction.id)
+  return {
+    enabled: eligibleIds.length > 0,
+    eligibleIds,
+  }
+}
+
 export function filterTransactionsForWorkspace(transactions, category, searchText) {
   const normalizedSearch = searchText.trim().toLowerCase()
   return transactions.filter((transaction) => {

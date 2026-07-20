@@ -215,6 +215,10 @@ Additional ignore behavior:
 - `Implemented`: Dashboard includes a global display-currency dropdown for `MXN`, `EUR`, `USD`
 - `Implemented`: Notes autosave on blur/debounce
 - `Implemented`: Manual transaction edits for category/type override automatic classification.
+- `Implemented`: Bulk category edits can optionally create bank-scoped
+  remembered classification rules for each selected income/expense transaction,
+  using the selected transaction merchant pattern, bank, target type, and target
+  category for future imports.
 - `Implemented`: Manual transaction edits can override assigned month/year;
   leaving assigned period blank lets backend rules suggest it.
 - `Implemented`: Manual transactions can be marked with source status

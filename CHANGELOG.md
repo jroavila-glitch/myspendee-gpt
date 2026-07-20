@@ -12,6 +12,8 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added a bulk remembered-rule option so selected transactions can be
+  recategorized and taught to future imports in one flow.
 - Restored the production Vercel frontend after a root-level deploy produced a
   protected `NOT_FOUND` response, and documented the Vercel project-linking
   incident plus prevention steps.

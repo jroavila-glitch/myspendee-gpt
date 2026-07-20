@@ -13,6 +13,7 @@ import {
   excludeTransactionsById,
   indexPendingMatchesByPendingId,
   getBulkActionState,
+  getBulkRememberEligibility,
   getPendingReminderTransactions,
   filterTransactionsByDrilldown,
   filterTransactionsForWorkspace,
@@ -239,6 +240,34 @@ test('marks bulk action controls busy while a request is pending', () => {
     applyLabel: 'Apply',
     reviewedLabel: 'Mark selected reviewed',
     deleteLabel: 'Delete selected',
+  })
+})
+
+test('enables bulk remembered rules only for category edits targeting income or expense', () => {
+  const selectedTransactions = [
+    { id: 'expense-row', type: 'expense' },
+    { id: 'income-row', type: 'income' },
+  ]
+  const categories = {
+    expense: ['Food & Drink', 'Home'],
+    income: ['Tennis Lessons'],
+  }
+
+  assert.deepEqual(getBulkRememberEligibility(selectedTransactions, 'Food & Drink', '', categories), {
+    enabled: true,
+    eligibleIds: ['expense-row'],
+  })
+  assert.deepEqual(getBulkRememberEligibility(selectedTransactions, '', '', categories), {
+    enabled: false,
+    eligibleIds: [],
+  })
+  assert.deepEqual(getBulkRememberEligibility([{ id: 'ignored-row', type: 'expense' }], 'ignored', 'ignored', categories), {
+    enabled: false,
+    eligibleIds: [],
+  })
+  assert.deepEqual(getBulkRememberEligibility(selectedTransactions, 'Tennis Lessons', 'income', categories), {
+    enabled: true,
+    eligibleIds: ['expense-row', 'income-row'],
   })
 })
 

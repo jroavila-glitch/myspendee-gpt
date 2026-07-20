@@ -2281,6 +2281,28 @@ h3 {
   background: #fbfcff;
 }
 
+.bulk-remember-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(27, 139, 103, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(27, 139, 103, 0.08), rgba(95, 84, 247, 0.05));
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.bulk-remember-rule input {
+  width: auto;
+}
+
+.bulk-remember-rule.disabled {
+  opacity: 0.52;
+}
+
 .bulk-apply {
   border-radius: 10px;
   padding: 0.68rem 0.9rem;
