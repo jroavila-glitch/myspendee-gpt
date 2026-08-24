@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Added retry handling for transient frontend GET request failures so support
+  data like banks, categories, statements, and exchange rates is less likely to
+  show one-off `Failed to fetch` banners.
 - Added a bulk remembered-rule option so selected transactions can be
   recategorized and taught to future imports in one flow.
 - Restored the production Vercel frontend after a root-level deploy produced a

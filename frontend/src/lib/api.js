@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8000'
+const RETRY_DELAYS_MS = [300, 900]
 
 function formatErrorMessage(rawMessage) {
   try {
@@ -15,24 +16,60 @@ function formatErrorMessage(rawMessage) {
   return rawMessage || 'Request failed'
 }
 
+function isReadRequest(options) {
+  return (options.method || 'GET').toUpperCase() === 'GET'
+}
+
+function isRetryableStatus(status) {
+  return [408, 429, 500, 502, 503, 504].includes(status)
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
+}
+
 async function request(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  })
+  const { retry, ...fetchOptions } = options
+  const maxRetries = retry ?? (isReadRequest(fetchOptions) ? RETRY_DELAYS_MS.length : 0)
 
-  if (!response.ok) {
-    const message = await response.text()
-    throw new Error(formatErrorMessage(message))
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const response = await fetch(`${API_URL}${path}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(fetchOptions.headers || {}),
+        },
+        ...fetchOptions,
+      })
+
+      if (!response.ok) {
+        const message = await response.text()
+        const error = new Error(formatErrorMessage(message))
+        error.status = response.status
+        if (attempt < maxRetries && isRetryableStatus(response.status)) {
+          await sleep(RETRY_DELAYS_MS[attempt])
+          continue
+        }
+        throw error
+      }
+
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        return response.json()
+      }
+      return null
+    } catch (error) {
+      if (error.status && !isRetryableStatus(error.status)) {
+        throw error
+      }
+      if (attempt < maxRetries) {
+        await sleep(RETRY_DELAYS_MS[attempt])
+        continue
+      }
+      throw error
+    }
   }
 
-  const contentType = response.headers.get('content-type') || ''
-  if (contentType.includes('application/json')) {
-    return response.json()
-  }
   return null
 }
 
