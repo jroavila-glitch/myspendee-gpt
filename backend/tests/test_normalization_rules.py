@@ -14,6 +14,10 @@ class NormalizationRulesTest(TestCase):
         self.assertEqual("ARQ", normalize_bank_name("DÓLARAPP MÉXICO S.A. DE C.V."))
         self.assertEqual("ARQ", normalize_bank_name("ARQ"))
 
+    def test_nubank_name_is_normalized_to_nu(self) -> None:
+        self.assertEqual("Nu", normalize_bank_name("NuBank"))
+        self.assertEqual("Nu", normalize_bank_name("Nubank México"))
+
     def test_arq_guard_avoids_one_to_one_foreign_to_mxn_copy(self) -> None:
         with patch("app.services.normalization.get_banxico_rate", return_value=None):
             original, mxn_amount, rate, _ = resolve_amounts(

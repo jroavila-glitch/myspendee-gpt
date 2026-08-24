@@ -37,7 +37,10 @@ When a new rule is added or changed, we should update:
 
 ## Bank Name Normalization
 
-- `Implemented`: `Nu`, `NU`, `Nu México Financier`, and similar variants normalize to `Nu`.
+- `Implemented`: `Nu`, `NU`, `NuBank`, `Nu México Financier`, and similar variants normalize to `Nu`.
+- `Implemented`: Statement coverage displays Nu statements as `Nu Debit` or
+  `Nu Credit` based on the statement filename; `NuBank` should not appear as
+  a separate coverage bank.
 - `Implemented`: `HSBC 2Now` normalizes to `HSBC`.
 - `Implemented`: `Millenium` and `Millennium` normalize to `Millennium`.
 - `Implemented`: `Revolut` normalizes to `Revolut`.

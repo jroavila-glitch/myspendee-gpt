@@ -30,7 +30,7 @@ def normalize_currency_code(value: str | None) -> str:
 
 def normalize_bank_name(bank_name: str) -> str:
     normalized = normalize_text(bank_name)
-    if normalized == "NU" or normalized.startswith("NU ") or "NU MEXICO" in normalized:
+    if normalized == "NU" or normalized.startswith("NU ") or "NUBANK" in normalized or "NU MEXICO" in normalized:
         return "Nu"
     if "ARQ" in normalized or "DOLARAPP" in normalized:
         return "ARQ"

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { getCoverageBankName } from '../lib/statementCoverage'
 import { getStatementWarningSummary, getStatementWarnings } from '../lib/statements'
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' })
@@ -34,23 +35,6 @@ function getStatementMonth(statement) {
   const date = new Date(`${sourceDate}T00:00:00`)
   if (Number.isNaN(date.getTime())) return null
   return { month: date.getMonth() + 1, year: date.getFullYear() }
-}
-
-function getCoverageBankName(statement) {
-  const bankName = statement.bank_name || 'Unknown'
-  const filename = (statement.filename || '').toUpperCase()
-
-  if (bankName === 'ARQ') {
-    if (filename.includes('USD')) return 'ARQ USD'
-    if (filename.includes('EUR')) return 'ARQ EUR'
-  }
-
-  if (bankName === 'Nu') {
-    if (filename.includes('CREDIT')) return 'Nu Credit'
-    if (filename.includes('DEBIT')) return 'Nu Debit'
-  }
-
-  return bankName
 }
 
 function buildCoverage(statements, year) {

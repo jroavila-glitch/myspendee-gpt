@@ -12,6 +12,9 @@ It should not include tiny style tweaks or trivial wording changes. It should in
 
 ## Unreleased
 
+- Normalized `NuBank` statement/import metadata into `Nu` and kept Statements
+  coverage split between `Nu Debit` and `Nu Credit` instead of showing a stray
+  `NuBank` row.
 - Added retry handling for transient frontend GET request failures so support
   data like banks, categories, statements, and exchange rates is less likely to
   show one-off `Failed to fetch` banners.
